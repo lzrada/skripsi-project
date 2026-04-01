@@ -1,7 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 
-export default function middleware(request: NextRequest) {
-  console.log("middleware activated for request:", request.url);
+export default function proxy(request: NextRequest) {
+  console.log("proxy activated for request:", request.url);
   if (request.nextUrl.pathname.startsWith("/admin")) {
     // Example: Add custom header for admin routes
     const response = NextResponse.next();

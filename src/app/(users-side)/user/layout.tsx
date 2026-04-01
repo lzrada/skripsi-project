@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "../../globals.css";
 import NavbarUser from "@/components/(user)/Navbar-user";
+import FooterUser from "@/components/(user)/Footer-user";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,11 +15,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "rizki electronic",
-  description: "skripsi app",
+  title: "Rizky Elektronik",
+  description: "Toko Elektronik Terpercaya di Blitar",
 };
 
-export default function RootLayout({
+export default function UserLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -26,12 +27,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <div className="min-h-screen bg-gray-50">
-          {/* NAVBAR */}
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+          {/* Navbar */}
           <NavbarUser />
 
-          {/* PAGE CONTENT */}
-          <main className="max-w-7xl mx-auto py-10 px-6">{children}</main>
+          {/* Konten halaman */}
+          <main className="flex-1">{children}</main>
+
+          {/* Footer */}
+          <FooterUser />
         </div>
       </body>
     </html>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, use } from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCartShopping, faBagShopping, faHeart, faStar, faFire, faShield, faTruck, faRotateLeft, faChevronLeft, faChevronRight, faStore } from "@fortawesome/free-solid-svg-icons";
@@ -137,13 +137,15 @@ function formatPrice(price: number) {
   }).format(price);
 }
 
-export default function ProductDetailPage({ params }: { params: { product: string } }) {
+export default function ProductDetailPage({ params }: { params: Promise<{ product: string }> }) {
+  const resolvedParams = use(params);
+
   const [qty, setQty] = useState(1);
   const [activeTab, setActiveTab] = useState<"deskripsi" | "spesifikasi">("deskripsi");
   const [wishlist, setWishlist] = useState(false);
 
   // Ambil data produk, fallback ke produk pertama jika tidak ditemukan
-  const product = productData[params.product] ?? productData["1"];
+  const product = productData[resolvedParams.product] ?? productData["1"];
 
   const gradient = categoryGradient[product.category] ?? "from-gray-600 to-gray-800";
   const emoji = categoryEmoji[product.category] ?? "📦";

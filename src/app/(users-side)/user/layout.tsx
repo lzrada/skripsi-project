@@ -25,19 +25,15 @@ export default function UserLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <div className="min-h-screen bg-gray-50 flex flex-col">
-          {/* Navbar */}
-          <NavbarUser />
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Navbar */}
+      <NavbarUser />
 
-          {/* Konten halaman */}
-          <main className="flex-1">{children}</main>
+      {/* Konten halaman */}
+      <main className="flex-1">{children}</main>
 
-          {/* Footer */}
-          <FooterUser />
-        </div>
-      </body>
-    </html>
+      {/* Footer */}
+      <FooterUser />
+    </div>
   );
 }

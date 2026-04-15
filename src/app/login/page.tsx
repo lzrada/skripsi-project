@@ -1,15 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react"; // ✅ tambah useEffect
 import { useRouter } from "next/navigation";
+
 import Link from "next/link";
 import { faEye, faEyeSlash, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { loginWithEmail, loginWithGoogle } from "@/service/auth.service";
+import {
+  loginWithEmail,
+  loginWithGoogle,
+  handleGoogleRedirect, // ✅ tambah ini
+} from "@/service/auth.service";
 
 export default function Login() {
-  const router = useRouter();
+  // const router = useRouter();
 
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
@@ -18,50 +23,73 @@ export default function Login() {
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [error, setError] = useState("");
 
-  // redirect berdasarkan role
   const redirectByRole = (role: "user" | "admin") => {
     if (role === "admin") {
-      router.push("/admin/dashboard-admin");
+      window.location.replace("/admin/dashboard-admin");
     } else {
-      router.push("/user/dashboard-user");
+      window.location.replace("/user/dashboard-user");
     }
   };
 
-  // — Login email
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+
     try {
-      const { role } = await loginWithEmail(email, password);
-      redirectByRole(role);
-    } catch (err: unknown) {
-      const code = (err as { code?: string }).code;
+      const res = await loginWithEmail(email, password);
+      console.log("LOGIN RESULT FINAL:", res);
+
+      if (!res || !res.role) {
+        throw new Error("Role tidak ditemukan");
+      }
+
+      console.log("REDIRECT KE ROLE:", res.role);
+      setLoading(false);
+      setTimeout(() => {
+        redirectByRole(res.role);
+      }, 100);
+    } catch (err: any) {
+      console.log("LOGIN ERROR FULL:", err);
+
+      const code = err?.code;
+
       if (code === "auth/user-not-found" || code === "auth/wrong-password" || code === "auth/invalid-credential") {
         setError("Email atau password salah.");
       } else if (code === "auth/too-many-requests") {
         setError("Terlalu banyak percobaan. Coba lagi nanti.");
+      } else if (code === "auth/user-not-found-db") {
+        setError("User belum ada di database.");
+      } else if (code === "auth/no-role") {
+        setError("Role user belum diset.");
       } else {
-        setError("Terjadi kesalahan. Silakan coba lagi.");
+        setError(err.message || "Terjadi kesalahan.");
       }
-    } finally {
       setLoading(false);
     }
   };
 
-  // — Login Google
   const handleGoogle = async () => {
     setError("");
     setLoadingGoogle(true);
     try {
-      const { role } = await loginWithGoogle();
-      redirectByRole(role);
-    } catch {
+      await loginWithGoogle();
+    } catch (err) {
+      console.log("GOOGLE ERROR:", err);
       setError("Login Google gagal. Silakan coba lagi.");
-    } finally {
       setLoadingGoogle(false);
     }
   };
+
+  useEffect(() => {
+    const checkGoogleLogin = async () => {
+      const res = await handleGoogleRedirect();
+      if (res && res.success) {
+        redirectByRole(res.role);
+      }
+    };
+    checkGoogleLogin();
+  }, []);
 
   return (
     <div className="flex items-center justify-center w-full h-screen bg-[#F5F6FA]">
@@ -75,7 +103,6 @@ export default function Login() {
             </Link>
           </div>
 
-          {/* Error */}
           {error && <div className="bg-red-50 border border-red-200 text-red-600 text-xs rounded px-3 py-2 mb-3">{error}</div>}
 
           <form onSubmit={handleLogin} className="flex flex-col gap-1">
@@ -125,7 +152,6 @@ export default function Login() {
           <div className="w-full h-px bg-[#D7DBEC]" />
           <p className="flex items-center justify-center font-medium my-4 text-gray-600 text-xs">Or sign in using:</p>
 
-          {/* Google */}
           <button
             onClick={handleGoogle}
             disabled={loadingGoogle}

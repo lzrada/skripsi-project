@@ -10,12 +10,10 @@ export function proxy(request: NextRequest) {
   const isAdminRoute = pathname.startsWith("/admin");
   const isAuthRoute = pathname === "/login" || pathname === "/register";
 
-  // Belum login tapi akses halaman protected
   if ((isUserRoute || isAdminRoute) && !token) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Sudah login tapi akses halaman login/register
   if (isAuthRoute && token) {
     return NextResponse.redirect(new URL("/user/dashboard-user", request.url));
   }

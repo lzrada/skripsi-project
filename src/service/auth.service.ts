@@ -3,9 +3,10 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthP
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 // ── Helper: set kedua cookie sekaligus ──────────────────────────────
-const setCookies = (token: string, role: string) => {
+const setCookies = (token: string, role: string, uid: string) => {
   document.cookie = `firebaseToken=${token}; path=/`;
   document.cookie = `userRole=${role}; path=/`;
+  document.cookie = `uid=${uid}; path=/`;
 };
 
 // ── LOGIN — Email & Password ─────────────────────────────────────────
@@ -27,7 +28,7 @@ export const loginWithEmail = async (email: string, password: string) => {
     }
 
     const token = await user.getIdToken();
-    setCookies(token, role);
+    setCookies(token, role, user.uid);
 
     return { role };
   } catch (error: any) {
@@ -71,7 +72,7 @@ export const handleGoogleRedirect = async () => {
     }
 
     const token = await user.getIdToken();
-    setCookies(token, role);
+    setCookies(token, role, user.uid);
 
     return { success: true, role };
   } catch (error: any) {
@@ -119,6 +120,8 @@ export const logout = async () => {
     await signOut(auth);
     document.cookie = "firebaseToken=; path=/; max-age=0";
     document.cookie = "userRole=; path=/; max-age=0";
+    document.cookie = "uid=; path=/; max-age=0";
+    
   } catch (error: any) {
     console.log("LOGOUT ERROR:", error);
     throw error;

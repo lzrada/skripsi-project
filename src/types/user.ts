@@ -1,8 +1,20 @@
+// types/user.ts
+
+export interface UserAddress {
+  province: string;
+  city: string;
+  district: string;
+  postalCode: string;
+  detailAddress: string;
+}
+
 export interface UserData {
   uid: string;
-  nama: string;
-  email: string | null;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  photoURL?: string;
   role: "user" | "admin";
-  photoURL: string;
-  createdAt: unknown;
+  address: UserAddress;
+  createdAt?: string;
 }

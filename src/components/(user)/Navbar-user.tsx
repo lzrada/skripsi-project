@@ -69,7 +69,7 @@ export default function NavbarUser() {
                 <FontAwesomeIcon icon={faCartShopping} className="w-5 h-5" />
                 <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#E85D04] text-white text-[9px] font-bold rounded-full flex items-center justify-center">3</span>
               </Link>
-              <Link href="/user/profile" className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-[#1E2753] transition-colors">
+              <Link href="/user/account" className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-[#1E2753] transition-colors">
                 <FontAwesomeIcon icon={faUser} className="w-5 h-5" />
                 <span className="text-sm font-medium">Akun</span>
               </Link>

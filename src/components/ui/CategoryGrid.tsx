@@ -1,14 +1,19 @@
+import { faTv } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
+import { BsFillSpeakerFill } from "react-icons/bs";
+import { GiWashingMachine } from "react-icons/gi";
+import { PiFan } from "react-icons/pi";
+import { RiFridgeFill } from "react-icons/ri";
+import { TbAirConditioning } from "react-icons/tb";
 
 const categories = [
-  { name: "Televisi", icon: "📺", count: 24 },
-  { name: "Kulkas", icon: "🧊", count: 18 },
-  { name: "AC", icon: "❄️", count: 15 },
-  { name: "Mesin Cuci", icon: "🌀", count: 12 },
-  { name: "Kipas Angin", icon: "💨", count: 20 },
-  { name: "Audio", icon: "🔊", count: 16 },
-  { name: "Laptop", icon: "💻", count: 8 },
-  { name: "HP", icon: "📱", count: 11 },
+  { name: "Televisi", icon: <FontAwesomeIcon icon={faTv} />, count: 24 },
+  { name: "Kulkas", icon: <RiFridgeFill className="text-3xl" />, count: 18 },
+  { name: "AC", icon: <TbAirConditioning className="text-3xl" />, count: 15 },
+  { name: "Mesin Cuci", icon: <GiWashingMachine />, count: 12 },
+  { name: "Kipas Angin", icon: <PiFan />, count: 20 },
+  { name: "Audio", icon: <BsFillSpeakerFill />, count: 16 },
 ];
 
 export default function CategoryGrid() {

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFire, faTag, faTableCells } from "@fortawesome/free-solid-svg-icons";
+import { faFire, faTag, faTableCells, faTruckFast, faRecycle, faShield } from "@fortawesome/free-solid-svg-icons";
 import HeroBanner from "@/components/ui/HeroBanner";
 import CategoryGrid from "@/components/ui/CategoryGrid";
 import ProductCard, { Product } from "@/components/ui/ProductCard";
@@ -148,19 +148,19 @@ export default function DashboardUser() {
           {
             title: "Barang Second Berkualitas",
             desc: "Harga bersahabat, kondisi terawat",
-            emoji: "♻️",
+            emoji: <FontAwesomeIcon icon={faRecycle} className="text-black opacity-55" />,
             color: "from-amber-500 to-orange-600",
           },
           {
             title: "Gratis Ongkir Blitar",
             desc: "Pembelian apapun, ongkir GRATIS",
-            emoji: "🚚",
+            emoji: <FontAwesomeIcon icon={faTruckFast} className="text-black opacity-55" />,
             color: "from-emerald-500 to-teal-600",
           },
           {
             title: "Garansi Toko",
             desc: "Setiap produk bergaransi resmi",
-            emoji: "🛡️",
+            emoji: <FontAwesomeIcon icon={faShield} className="text-black opacity-55" />,
             color: "from-[#1E2753] to-[#2d3a8c]",
           },
         ].map((p) => (

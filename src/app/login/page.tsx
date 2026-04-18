@@ -1,20 +1,18 @@
+// login/page.tsx
+
 "use client";
 
-import { useState, useEffect } from "react"; // ✅ tambah useEffect
-import { useRouter } from "next/navigation";
-
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { faEye, faEyeSlash, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  loginWithEmail,
-  loginWithGoogle,
-  handleGoogleRedirect, // ✅ tambah ini
-} from "@/service/auth.service";
+import { loginWithEmail, loginWithGoogle, handleGoogleRedirect } from "@/service/auth.service";
 
-export default function Login() {
-  // const router = useRouter();
+// Pisah komponen dalam ke LoginForm supaya useSearchParams bisa jalan
+function LoginForm() {
+  const searchParams = useSearchParams();
 
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
@@ -24,6 +22,13 @@ export default function Login() {
   const [error, setError] = useState("");
 
   const redirectByRole = (role: "user" | "admin") => {
+    const redirectTo = searchParams.get("redirect");
+
+    if (redirectTo) {
+      window.location.replace(redirectTo);
+      return;
+    }
+
     if (role === "admin") {
       window.location.replace("/admin/dashboard-admin");
     } else {
@@ -38,20 +43,16 @@ export default function Login() {
 
     try {
       const res = await loginWithEmail(email, password);
-      console.log("LOGIN RESULT FINAL:", res);
 
       if (!res || !res.role) {
         throw new Error("Role tidak ditemukan");
       }
 
-      console.log("REDIRECT KE ROLE:", res.role);
       setLoading(false);
       setTimeout(() => {
         redirectByRole(res.role);
       }, 100);
     } catch (err: any) {
-      console.log("LOGIN ERROR FULL:", err);
-
       const code = err?.code;
 
       if (code === "auth/user-not-found" || code === "auth/wrong-password" || code === "auth/invalid-credential") {
@@ -74,8 +75,7 @@ export default function Login() {
     setLoadingGoogle(true);
     try {
       await loginWithGoogle();
-    } catch (err) {
-      console.log("GOOGLE ERROR:", err);
+    } catch {
       setError("Login Google gagal. Silakan coba lagi.");
       setLoadingGoogle(false);
     }
@@ -163,5 +163,14 @@ export default function Login() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Default export dibungkus Suspense — wajib karena pakai useSearchParams
+export default function Login() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   );
 }

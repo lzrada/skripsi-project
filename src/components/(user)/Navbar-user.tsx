@@ -9,7 +9,7 @@ export default function NavbarUser() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
 
-  const categories = ["Televisi", "Kulkas", "Mesin Cuci", "AC", "Kipas Angin", "Laptop", "HP", "Audio"];
+  const categories = ["Televisi", "Kulkas", "Mesin Cuci", "AC", "Kipas Angin", "Audio"];
 
   return (
     <header className="sticky top-0 z-50 w-full">

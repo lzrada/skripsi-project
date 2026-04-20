@@ -1,6 +1,10 @@
+// src/components/ui/ProductCard.tsx
+
 import Link from "next/link";
 import { FiHeart, FiShoppingCart, FiStar } from "react-icons/fi";
 import { HiOutlineFire } from "react-icons/hi";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { categoryIcon, categoryGradient, defaultCategoryIcon, defaultGradient } from "@/constants/category";
 
 export interface Product {
   id: string;
@@ -26,28 +30,6 @@ const badgeConfig = {
   limited: { label: "STOK TERBATAS", bg: "bg-purple-600" },
 };
 
-const categoryGradient: Record<string, string> = {
-  Televisi: "from-slate-700 to-slate-900",
-  Kulkas: "from-cyan-600 to-blue-800",
-  AC: "from-sky-500 to-blue-700",
-  "Mesin Cuci": "from-teal-600 to-emerald-800",
-  "Kipas Angin": "from-indigo-500 to-violet-700",
-  Audio: "from-pink-600 to-rose-800",
-  Laptop: "from-gray-700 to-gray-900",
-  HP: "from-emerald-600 to-teal-800",
-};
-
-const categoryEmoji: Record<string, string> = {
-  Televisi: "📺",
-  Kulkas: "🧊",
-  AC: "❄️",
-  "Mesin Cuci": "🌀",
-  "Kipas Angin": "💨",
-  Audio: "🔊",
-  Laptop: "💻",
-  HP: "📱",
-};
-
 function formatPrice(price: number) {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -57,18 +39,17 @@ function formatPrice(price: number) {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const gradient = categoryGradient[product.category] ?? "from-gray-600 to-gray-800";
-  const emoji = categoryEmoji[product.category] ?? "📦";
-
+  const gradient = categoryGradient[product.category] ?? defaultGradient;
+  const icon = categoryIcon[product.category] ?? defaultCategoryIcon;
   const discountPercent = product.originalPrice ? Math.round((1 - product.price / product.originalPrice) * 100) : null;
 
   return (
     <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-gray-100 hover:-translate-y-1 transition-all duration-300 flex flex-col">
       {/* Gambar / placeholder */}
       <Link href={`/user/product-detail/${product.id}`} className="relative block">
-        <div className={`h-48 bg-linear-to-br ${gradient} flex items-center justify-center relative overflow-hidden`}>
-          {/* Emoji produk */}
-          <span className="text-6xl opacity-60 group-hover:scale-110 transition-transform duration-300">{emoji}</span>
+        <div className={`h-48 bg-gradient-to-br ${gradient} flex items-center justify-center relative overflow-hidden`}>
+          {/* Icon kategori */}
+          <FontAwesomeIcon icon={icon} className="w-16 h-16 text-white/30 group-hover:scale-110 transition-transform duration-300" />
 
           {/* Badge atas kiri */}
           {product.badge && <span className={`absolute top-2 left-2 ${badgeConfig[product.badge].bg} text-white text-[10px] font-bold px-2 py-0.5 rounded-full`}>{badgeConfig[product.badge].label}</span>}

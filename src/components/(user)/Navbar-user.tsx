@@ -1,31 +1,65 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBars, faXmark, faMagnifyingGlass, faCartShopping, faUser, faBell, faHeart } from "@fortawesome/free-solid-svg-icons";
+import { faBars, faXmark, faMagnifyingGlass, faCartShopping, faUser, faBell, faHeart, faRightFromBracket, faBoxOpen, faGear, faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import { logout } from "@/service/auth.service";
 
 export default function NavbarUser() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const categories = ["Televisi", "Kulkas", "Mesin Cuci", "AC", "Kipas Angin", "Audio"];
 
+  useEffect(() => {
+    const token = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("firebaseToken="))
+      ?.split("=")[1];
+    setIsLoggedIn(!!token);
+  }, []);
+
+  // Tutup dropdown kalau klik di luar
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      window.location.replace("/login");
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full">
-      {/* Top bar */}
-      <div className="bg-[#1E2753] text-white text-xs py-1.5 px-6 flex justify-between items-center">
-        <span>Gratis ongkir untuk wilayah Blitar dan sekitarnya!</span>
-        <div className="flex gap-4">
-          <Link href="/login" className="hover:text-yellow-300 transition-colors">
-            Masuk
-          </Link>
-          <span className="text-gray-400">|</span>
-          <Link href="/register" className="hover:text-yellow-300 transition-colors">
-            Daftar
-          </Link>
+      {/* Top bar — hanya tampil kalau BELUM login */}
+      {!isLoggedIn && (
+        <div className="bg-[#1E2753] text-white text-xs py-1.5 px-6 flex justify-between items-center">
+          <span>Gratis ongkir untuk wilayah Blitar dan sekitarnya!</span>
+          <div className="flex gap-4 items-center">
+            <Link href="/login" className="hover:text-yellow-300 transition-colors">
+              Masuk
+            </Link>
+            <span className="text-gray-400">|</span>
+            <Link href="/register" className="hover:text-yellow-300 transition-colors">
+              Daftar
+            </Link>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main navbar */}
       <nav className="bg-white border-b border-gray-100 shadow-sm">
@@ -62,17 +96,73 @@ export default function NavbarUser() {
               <button className="hidden md:flex px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-[#1E2753] transition-colors">
                 <FontAwesomeIcon icon={faBell} className="w-5 h-5" />
               </button>
-              <button className="hidden md:flex px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-red-500 transition-colors">
+              <Link href="/user/wishlist" className="hidden md:flex px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-red-500 transition-colors">
                 <FontAwesomeIcon icon={faHeart} className="w-5 h-5" />
-              </button>
+              </Link>
               <Link href="/user/cart" className="relative flex px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-[#1E2753] transition-colors">
                 <FontAwesomeIcon icon={faCartShopping} className="w-5 h-5" />
                 <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#E85D04] text-white text-[9px] font-bold rounded-full flex items-center justify-center">3</span>
               </Link>
-              <Link href="/user/account" className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-[#1E2753] transition-colors">
-                <FontAwesomeIcon icon={faUser} className="w-5 h-5" />
-                <span className="text-sm font-medium">Akun</span>
-              </Link>
+
+              {/* Tombol Akun — dropdown kalau sudah login, link ke /login kalau belum */}
+              {isLoggedIn ? (
+                <div className="relative hidden md:block" ref={dropdownRef}>
+                  <button onClick={() => setDropdownOpen(!dropdownOpen)} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-[#1E2753] transition-colors">
+                    <FontAwesomeIcon icon={faUser} className="w-5 h-5" />
+                    <span className="text-sm font-medium">Akun</span>
+                    <FontAwesomeIcon icon={faChevronDown} className={`w-3 h-3 transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`} />
+                  </button>
+                  {/* Dropdown menu */}
+                  {dropdownOpen && (
+                    <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50">
+                      {/* Header dropdown */}
+                      <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                        <p className="text-xs text-gray-400">Login sebagai</p>
+                        <p className="text-sm font-semibold text-gray-700 truncate">
+                          {document.cookie
+                            .split("; ")
+                            .find((r) => r.startsWith("uid="))
+                            ?.split("=")[1] ?? "User"}
+                        </p>
+                      </div>
+
+                      {/* Menu items */}
+                      <div className="py-1">
+                        <Link href="/user/account" onClick={() => setDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                          <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-gray-400" />
+                          Profil Saya
+                        </Link>
+                        <Link href="/user/orders" onClick={() => setDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                          <FontAwesomeIcon icon={faBoxOpen} className="w-4 h-4 text-gray-400" />
+                          Pesanan Saya
+                        </Link>
+                        <Link href="/user/wishlist" onClick={() => setDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                          <FontAwesomeIcon icon={faHeart} className="w-4 h-4 text-gray-400" />
+                          Wishlist
+                        </Link>
+                        <Link href="/user/account" onClick={() => setDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                          <FontAwesomeIcon icon={faGear} className="w-4 h-4 text-gray-400" />
+                          Pengaturan
+                        </Link>
+                      </div>
+
+                      {/* Logout */}
+                      <div className="border-t border-gray-100 py-1">
+                        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors">
+                          <FontAwesomeIcon icon={faRightFromBracket} className="w-4 h-4" />
+                          Keluar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link href="/login" className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-[#1E2753] transition-colors">
+                  <FontAwesomeIcon icon={faUser} className="w-5 h-5" />
+                  <span className="text-sm font-medium">Masuk</span>
+                </Link>
+              )}
+
               <button className="md:hidden flex px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors" onClick={() => setMenuOpen(!menuOpen)}>
                 <FontAwesomeIcon icon={menuOpen ? faXmark : faBars} className="w-5 h-5" />
               </button>
@@ -108,6 +198,29 @@ export default function NavbarUser() {
                 {cat}
               </Link>
             ))}
+            <div className="border-t border-gray-100 pt-2 mt-2 space-y-1">
+              {isLoggedIn ? (
+                <>
+                  <Link href="/user/account" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg font-medium">
+                    <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-gray-400" />
+                    Profil Saya
+                  </Link>
+                  <Link href="/user/orders" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg font-medium">
+                    <FontAwesomeIcon icon={faBoxOpen} className="w-4 h-4 text-gray-400" />
+                    Pesanan Saya
+                  </Link>
+                  <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-500 hover:bg-red-50 rounded-lg font-medium">
+                    <FontAwesomeIcon icon={faRightFromBracket} className="w-4 h-4" />
+                    Keluar
+                  </button>
+                </>
+              ) : (
+                <Link href="/login" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg font-medium">
+                  <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-gray-400" />
+                  Masuk
+                </Link>
+              )}
+            </div>
           </div>
         )}
       </nav>

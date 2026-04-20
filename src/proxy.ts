@@ -5,7 +5,7 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const token = request.cookies.get("firebaseToken")?.value;
-  const role = request.cookies.get("role")?.value;
+  const role = request.cookies.get("userRole")?.value;
 
   const authRoutes = ["/login", "/register", "/forgot-password"];
 

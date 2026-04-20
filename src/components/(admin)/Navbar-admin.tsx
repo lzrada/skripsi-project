@@ -28,16 +28,16 @@ const NavbarAdmin = (): JSX.Element => {
 
         <Link href={"/admin/orders-management"} className="flex items-center gap-5 text-sm p-2 my-2 text-white w-full hover:bg-gray-900 hover:rounded-md hover:cursor-pointer h-10">
           <FiList className="mt-1 text-xl" />
-          Orders Management
+          Management Produk
         </Link>
-        <Link href={"/admin/products"} className="flex items-center gap-5 text-sm p-2 my-2 text-white w-full hover:bg-gray-900 hover:rounded-md hover:cursor-pointer h-10">
-          <IoMdPricetag className="mt-1 text-xl" /> Products
+        <Link href={"/admin/product-management"} className="flex items-center gap-5 text-sm p-2 my-2 text-white w-full hover:bg-gray-900 hover:rounded-md hover:cursor-pointer h-10">
+          <IoMdPricetag className="mt-1 text-xl" /> Management Pesanan
         </Link>
 
         <div className="flex items-center" onClick={() => setIsCategoryOpen((prev) => !prev)}>
           <div className="flex items-center gap-5 text-sm pl-2 my-2 text-white w-full hover:bg-gray-900 hover:rounded-md hover:cursor-pointer h-10">
             <BiSolidCategory className="mt-1 text-xl" />
-            Category
+            Kategori
             {isCategoryOpen ? (
               <FaAngleUp className={` ml-10 rotate-0 transition-all ease-in-out duration-200 text-lg text-white hover:cursor-pointer }`} />
             ) : (

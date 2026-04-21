@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faFire, faTag, faTableCells, faTruckFast, faRecycle, faShield } from "@fortawesome/free-solid-svg-icons";
@@ -21,11 +21,14 @@ export default function DashboardUser() {
     return () => unsub();
   }, []);
 
-  const filtered = activeTab === "Promo" ? products.filter((p) => p.originalPrice && p.originalPrice > p.price) : products;
+  // Hanya produk yang masih ada stoknya
+  const inStockProducts = products.filter((p) => p.stock > 0);
 
-  const flashSale = products.filter((p) => p.originalPrice && p.originalPrice > p.price).slice(0, 4);
+  const filtered = activeTab === "Promo" ? inStockProducts.filter((p) => p.originalPrice && p.originalPrice > p.price) : inStockProducts;
 
-  const bestSeller = products.slice(0, 4);
+  const flashSale = inStockProducts.filter((p) => p.originalPrice && p.originalPrice > p.price).slice(0, 4);
+
+  const bestSeller = inStockProducts.slice(0, 4);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-10">
@@ -99,7 +102,10 @@ export default function DashboardUser() {
           {tabs.map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                setActiveTab(tab);
+                setVisibleCount(10);
+              }}
               className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all duration-200 ${activeTab === tab ? "bg-[#1E2753] text-white border-[#1E2753]" : "bg-white text-gray-600 border-gray-200 hover:border-[#1E2753]"}`}
             >
               {tab}

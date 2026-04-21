@@ -32,6 +32,8 @@ export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState<OrderStatus | "Semua">("Semua");
   const [orders, setOrders] = useState<Order[]>([]);
   const [cancelTarget, setCancelTarget] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -51,14 +53,32 @@ export default function OrdersPage() {
 
   const confirmCancel = async () => {
     if (!cancelTarget) return;
-    await cancelOrderService(cancelTarget);
-    setCancelTarget(null);
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      await cancelOrderService(cancelTarget);
+      setCancelTarget(null);
+    } catch (err: any) {
+      setCancelError(err?.message ?? "Gagal membatalkan pesanan. Coba lagi.");
+    } finally {
+      setCancelling(false);
+    }
   };
 
   if (loading)
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p className="text-gray-400">Memuat pesanan...</p>
+      </div>
+    );
+
+  if (!getUid())
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-20 flex flex-col items-center gap-4">
+        <p className="text-gray-600 font-semibold">Silakan login untuk melihat pesanan</p>
+        <Link href="/login" className="px-6 py-3 bg-[#1E2753] text-white rounded-xl font-semibold text-sm">
+          Login
+        </Link>
       </div>
     );
 
@@ -107,7 +127,18 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {cancelTarget && <CancelModal orderId={cancelTarget} onConfirm={confirmCancel} onClose={() => setCancelTarget(null)} />}
+      {cancelTarget && (
+        <CancelModal
+          orderId={cancelTarget}
+          loading={cancelling}
+          error={cancelError}
+          onConfirm={confirmCancel}
+          onClose={() => {
+            setCancelTarget(null);
+            setCancelError(null);
+          }}
+        />
+      )}
     </div>
   );
 }

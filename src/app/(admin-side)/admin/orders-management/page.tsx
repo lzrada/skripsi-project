@@ -8,6 +8,7 @@ import { db } from "@/config/firebase";
 import { collection, onSnapshot, orderBy, query, doc, updateDoc } from "firebase/firestore";
 import { type Order, type OrderStatus, statusConfig, statusSteps } from "@/types/order";
 import { categoryIcon, categoryGradient, defaultCategoryIcon, defaultGradient } from "@/constants/category";
+import { cancelOrderService } from "@/service/order.service";
 
 const ALL_STATUSES: (OrderStatus | "Semua")[] = ["Semua", "Menunggu Konfirmasi", "Diproses", "Dikirim", "Selesai", "Dibatalkan"];
 
@@ -36,13 +37,13 @@ function formatDate(dateStr: string) {
   });
 }
 
-// ── Baris pesanan yang bisa di-expand ─────────────────────────────────
 interface OrderRowProps {
   order: Order;
   onStatusChange: (id: string, status: OrderStatus) => Promise<void>;
+  onCancel: (id: string) => Promise<void>;
 }
 
-function OrderRow({ order, onStatusChange }: OrderRowProps) {
+function OrderRow({ order, onStatusChange, onCancel }: OrderRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [updating, setUpdating] = useState(false);
   const status = statusConfig[order.status];
@@ -60,14 +61,14 @@ function OrderRow({ order, onStatusChange }: OrderRowProps) {
 
   const handleCancel = async () => {
     if (isCancelled || order.status === "Selesai") return;
+    if (!confirm(`Batalkan pesanan #${order.id.slice(0, 8).toUpperCase()}? Stok produk akan dikembalikan.`)) return;
     setUpdating(true);
-    await onStatusChange(order.id, "Dibatalkan");
+    await onCancel(order.id);
     setUpdating(false);
   };
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      {/* Baris ringkasan */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 cursor-pointer hover:bg-slate-50 transition" onClick={() => setExpanded((v) => !v)}>
         <div className="flex items-center gap-3 min-w-0">
           <button
@@ -89,7 +90,6 @@ function OrderRow({ order, onStatusChange }: OrderRowProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          {/* Badge status */}
           <span className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${status.bg} ${status.color}`}>
             <FontAwesomeIcon icon={status.icon} className="w-3 h-3" />
             {status.label}
@@ -97,7 +97,6 @@ function OrderRow({ order, onStatusChange }: OrderRowProps) {
 
           <span className="text-sm font-bold text-[#1E2753] whitespace-nowrap">{formatPrice(order.total)}</span>
 
-          {/* Tombol ubah status */}
           {!isCancelled && order.status !== "Selesai" && (
             <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
               {canAdvance && (
@@ -113,10 +112,8 @@ function OrderRow({ order, onStatusChange }: OrderRowProps) {
         </div>
       </div>
 
-      {/* Detail expand */}
       {expanded && (
         <div className="border-t border-slate-100 p-4 space-y-4 bg-slate-50">
-          {/* Alamat & pembayaran */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -138,7 +135,6 @@ function OrderRow({ order, onStatusChange }: OrderRowProps) {
             </div>
           </div>
 
-          {/* Item produk */}
           <div>
             <p className="text-xs font-bold text-slate-700 mb-2">Produk ({order.items.length})</p>
             <div className="space-y-2">
@@ -159,7 +155,6 @@ function OrderRow({ order, onStatusChange }: OrderRowProps) {
             </div>
           </div>
 
-          {/* Total */}
           <div className="flex justify-between items-center border-t border-slate-200 pt-3">
             <span className="text-sm font-bold text-slate-700">Total Pembayaran</span>
             <span className="text-base font-bold text-[#1E2753]">{formatPrice(order.total)}</span>
@@ -170,7 +165,6 @@ function OrderRow({ order, onStatusChange }: OrderRowProps) {
   );
 }
 
-// ── Halaman Utama ─────────────────────────────────────────────────────
 export default function OrdersManagementPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -178,7 +172,6 @@ export default function OrdersManagementPage() {
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
-  // Subscribe realtime ke koleksi orders Firestore
   useEffect(() => {
     const q = query(collection(db, "orders"), orderBy("date", "desc"));
     const unsub = onSnapshot(q, (snap) => {
@@ -217,6 +210,15 @@ export default function OrdersManagementPage() {
     }
   };
 
+  const handleCancelOrder = async (id: string) => {
+    try {
+      await cancelOrderService(id);
+      showToast("Pesanan dibatalkan dan stok dikembalikan.", "success");
+    } catch (err: any) {
+      showToast(err?.message ?? "Gagal membatalkan pesanan.", "error");
+    }
+  };
+
   const filtered = orders.filter((o) => {
     const matchTab = activeTab === "Semua" || o.status === activeTab;
     const matchSearch = !search.trim() || o.id.toLowerCase().includes(search.toLowerCase()) || o.recipientName.toLowerCase().includes(search.toLowerCase());
@@ -227,16 +229,13 @@ export default function OrdersManagementPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 p-6">
-      {/* Toast */}
       {toast && <div className={`fixed top-5 right-5 z-[100] px-5 py-3 rounded-2xl shadow-xl text-sm font-semibold text-white ${toast.type === "success" ? "bg-green-500" : "bg-red-500"}`}>{toast.msg}</div>}
 
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-800">Manajemen Pesanan</h1>
         <p className="mt-1 text-slate-500 text-sm">Pantau dan perbarui status semua pesanan masuk.</p>
       </div>
 
-      {/* Stat ringkasan */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
         {ALL_STATUSES.filter((s) => s !== "Semua").map((s) => {
           const cfg = statusConfig[s as OrderStatus];
@@ -249,7 +248,6 @@ export default function OrdersManagementPage() {
         })}
       </div>
 
-      {/* Filter & search */}
       <div className="bg-white rounded-3xl border border-slate-200 p-4 shadow-sm mb-6 flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
           <FontAwesomeIcon icon={faSearch} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
@@ -275,7 +273,6 @@ export default function OrdersManagementPage() {
         </div>
       </div>
 
-      {/* Daftar pesanan */}
       {loading ? (
         <div className="text-center py-20 text-slate-400 text-sm">Memuat pesanan...</div>
       ) : filtered.length === 0 ? (
@@ -286,7 +283,7 @@ export default function OrdersManagementPage() {
       ) : (
         <div className="space-y-3">
           {filtered.map((order) => (
-            <OrderRow key={order.id} order={order} onStatusChange={handleStatusChange} />
+            <OrderRow key={order.id} order={order} onStatusChange={handleStatusChange} onCancel={handleCancelOrder} />
           ))}
         </div>
       )}

@@ -26,35 +26,66 @@ export const subscribeToCartService = (uid: string, callback: (items: CartItem[]
   });
 };
 
+/**
+ * Tambah produk ke cart dengan validasi stok real-time dari Firestore.
+ * Jika produk sudah ada di cart, qty dijumlahkan — tapi tidak boleh melebihi stok.
+ */
 export const addToCartService = async (uid: string, item: CartItem) => {
-  const ref = doc(db, "users", uid, "cart", item.id);
-  const snap = await getDoc(ref);
+  const cartRef = doc(db, "users", uid, "cart", item.id);
+  const productRef = doc(db, "products", item.id);
 
-  if (snap.exists()) {
-    const current = snap.data() as CartItem;
+  // Ambil data cart dan produk secara paralel
+  const [cartSnap, productSnap] = await Promise.all([getDoc(cartRef), getDoc(productRef)]);
 
-    await updateDoc(ref, {
-      qty: current.qty + item.qty,
-    });
+  // Gunakan stok dari Firestore (sumber kebenaran), bukan dari item lokal
+  const realStock: number = productSnap.exists() ? (productSnap.data().stock ?? 0) : item.stock;
+
+  if (realStock <= 0) {
+    throw new Error(`Stok "${item.name}" habis.`);
+  }
+
+  if (cartSnap.exists()) {
+    const current = cartSnap.data() as CartItem;
+    const newQty = current.qty + item.qty;
+
+    if (newQty > realStock) {
+      throw new Error(`Tidak bisa menambah. Stok tersisa ${realStock}, kamu sudah punya ${current.qty} di keranjang.`);
+    }
+
+    await updateDoc(cartRef, { qty: newQty });
   } else {
-    await setDoc(ref, {
+    const safeQty = Math.min(item.qty, realStock);
+
+    await setDoc(cartRef, {
       id: item.id ?? "",
       name: item.name ?? "",
       price: item.price ?? 0,
       originalPrice: item.originalPrice ?? item.price ?? 0,
       category: item.category ?? "",
       condition: item.condition ?? "",
-      stock: item.stock ?? 0,
+      stock: realStock,
       image: item.image ?? "",
-      qty: item.qty ?? 1,
+      qty: safeQty,
     });
   }
 };
 
+/**
+ * Update qty item di cart — tidak boleh melebihi stok real-time dari Firestore.
+ */
 export const updateCartQtyService = async (uid: string, productId: string, qty: number) => {
-  await updateDoc(doc(db, "users", uid, "cart", productId), {
-    qty,
-  });
+  const cartRef = doc(db, "users", uid, "cart", productId);
+  const productRef = doc(db, "products", productId);
+
+  const [cartSnap, productSnap] = await Promise.all([getDoc(cartRef), getDoc(productRef)]);
+
+  if (!cartSnap.exists()) return;
+
+  const realStock: number = productSnap.exists() ? (productSnap.data().stock ?? 0) : (cartSnap.data().stock ?? 99);
+
+  const safeQty = Math.min(Math.max(qty, 1), realStock);
+
+  await updateDoc(cartRef, { qty: safeQty });
 };
 
 export const removeFromCartService = async (uid: string, productId: string) => {

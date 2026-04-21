@@ -57,7 +57,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
         };
         setProduct(p);
 
-        // Ambil produk terkait (kategori sama, max 4)
         const relSnap = await getDocs(query(collection(db, "products"), limit(8)));
         const rel: Product[] = relSnap.docs
           .map((d) => ({ id: d.id, ...(d.data() as Omit<Product, "id">) }))
@@ -80,6 +79,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
       window.location.href = "/login";
       return;
     }
+    if (product.stock <= 0) {
+      alert("Maaf, stok produk ini sudah habis.");
+      return;
+    }
     setAdding(true);
     try {
       await addToCartService(uid, {
@@ -95,6 +98,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
       });
       setAdded(true);
       setTimeout(() => setAdded(false), 2000);
+    } catch (err: any) {
+      alert(err?.message ?? "Gagal menambahkan ke keranjang.");
     } finally {
       setAdding(false);
     }
@@ -102,14 +107,15 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
 
   const handleBuyNow = async () => {
     if (!product) return;
-
     const uid = getUidFromCookie();
-
     if (!uid) {
       window.location.href = "/login";
       return;
     }
-
+    if (product.stock <= 0) {
+      alert("Maaf, stok produk ini sudah habis.");
+      return;
+    }
     try {
       await addToCartService(uid, {
         id: product.id,
@@ -122,11 +128,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
         image: product.images?.[0] ?? "",
         qty,
       });
-
       window.location.href = `/user/checkout?ids=${product.id}`;
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("Gagal memproses pembelian");
+      alert(error?.message ?? "Gagal memproses pembelian");
     }
   };
 
@@ -248,11 +253,19 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
             </div>
           </div>
 
+          {/* Tampilkan warning jika stok habis */}
+          {product.stock === 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+              <p className="text-sm font-semibold text-red-600">Stok habis</p>
+              <p className="text-xs text-red-400 mt-0.5">Produk ini sedang tidak tersedia.</p>
+            </div>
+          )}
+
           <div className="flex gap-3">
             <button
               onClick={handleBuyNow}
               disabled={product.stock === 0}
-              className="flex-1 py-3 bg-[#1E2753] text-white rounded-xl font-semibold text-sm hover:bg-[#2a3470] transition flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex-1 py-3 bg-[#1E2753] text-white rounded-xl font-semibold text-sm hover:bg-[#2a3470] transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FontAwesomeIcon icon={faBagShopping} className="w-4 h-4" />
               Beli Sekarang
@@ -261,7 +274,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
             <button
               onClick={handleAddToCart}
               disabled={adding || product.stock === 0}
-              className={`flex-1 py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2 border-2 ${added ? "bg-green-500 border-green-500 text-white" : "border-[#1E2753] text-[#1E2753] hover:bg-[#1E2753] hover:text-white disabled:opacity-50"}`}
+              className={`flex-1 py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2 border-2 ${added ? "bg-green-500 border-green-500 text-white" : "border-[#1E2753] text-[#1E2753] hover:bg-[#1E2753] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"}`}
             >
               <FontAwesomeIcon icon={faCartShopping} className="w-4 h-4" />
               {adding ? "..." : added ? "Ditambahkan!" : "Keranjang"}

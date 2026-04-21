@@ -87,9 +87,14 @@ function CheckoutForm() {
       );
       setOrderId(id);
       setIsSuccess(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Gagal membuat pesanan. Coba lagi.");
+      const msg = err?.message ?? "";
+      if (msg.includes("tidak mencukupi") || msg.includes("habis") || msg.includes("tidak ditemukan")) {
+        alert(`Gagal memesan: ${msg}`);
+      } else {
+        alert("Gagal membuat pesanan. Coba lagi.");
+      }
     } finally {
       setLoading(false);
     }

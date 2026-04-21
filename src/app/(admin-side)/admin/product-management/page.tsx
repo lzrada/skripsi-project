@@ -6,14 +6,7 @@ import { FaBox, FaBoxOpen, FaCloudUploadAlt, FaLayerGroup, FaTrash, FaSearch, Fa
 import { Product, addProductService, deleteProductService, deleteImageFromSupabaseService, subscribeToProductsService, updateProductService, uploadMultipleImagesService } from "@/service/product.service";
 
 const CATEGORIES = ["Televisi", "Kulkas", "AC", "Mesin Cuci", "Kipas Angin", "Audio", "Laptop", "HP", "Lainnya"];
-
-const emptyForm = {
-  name: "",
-  category: "",
-  price: "",
-  stock: "",
-  description: "",
-};
+const CONDITIONS = ["Bekas", "Baru"];
 
 // ── Modal Tambah / Edit Produk ─────────────────────────────────────────
 interface ProductModalProps {
@@ -27,19 +20,17 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
   const [formData, setFormData] = useState({
     name: initial?.name ?? "",
     category: initial?.category ?? "",
+    condition: initial?.condition ?? "Bekas",
     price: initial?.price?.toString() ?? "",
+    originalPrice: initial?.originalPrice?.toString() ?? "",
     stock: initial?.stock?.toString() ?? "",
     description: initial?.description ?? "",
   });
 
-  // Gambar yang sudah tersimpan (URL) — khusus mode edit
   const [existingImages, setExistingImages] = useState<string[]>(initial?.images ?? []);
-  // Gambar baru yang dipilih user (File + preview URL)
   const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
   const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
-  // URL gambar lama yang akan dihapus dari Supabase saat save
   const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
-
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,17 +44,14 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
     if (files.length === 0) return;
     setNewImageFiles((prev) => [...prev, ...files]);
     setNewImagePreviews((prev) => [...prev, ...files.map((f) => URL.createObjectURL(f))]);
-    // reset input supaya bisa pilih file yang sama lagi
     e.target.value = "";
   };
 
-  // Hapus gambar baru (belum diupload)
   const removeNewImage = (index: number) => {
     setNewImageFiles((prev) => prev.filter((_, i) => i !== index));
     setNewImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Tandai gambar lama untuk dihapus
   const removeExistingImage = (url: string) => {
     setExistingImages((prev) => prev.filter((u) => u !== url));
     setImagesToDelete((prev) => [...prev, url]);
@@ -83,19 +71,24 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
       setError("Minimal satu gambar produk wajib diunggah.");
       return;
     }
+    const priceNum = Number(formData.price);
+    const originalPriceNum = formData.originalPrice ? Number(formData.originalPrice) : undefined;
+    if (originalPriceNum && originalPriceNum <= priceNum) {
+      setError("Harga coret harus lebih besar dari harga jual.");
+      return;
+    }
 
     setIsLoading(true);
     try {
-      // 1. Upload gambar baru ke Supabase
       const uploadedUrls = newImageFiles.length > 0 ? await uploadMultipleImagesService(newImageFiles) : [];
-
-      // 2. Gabungkan gambar lama yang tersisa + gambar baru
       const finalImages = [...existingImages, ...uploadedUrls];
 
       const payload = {
         name: formData.name,
         category: formData.category,
-        price: Number(formData.price),
+        condition: formData.condition,
+        originalPrice: originalPriceNum,
+        price: priceNum,
         stock: Number(formData.stock),
         description: formData.description,
         images: finalImages,
@@ -104,7 +97,6 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
       if (mode === "add") {
         await addProductService(payload);
       } else if (mode === "edit" && initial) {
-        // 3. Hapus gambar lama yang dihapus user dari Supabase
         await Promise.all(imagesToDelete.map((url) => deleteImageFromSupabaseService(url)));
         await updateProductService(initial.id, payload);
       }
@@ -121,7 +113,6 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl">
-        {/* Header */}
         <div className="sticky top-0 bg-white flex items-center justify-between px-6 py-4 border-b border-slate-100 rounded-t-3xl">
           <h2 className="text-xl font-bold text-slate-800">{mode === "add" ? "Tambah Produk Baru" : "Edit Produk"}</h2>
           <button type="button" onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition">
@@ -132,16 +123,13 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {error && <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-2xl px-4 py-3">{error}</div>}
 
-          {/* ── Area Upload Gambar ── */}
+          {/* Upload Gambar */}
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-2">
               Gambar Produk <span className="text-slate-400 font-normal">(bisa lebih dari satu)</span>
             </label>
-
-            {/* Grid preview gambar */}
             {totalImages > 0 && (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-3">
-                {/* Gambar lama */}
                 {existingImages.map((url, i) => (
                   <div key={`exist-${i}`} className="group relative h-28 rounded-2xl overflow-hidden bg-slate-100">
                     <Image src={url} alt={`Gambar ${i + 1}`} fill className="object-cover" />
@@ -151,8 +139,6 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
                     {i === 0 && <span className="absolute bottom-1 left-1 bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">Utama</span>}
                   </div>
                 ))}
-
-                {/* Gambar baru (preview lokal) */}
                 {newImagePreviews.map((url, i) => (
                   <div key={`new-${i}`} className="group relative h-28 rounded-2xl overflow-hidden bg-slate-100">
                     <img src={url} alt={`Preview ${i + 1}`} className="w-full h-full object-cover" />
@@ -164,8 +150,6 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
                     </span>
                   </div>
                 ))}
-
-                {/* Tombol tambah gambar lagi */}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -176,8 +160,6 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
                 </button>
               </div>
             )}
-
-            {/* Area upload kosong */}
             {totalImages === 0 && (
               <div
                 onClick={() => fileInputRef.current?.click()}
@@ -190,12 +172,12 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
                 </div>
               </div>
             )}
-
             <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
           </div>
 
-          {/* ── Form Fields ── */}
+          {/* Form Fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Nama */}
             <div className="sm:col-span-2">
               <label className="block text-sm font-semibold text-slate-700 mb-1">
                 Nama Produk <span className="text-red-400">*</span>
@@ -210,6 +192,7 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
               />
             </div>
 
+            {/* Kategori */}
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">
                 Kategori <span className="text-red-400">*</span>
@@ -224,6 +207,21 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
               </select>
             </div>
 
+            {/* Kondisi */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">
+                Kondisi <span className="text-red-400">*</span>
+              </label>
+              <select name="condition" value={formData.condition} onChange={handleInput} className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 transition">
+                {CONDITIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Stok */}
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">
                 Stok <span className="text-red-400">*</span>
@@ -239,9 +237,10 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
               />
             </div>
 
-            <div className="sm:col-span-2">
+            {/* Harga Jual */}
+            <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">
-                Harga <span className="text-red-400">*</span>
+                Harga Jual <span className="text-red-400">*</span>
               </label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium">Rp</span>
@@ -257,6 +256,27 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
               </div>
             </div>
 
+            {/* Harga Coret */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">
+                Harga Coret <span className="text-slate-400 font-normal text-xs">(opsional)</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium">Rp</span>
+                <input
+                  type="number"
+                  name="originalPrice"
+                  min={0}
+                  value={formData.originalPrice}
+                  onChange={handleInput}
+                  placeholder="Kosongkan jika tidak ada diskon"
+                  className="w-full rounded-2xl border border-slate-300 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 transition"
+                />
+              </div>
+              <p className="text-xs text-slate-400 mt-1">Isi jika produk sedang promo/diskon</p>
+            </div>
+
+            {/* Deskripsi */}
             <div className="sm:col-span-2">
               <label className="block text-sm font-semibold text-slate-700 mb-1">Deskripsi Produk</label>
               <textarea
@@ -270,7 +290,6 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
             </div>
           </div>
 
-          {/* ── Tombol Submit ── */}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 py-3 rounded-2xl border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition">
               Batal
@@ -462,24 +481,27 @@ export default function ProductManagementPage() {
               </div>
 
               {/* Info */}
+              {/* Info */}
               <div className="p-4 flex flex-col flex-1">
-                <p className="text-xs font-semibold text-blue-500 mb-1">{product.category}</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-xs font-semibold text-blue-500">{product.category}</p>
+                  <span className="text-xs bg-slate-100 text-slate-500 font-medium px-2 py-0.5 rounded-full">{product.condition ?? "Bekas"}</span>
+                </div>
                 <h3 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2 mb-2">{product.name}</h3>
                 {product.description && <p className="text-xs text-slate-400 line-clamp-2 mb-2">{product.description}</p>}
-                <div className="mt-auto flex items-center justify-between">
-                  <span className="text-base font-bold text-blue-600">Rp {Number(product.price).toLocaleString("id-ID")}</span>
-                  <span className="text-xs bg-emerald-100 text-emerald-700 font-semibold px-2.5 py-1 rounded-full">Stok {product.stock}</span>
+                <div className="mt-auto">
+                  {product.originalPrice && product.originalPrice > product.price && <p className="text-xs text-slate-400 line-through">Rp {Number(product.originalPrice).toLocaleString("id-ID")}</p>}
+                  <div className="flex items-center justify-between">
+                    <span className="text-base font-bold text-blue-600">Rp {Number(product.price).toLocaleString("id-ID")}</span>
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${product.stock === 0 ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-700"}`}>{product.stock === 0 ? "Habis" : `Stok ${product.stock}`}</span>
+                  </div>
                 </div>
-
-                {/* Aksi */}
                 <div className="flex gap-2 mt-3">
                   <button onClick={() => setEditTarget(product)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl border-2 border-blue-200 text-blue-600 text-xs font-semibold hover:bg-blue-50 transition">
-                    <FaEdit />
-                    Edit
+                    <FaEdit /> Edit
                   </button>
                   <button onClick={() => setDeleteTarget(product)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition">
-                    <FaTrash />
-                    Hapus
+                    <FaTrash /> Hapus
                   </button>
                 </div>
               </div>

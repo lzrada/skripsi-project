@@ -46,11 +46,13 @@ interface OrderRowProps {
 function OrderRow({ order, onStatusChange, onCancel }: OrderRowProps) {
   const [expanded, setExpanded] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const status = statusConfig[order.status];
 
   const currentIndex = STATUS_FLOW.indexOf(order.status);
   const canAdvance = currentIndex !== -1 && currentIndex < STATUS_FLOW.length - 1;
   const isCancelled = order.status === "Dibatalkan";
+  const isDone = order.status === "Selesai";
 
   const handleAdvance = async () => {
     if (!canAdvance) return;
@@ -60,108 +62,132 @@ function OrderRow({ order, onStatusChange, onCancel }: OrderRowProps) {
   };
 
   const handleCancel = async () => {
-    if (isCancelled || order.status === "Selesai") return;
-    if (!confirm(`Batalkan pesanan #${order.id.slice(0, 8).toUpperCase()}? Stok produk akan dikembalikan.`)) return;
     setUpdating(true);
+    setConfirmCancel(false);
     await onCancel(order.id);
     setUpdating(false);
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 cursor-pointer hover:bg-slate-50 transition" onClick={() => setExpanded((v) => !v)}>
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            type="button"
-            className="text-slate-400 flex-shrink-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              setExpanded((v) => !v);
-            }}
-          >
-            <FontAwesomeIcon icon={expanded ? faChevronUp : faChevronDown} className="w-3 h-3" />
-          </button>
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-slate-800">#{order.id}</p>
-            <p className="text-xs text-slate-400">
-              {formatDate(order.date)} • {order.recipientName}
-            </p>
+    <>
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 cursor-pointer hover:bg-slate-50 transition" onClick={() => setExpanded((v) => !v)}>
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              className="text-slate-400 flex-shrink-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpanded((v) => !v);
+              }}
+            >
+              <FontAwesomeIcon icon={expanded ? faChevronUp : faChevronDown} className="w-3 h-3" />
+            </button>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-slate-800">#{order.id.slice(0, 8).toUpperCase()}</p>
+              <p className="text-xs text-slate-400">
+                {formatDate(order.date)} • {order.recipientName}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <span className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${status.bg} ${status.color}`}>
+              <FontAwesomeIcon icon={status.icon} className="w-3 h-3" />
+              {status.label}
+            </span>
+            <span className="text-sm font-bold text-[#1E2753] whitespace-nowrap">{formatPrice(order.total)}</span>
+
+            {!isCancelled && !isDone && (
+              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                {canAdvance && (
+                  <button onClick={handleAdvance} disabled={updating} className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-xl transition disabled:opacity-60">
+                    {updating ? "..." : `→ ${STATUS_FLOW[currentIndex + 1]}`}
+                  </button>
+                )}
+                <button onClick={() => setConfirmCancel(true)} disabled={updating} className="text-xs border border-red-300 text-red-500 hover:bg-red-50 font-semibold px-3 py-1.5 rounded-xl transition disabled:opacity-60">
+                  Batalkan
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <span className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${status.bg} ${status.color}`}>
-            <FontAwesomeIcon icon={status.icon} className="w-3 h-3" />
-            {status.label}
-          </span>
-
-          <span className="text-sm font-bold text-[#1E2753] whitespace-nowrap">{formatPrice(order.total)}</span>
-
-          {!isCancelled && order.status !== "Selesai" && (
-            <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-              {canAdvance && (
-                <button onClick={handleAdvance} disabled={updating} className="text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-1.5 rounded-xl transition disabled:opacity-60">
-                  {updating ? "..." : `→ ${STATUS_FLOW[currentIndex + 1]}`}
-                </button>
-              )}
-              <button onClick={handleCancel} disabled={updating} className="text-xs border border-red-300 text-red-500 hover:bg-red-50 font-semibold px-3 py-1.5 rounded-xl transition disabled:opacity-60">
-                Batalkan
-              </button>
+        {expanded && (
+          <div className="border-t border-slate-100 p-4 space-y-4 bg-slate-50">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <FontAwesomeIcon icon={faLocationDot} className="w-3.5 h-3.5 text-orange-500" />
+                  <p className="text-xs font-bold text-slate-700">Alamat Pengiriman</p>
+                </div>
+                <p className="text-sm font-semibold text-slate-700">{order.recipientName}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{order.phone}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{order.address}</p>
+                {order.note && <p className="text-xs text-slate-400 mt-1 italic">Catatan: {order.note}</p>}
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <FontAwesomeIcon icon={paymentIcon[order.paymentMethod] ?? faMoneyBill} className="w-3.5 h-3.5 text-[#1E2753]" />
+                  <p className="text-xs font-bold text-slate-700">Pembayaran</p>
+                </div>
+                <p className="text-sm font-semibold text-slate-700">{order.paymentMethod}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{order.status === "Menunggu Konfirmasi" ? "Menunggu konfirmasi" : "Dikonfirmasi"}</p>
+              </div>
             </div>
-          )}
-        </div>
+
+            <div>
+              <p className="text-xs font-bold text-slate-700 mb-2">Produk ({order.items.length})</p>
+              <div className="space-y-2">
+                {order.items.map((item) => (
+                  <div key={item.id} className="flex items-center gap-3 bg-white rounded-xl p-3">
+                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${categoryGradient[item.category] ?? defaultGradient} flex items-center justify-center flex-shrink-0`}>
+                      <FontAwesomeIcon icon={categoryIcon[item.category] ?? defaultCategoryIcon} className="w-4 h-4 text-white/80" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-slate-800 line-clamp-1">{item.name}</p>
+                      <p className="text-xs text-slate-400">
+                        x{item.qty} • {formatPrice(item.price)}
+                      </p>
+                    </div>
+                    <p className="text-xs font-bold text-[#1E2753] flex-shrink-0">{formatPrice(item.price * item.qty)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center border-t border-slate-200 pt-3">
+              <span className="text-sm font-bold text-slate-700">Total Pembayaran</span>
+              <span className="text-base font-bold text-[#1E2753]">{formatPrice(order.total)}</span>
+            </div>
+          </div>
+        )}
       </div>
 
-      {expanded && (
-        <div className="border-t border-slate-100 p-4 space-y-4 bg-slate-50">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <FontAwesomeIcon icon={faLocationDot} className="w-3.5 h-3.5 text-orange-500" />
-                <p className="text-xs font-bold text-slate-700">Alamat Pengiriman</p>
-              </div>
-              <p className="text-sm font-semibold text-slate-700">{order.recipientName}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{order.phone}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{order.address}</p>
-              {order.note && <p className="text-xs text-slate-400 mt-1 italic">Catatan: {order.note}</p>}
+      {/* Modal konfirmasi batalkan */}
+      {confirmCancel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center">
+            <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FontAwesomeIcon icon={faBoxOpen} className="text-red-500 w-6 h-6" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <FontAwesomeIcon icon={paymentIcon[order.paymentMethod] ?? faMoneyBill} className="w-3.5 h-3.5 text-[#1E2753]" />
-                <p className="text-xs font-bold text-slate-700">Pembayaran</p>
-              </div>
-              <p className="text-sm font-semibold text-slate-700">{order.paymentMethod}</p>
-              <p className="text-xs text-slate-400 mt-0.5">{order.status === "Menunggu Konfirmasi" ? "Menunggu konfirmasi" : "Dikonfirmasi"}</p>
+            <h3 className="text-lg font-bold text-slate-800 mb-2">Batalkan Pesanan?</h3>
+            <p className="text-sm text-slate-500 mb-1">
+              Pesanan <span className="font-semibold text-slate-700">#{order.id.slice(0, 8).toUpperCase()}</span> akan dibatalkan.
+            </p>
+            <p className="text-xs text-slate-400 mb-6">Stok produk akan dikembalikan secara otomatis.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmCancel(false)} className="flex-1 py-3 rounded-2xl border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition">
+                Kembali
+              </button>
+              <button onClick={handleCancel} disabled={updating} className="flex-1 py-3 rounded-2xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 disabled:opacity-60 transition">
+                {updating ? "Membatalkan..." : "Ya, Batalkan"}
+              </button>
             </div>
-          </div>
-
-          <div>
-            <p className="text-xs font-bold text-slate-700 mb-2">Produk ({order.items.length})</p>
-            <div className="space-y-2">
-              {order.items.map((item) => (
-                <div key={item.id} className="flex items-center gap-3 bg-white rounded-xl p-3">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${categoryGradient[item.category] ?? defaultGradient} flex items-center justify-center flex-shrink-0`}>
-                    <FontAwesomeIcon icon={categoryIcon[item.category] ?? defaultCategoryIcon} className="w-4 h-4 text-white/80" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-slate-800 line-clamp-1">{item.name}</p>
-                    <p className="text-xs text-slate-400">
-                      x{item.qty} • {formatPrice(item.price)}
-                    </p>
-                  </div>
-                  <p className="text-xs font-bold text-[#1E2753] flex-shrink-0">{formatPrice(item.price * item.qty)}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center border-t border-slate-200 pt-3">
-            <span className="text-sm font-bold text-slate-700">Total Pembayaran</span>
-            <span className="text-base font-bold text-[#1E2753]">{formatPrice(order.total)}</span>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

@@ -13,7 +13,7 @@ export const getCurrentUser = async (uid: string): Promise<UserData | null> => {
       return null;
     }
 
-    return userSnap.data() as UserData;
+    return { uid, ...userSnap.data() } as UserData;
   } catch (error) {
     console.error("Error get current user:", error);
     return null;

@@ -82,18 +82,29 @@ export const handleGoogleRedirect = async () => {
 };
 
 // ── REGISTER — Email & Password ──────────────────────────────────────
-export const registerWithEmail = async (email: string, password: string) => {
+// ── REGISTER — Email & Password ──────────────────────────────────────
+export const registerWithEmail = async (email: string, password: string, fullName: string, phoneNumber: string) => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
     await setDoc(doc(db, "users", user.uid), {
+      uid: user.uid,
       email: user.email,
+      fullName,
+      phoneNumber,
       role: "user",
+      photoURL: "",
+      address: {
+        province: "",
+        city: "",
+        district: "",
+        postalCode: "",
+        detailAddress: "",
+      },
       createdAt: serverTimestamp(),
     });
 
-    // Logout setelah register, biar user login manual
     await signOut(auth);
 
     return { success: true };
@@ -121,7 +132,6 @@ export const logout = async () => {
     document.cookie = "firebaseToken=; path=/; max-age=0";
     document.cookie = "userRole=; path=/; max-age=0";
     document.cookie = "uid=; path=/; max-age=0";
-    
   } catch (error: any) {
     console.log("LOGOUT ERROR:", error);
     throw error;

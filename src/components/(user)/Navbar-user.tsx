@@ -1,23 +1,28 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBars, faXmark, faMagnifyingGlass, faCartShopping, faUser, faBell, faHeart, faRightFromBracket, faBoxOpen, faGear, faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import { faBars, faXmark, faMagnifyingGlass, faCartShopping, faUser, faRightFromBracket, faBoxOpen, faGear, faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import { logout } from "@/service/auth.service";
 import { subscribeToCartService, CartItem } from "@/service/cart.service";
+import { getCurrentUser } from "@/lib/getCurrentUser";
+
 export default function NavbarUser() {
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [userName, setUserName] = useState("");
 
   const dropdownRef = useRef<HTMLDivElement>(null);
-
   const searchParams = useSearchParams();
   const selectedCategory = searchParams.get("category") || "";
+
   const categories = [
     { name: "Televisi", slug: "Televisi" },
     { name: "Kulkas", slug: "Kulkas" },
@@ -27,15 +32,39 @@ export default function NavbarUser() {
     { name: "Audio", slug: "Audio" },
   ];
 
+  const getUid = () =>
+    document.cookie
+      .split("; ")
+      .find((r) => r.startsWith("uid="))
+      ?.split("=")[1] ?? null;
+
+  // Cek login status + ambil nama user
   useEffect(() => {
     const token = document.cookie
       .split("; ")
-      .find((row) => row.startsWith("firebaseToken="))
+      .find((r) => r.startsWith("firebaseToken="))
       ?.split("=")[1];
     setIsLoggedIn(!!token);
+
+    if (token) {
+      const uid = getUid();
+      if (uid) {
+        getCurrentUser(uid).then((user) => {
+          if (user?.fullName) setUserName(user.fullName);
+        });
+      }
+    }
   }, []);
 
-  // Tutup dropdown kalau klik di luar
+  // Subscribe cart
+  useEffect(() => {
+    const uid = getUid();
+    if (!uid) return;
+    const unsub = subscribeToCartService(uid, (items) => setCartItems(items));
+    return () => unsub();
+  }, []);
+
+  // Tutup dropdown klik luar
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -54,24 +83,18 @@ export default function NavbarUser() {
       console.error(error);
     }
   };
-  useEffect(() => {
-    const uid = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("uid="))
-      ?.split("=")[1];
 
-    if (!uid) return;
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    router.push(`/user/products?search=${encodeURIComponent(searchQuery.trim())}`);
+    setMenuOpen(false);
+  };
 
-    const unsubscribe = subscribeToCartService(uid, (items) => {
-      setCartItems(items);
-    });
-
-    return () => unsubscribe();
-  }, []);
+  const cartCount = cartItems.reduce((total, item) => total + item.qty, 0);
 
   return (
     <header className="sticky top-0 z-50 w-full">
-      {/* Top bar — hanya tampil kalau BELUM login */}
       {!isLoggedIn && (
         <div className="bg-[#1E2753] text-white text-xs py-1.5 px-6 flex justify-between items-center">
           <span>Gratis ongkir untuk wilayah Blitar dan sekitarnya!</span>
@@ -87,7 +110,6 @@ export default function NavbarUser() {
         </div>
       )}
 
-      {/* Main navbar */}
       <nav className="bg-white border-b border-gray-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 gap-4">
@@ -103,56 +125,47 @@ export default function NavbarUser() {
             </Link>
 
             {/* Search bar */}
-            <div className="flex-1 max-w-xl">
+            <form onSubmit={handleSearch} className="flex-1 max-w-xl">
               <div className={`flex items-center border-2 rounded-xl overflow-hidden transition-colors duration-200 ${searchFocused ? "border-[#1E2753]" : "border-gray-200"} bg-gray-50`}>
                 <FontAwesomeIcon icon={faMagnifyingGlass} className="ml-3 text-gray-400 w-4 h-4 flex-shrink-0" />
                 <input
                   type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Cari produk elektronik..."
                   onFocus={() => setSearchFocused(true)}
                   onBlur={() => setSearchFocused(false)}
                   className="w-full py-2.5 px-3 bg-transparent text-sm text-gray-700 placeholder-gray-400 focus:outline-none"
                 />
-                <button className="bg-[#1E2753] text-white px-4 py-2.5 text-sm font-medium hover:bg-[#2a3470] transition-colors flex-shrink-0">Cari</button>
+                <button type="submit" className="bg-[#1E2753] text-white px-4 py-2.5 text-sm font-medium hover:bg-[#2a3470] transition-colors flex-shrink-0">
+                  Cari
+                </button>
               </div>
-            </div>
+            </form>
 
             {/* Right icons */}
             <div className="flex items-center gap-1">
-              <button className="hidden md:flex px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-[#1E2753] transition-colors">
-                <FontAwesomeIcon icon={faBell} className="w-5 h-5" />
-              </button>
-              <Link href="/user/wishlist" className="hidden md:flex px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-red-500 transition-colors">
-                <FontAwesomeIcon icon={faHeart} className="w-5 h-5" />
-              </Link>
+              {/* Cart */}
               <Link href="/user/cart" className="relative flex px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-[#1E2753] transition-colors">
                 <FontAwesomeIcon icon={faCartShopping} className="w-5 h-5" />
-                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-[#E85D04] text-white text-[9px] font-bold rounded-full flex items-center justify-center">{cartItems.reduce((total, item) => total + item.qty, 0)}</span>
+                {cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-[#E85D04] text-white text-[9px] font-bold rounded-full flex items-center justify-center">{cartCount > 99 ? "99+" : cartCount}</span>}
               </Link>
 
-              {/* Tombol Akun — dropdown kalau sudah login, link ke /login kalau belum */}
+              {/* Akun dropdown */}
               {isLoggedIn ? (
                 <div className="relative hidden md:block" ref={dropdownRef}>
                   <button onClick={() => setDropdownOpen(!dropdownOpen)} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-[#1E2753] transition-colors">
-                    <FontAwesomeIcon icon={faUser} className="w-5 h-5" />
-                    <span className="text-sm font-medium">Akun</span>
+                    <div className="w-7 h-7 rounded-full bg-[#1E2753] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{userName?.charAt(0)?.toUpperCase() || "U"}</div>
+                    <span className="text-sm font-medium max-w-[80px] truncate">{userName || "Akun"}</span>
                     <FontAwesomeIcon icon={faChevronDown} className={`w-3 h-3 transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`} />
                   </button>
-                  {/* Dropdown menu */}
+
                   {dropdownOpen && (
                     <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50">
-                      {/* Header dropdown */}
                       <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
                         <p className="text-xs text-gray-400">Login sebagai</p>
-                        <p className="text-sm font-semibold text-gray-700 truncate">
-                          {document.cookie
-                            .split("; ")
-                            .find((r) => r.startsWith("uid="))
-                            ?.split("=")[1] ?? "User"}
-                        </p>
+                        <p className="text-sm font-semibold text-gray-700 truncate">{userName || "User"}</p>
                       </div>
-
-                      {/* Menu items */}
                       <div className="py-1">
                         <Link href="/user/account" onClick={() => setDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                           <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-gray-400" />
@@ -162,17 +175,11 @@ export default function NavbarUser() {
                           <FontAwesomeIcon icon={faBoxOpen} className="w-4 h-4 text-gray-400" />
                           Pesanan Saya
                         </Link>
-                        <Link href="/user/wishlist" onClick={() => setDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                          <FontAwesomeIcon icon={faHeart} className="w-4 h-4 text-gray-400" />
-                          Wishlist
-                        </Link>
                         <Link href="/user/account" onClick={() => setDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                           <FontAwesomeIcon icon={faGear} className="w-4 h-4 text-gray-400" />
                           Pengaturan
                         </Link>
                       </div>
-
-                      {/* Logout */}
                       <div className="border-t border-gray-100 py-1">
                         <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors">
                           <FontAwesomeIcon icon={faRightFromBracket} className="w-4 h-4" />
@@ -189,6 +196,7 @@ export default function NavbarUser() {
                 </Link>
               )}
 
+              {/* Hamburger mobile */}
               <button className="md:hidden flex px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors" onClick={() => setMenuOpen(!menuOpen)}>
                 <FontAwesomeIcon icon={menuOpen ? faXmark : faBars} className="w-5 h-5" />
               </button>
@@ -196,7 +204,7 @@ export default function NavbarUser() {
           </div>
         </div>
 
-        {/* Category nav — desktop */}
+        {/* Category nav desktop */}
         <div className="hidden md:block border-t border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center overflow-x-auto">
@@ -211,7 +219,6 @@ export default function NavbarUser() {
                   {cat.name}
                 </Link>
               ))}
-
               <Link
                 href="/user/products"
                 className={`whitespace-nowrap px-4 py-3 text-sm font-semibold transition-all duration-150 border-b-2 ${selectedCategory === "" ? "text-[#E85D04] border-[#E85D04]" : "text-[#E85D04] border-transparent hover:underline"}`}
@@ -225,27 +232,40 @@ export default function NavbarUser() {
         {/* Mobile menu */}
         {menuOpen && (
           <div className="md:hidden border-t border-gray-100 bg-white px-4 py-3 space-y-1">
+            {/* Search mobile */}
+            <form onSubmit={handleSearch} className="flex gap-2 mb-3">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari produk..."
+                className="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#1E2753]"
+              />
+              <button type="submit" className="px-3 py-2 bg-[#1E2753] text-white rounded-xl text-sm font-medium">
+                <FontAwesomeIcon icon={faMagnifyingGlass} className="w-4 h-4" />
+              </button>
+            </form>
+
             {categories.map((cat) => (
               <Link
                 key={cat.slug}
                 href={`/user/products?category=${encodeURIComponent(cat.slug)}`}
-                className={`block px-3 py-2.5 text-sm rounded-lg font-medium transition-all duration-150 ${selectedCategory === cat.slug ? "bg-orange-50 text-[#E85D04]" : "text-gray-700 hover:bg-gray-50 hover:text-[#1E2753]"}`}
+                className={`block px-3 py-2.5 text-sm rounded-lg font-medium transition-all ${selectedCategory === cat.slug ? "bg-orange-50 text-[#E85D04]" : "text-gray-700 hover:bg-gray-50"}`}
                 onClick={() => setMenuOpen(false)}
               >
                 {cat.name}
               </Link>
             ))}
-
-            <Link
-              href="/user/products"
-              className={`block px-3 py-2.5 text-sm rounded-lg font-semibold transition-all duration-150 ${selectedCategory === "" ? "bg-orange-50 text-[#E85D04]" : "text-[#E85D04] hover:bg-orange-50"}`}
-              onClick={() => setMenuOpen(false)}
-            >
+            <Link href="/user/products" className="block px-3 py-2.5 text-sm rounded-lg font-semibold text-[#E85D04] hover:bg-orange-50" onClick={() => setMenuOpen(false)}>
               Lihat Semua
             </Link>
+
             <div className="border-t border-gray-100 pt-2 mt-2 space-y-1">
               {isLoggedIn ? (
                 <>
+                  <div className="px-3 py-2 text-xs text-gray-400">
+                    Login sebagai <span className="font-semibold text-gray-600">{userName || "User"}</span>
+                  </div>
                   <Link href="/user/account" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg font-medium">
                     <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-gray-400" />
                     Profil Saya

@@ -6,6 +6,7 @@ export interface Product {
   id: string;
   name: string;
   category: string;
+  condition?: string;
   originalPrice?: number;
   price: number;
   stock: number;
@@ -17,6 +18,8 @@ export interface Product {
 export interface AddProductPayload {
   name: string;
   category: string;
+  condition?: string;
+  originalPrice?: number;
   price: number;
   stock: number;
   description?: string;
@@ -26,35 +29,30 @@ export interface AddProductPayload {
 export interface UpdateProductPayload {
   name: string;
   category: string;
+  condition?: string;
+  originalPrice?: number;
   price: number;
   stock: number;
   description?: string;
   images: string[];
 }
 
-// Upload beberapa gambar ke Supabase, kembalikan array URL publik
 export const uploadMultipleImagesService = async (files: File[]): Promise<string[]> => {
   try {
     const uploadedUrls: string[] = [];
-
     for (const file of files) {
       const fileExtension = file.name.split(".").pop();
       const fileName = `product-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
-
       const { data, error } = await supabase.storage.from("products").upload(fileName, file, {
         cacheControl: "3600",
         upsert: false,
       });
-
       if (error) throw new Error(error.message);
-
       const {
         data: { publicUrl },
       } = supabase.storage.from("products").getPublicUrl(data.path);
-
       uploadedUrls.push(publicUrl);
     }
-
     return uploadedUrls;
   } catch (error) {
     console.error("uploadMultipleImagesService Error:", error);
@@ -62,15 +60,12 @@ export const uploadMultipleImagesService = async (files: File[]): Promise<string
   }
 };
 
-// Hapus satu gambar dari Supabase Storage berdasarkan URL publiknya
 export const deleteImageFromSupabaseService = async (publicUrl: string): Promise<void> => {
   try {
-    // Ambil path file dari URL publik (bagian setelah "/products/")
     const url = new URL(publicUrl);
     const pathParts = url.pathname.split("/products/");
     if (pathParts.length < 2) return;
     const filePath = pathParts[1];
-
     const { error } = await supabase.storage.from("products").remove([filePath]);
     if (error) console.error("deleteImageFromSupabaseService Error:", error);
   } catch (error) {
@@ -78,12 +73,13 @@ export const deleteImageFromSupabaseService = async (publicUrl: string): Promise
   }
 };
 
-// Tambah produk baru ke Firestore
 export const addProductService = async (payload: AddProductPayload) => {
   try {
     const response = await addDoc(collection(db, "products"), {
       name: payload.name,
       category: payload.category,
+      condition: payload.condition ?? "Bekas",
+      originalPrice: payload.originalPrice ?? null,
       price: payload.price,
       stock: payload.stock,
       description: payload.description ?? "",
@@ -97,13 +93,13 @@ export const addProductService = async (payload: AddProductPayload) => {
   }
 };
 
-// Update produk yang sudah ada di Firestore
 export const updateProductService = async (id: string, payload: UpdateProductPayload) => {
   try {
-    const productRef = doc(db, "products", id);
-    await updateDoc(productRef, {
+    await updateDoc(doc(db, "products", id), {
       name: payload.name,
       category: payload.category,
+      condition: payload.condition ?? "Bekas",
+      originalPrice: payload.originalPrice ?? null,
       price: payload.price,
       stock: payload.stock,
       description: payload.description ?? "",
@@ -115,7 +111,6 @@ export const updateProductService = async (id: string, payload: UpdateProductPay
   }
 };
 
-// Hapus produk dari Firestore
 export const deleteProductService = async (id: string) => {
   try {
     await deleteDoc(doc(db, "products", id));
@@ -125,11 +120,9 @@ export const deleteProductService = async (id: string) => {
   }
 };
 
-// Subscribe realtime ke koleksi products
 export const subscribeToProductsService = (callback: (products: Product[]) => void) => {
   try {
     const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
-
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const products: Product[] = snapshot.docs.map((docItem) => {
         const data = docItem.data();
@@ -137,6 +130,8 @@ export const subscribeToProductsService = (callback: (products: Product[]) => vo
           id: docItem.id,
           name: data.name || "",
           category: data.category || "",
+          condition: data.condition || "Bekas",
+          originalPrice: data.originalPrice ?? undefined,
           price: data.price || 0,
           stock: data.stock || 0,
           description: data.description || "",
@@ -146,7 +141,6 @@ export const subscribeToProductsService = (callback: (products: Product[]) => vo
       });
       callback(products);
     });
-
     return unsubscribe;
   } catch (error) {
     console.error("subscribeToProductsService Error:", error);

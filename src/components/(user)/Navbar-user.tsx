@@ -5,12 +5,14 @@ import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBars, faXmark, faMagnifyingGlass, faCartShopping, faUser, faBell, faHeart, faRightFromBracket, faBoxOpen, faGear, faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import { logout } from "@/service/auth.service";
-
+import { subscribeToCartService, CartItem } from "@/service/cart.service";
 export default function NavbarUser() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const categories = ["Televisi", "Kulkas", "Mesin Cuci", "AC", "Kipas Angin", "Audio"];
@@ -101,7 +103,7 @@ export default function NavbarUser() {
               </Link>
               <Link href="/user/cart" className="relative flex px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-[#1E2753] transition-colors">
                 <FontAwesomeIcon icon={faCartShopping} className="w-5 h-5" />
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#E85D04] text-white text-[9px] font-bold rounded-full flex items-center justify-center">3</span>
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#E85D04] text-white text-[9px] font-bold rounded-full flex items-center justify-center">{cartItems.length}</span>
               </Link>
 
               {/* Tombol Akun — dropdown kalau sudah login, link ke /login kalau belum */}

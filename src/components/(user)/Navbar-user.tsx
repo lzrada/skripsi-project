@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBars, faXmark, faMagnifyingGlass, faCartShopping, faUser, faBell, faHeart, faRightFromBracket, faBoxOpen, faGear, faChevronDown } from "@fortawesome/free-solid-svg-icons";
@@ -15,7 +16,16 @@ export default function NavbarUser() {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const categories = ["Televisi", "Kulkas", "Mesin Cuci", "AC", "Kipas Angin", "Audio"];
+  const searchParams = useSearchParams();
+  const selectedCategory = searchParams.get("category") || "";
+  const categories = [
+    { name: "Televisi", slug: "Televisi" },
+    { name: "Kulkas", slug: "Kulkas" },
+    { name: "Mesin Cuci", slug: "Mesin Cuci" },
+    { name: "AC", slug: "AC" },
+    { name: "Kipas Angin", slug: "Kipas Angin" },
+    { name: "Audio", slug: "Audio" },
+  ];
 
   useEffect(() => {
     const token = document.cookie
@@ -44,6 +54,20 @@ export default function NavbarUser() {
       console.error(error);
     }
   };
+  useEffect(() => {
+    const uid = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("uid="))
+      ?.split("=")[1];
+
+    if (!uid) return;
+
+    const unsubscribe = subscribeToCartService(uid, (items) => {
+      setCartItems(items);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 w-full">
@@ -103,7 +127,7 @@ export default function NavbarUser() {
               </Link>
               <Link href="/user/cart" className="relative flex px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-[#1E2753] transition-colors">
                 <FontAwesomeIcon icon={faCartShopping} className="w-5 h-5" />
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#E85D04] text-white text-[9px] font-bold rounded-full flex items-center justify-center">{cartItems.length}</span>
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-[#E85D04] text-white text-[9px] font-bold rounded-full flex items-center justify-center">{cartItems.reduce((total, item) => total + item.qty, 0)}</span>
               </Link>
 
               {/* Tombol Akun — dropdown kalau sudah login, link ke /login kalau belum */}
@@ -178,14 +202,20 @@ export default function NavbarUser() {
             <div className="flex items-center overflow-x-auto">
               {categories.map((cat) => (
                 <Link
-                  key={cat}
-                  href={`/user/product-detail/${cat.toLowerCase().replace(" ", "-")}`}
-                  className="whitespace-nowrap px-4 py-3 text-sm text-gray-600 hover:text-[#1E2753] hover:border-b-2 hover:border-[#1E2753] font-medium transition-all duration-150"
+                  key={cat.slug}
+                  href={`/user/products?category=${encodeURIComponent(cat.slug)}`}
+                  className={`whitespace-nowrap px-4 py-3 text-sm font-medium transition-all duration-150 border-b-2 ${
+                    selectedCategory === cat.slug ? "text-[#E85D04] border-[#E85D04]" : "text-gray-600 border-transparent hover:text-[#1E2753] hover:border-[#1E2753]"
+                  }`}
                 >
-                  {cat}
+                  {cat.name}
                 </Link>
               ))}
-              <Link href="#" className="whitespace-nowrap px-4 py-3 text-sm text-[#E85D04] font-semibold hover:underline">
+
+              <Link
+                href="/user/products"
+                className={`whitespace-nowrap px-4 py-3 text-sm font-semibold transition-all duration-150 border-b-2 ${selectedCategory === "" ? "text-[#E85D04] border-[#E85D04]" : "text-[#E85D04] border-transparent hover:underline"}`}
+              >
                 Lihat Semua
               </Link>
             </div>
@@ -196,10 +226,23 @@ export default function NavbarUser() {
         {menuOpen && (
           <div className="md:hidden border-t border-gray-100 bg-white px-4 py-3 space-y-1">
             {categories.map((cat) => (
-              <Link key={cat} href={`/user/product-detail/${cat.toLowerCase()}`} className="block px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg hover:text-[#1E2753] font-medium" onClick={() => setMenuOpen(false)}>
-                {cat}
+              <Link
+                key={cat.slug}
+                href={`/user/products?category=${encodeURIComponent(cat.slug)}`}
+                className={`block px-3 py-2.5 text-sm rounded-lg font-medium transition-all duration-150 ${selectedCategory === cat.slug ? "bg-orange-50 text-[#E85D04]" : "text-gray-700 hover:bg-gray-50 hover:text-[#1E2753]"}`}
+                onClick={() => setMenuOpen(false)}
+              >
+                {cat.name}
               </Link>
             ))}
+
+            <Link
+              href="/user/products"
+              className={`block px-3 py-2.5 text-sm rounded-lg font-semibold transition-all duration-150 ${selectedCategory === "" ? "bg-orange-50 text-[#E85D04]" : "text-[#E85D04] hover:bg-orange-50"}`}
+              onClick={() => setMenuOpen(false)}
+            >
+              Lihat Semua
+            </Link>
             <div className="border-t border-gray-100 pt-2 mt-2 space-y-1">
               {isLoggedIn ? (
                 <>

@@ -231,7 +231,7 @@ function CheckoutForm() {
               <div className="mt-3 space-y-3">
                 {orderItems.map((item) => (
                   <div key={item.id} className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex-shrink-0 flex items-center justify-center text-lg">📦</div>
+                    <div className="w-10 h-10 rounded-xl bg-gray-100 shrink-0 flex items-center justify-center text-lg">📦</div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-gray-700 line-clamp-1">{item.name}</p>
                       <p className="text-xs text-gray-400">x{item.qty}</p>

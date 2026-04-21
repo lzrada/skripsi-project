@@ -100,6 +100,36 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
     }
   };
 
+  const handleBuyNow = async () => {
+    if (!product) return;
+
+    const uid = getUidFromCookie();
+
+    if (!uid) {
+      window.location.href = "/login";
+      return;
+    }
+
+    try {
+      await addToCartService(uid, {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        originalPrice: product.originalPrice,
+        category: product.category,
+        condition: "baru",
+        stock: product.stock,
+        image: product.images?.[0] ?? "",
+        qty,
+      });
+
+      window.location.href = `/user/checkout?ids=${product.id}`;
+    } catch (error) {
+      console.error(error);
+      alert("Gagal memproses pembelian");
+    }
+  };
+
   if (loading)
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -163,11 +193,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
           {product.images && product.images.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {product.images.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveImage(i)}
-                  className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition ${i === activeImage ? "border-[#1E2753]" : "border-transparent opacity-60 hover:opacity-100"}`}
-                >
+                <button key={i} onClick={() => setActiveImage(i)} className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition ${i === activeImage ? "border-[#1E2753]" : "border-transparent opacity-60 hover:opacity-100"}`}>
                   <Image src={img} alt={`Foto ${i + 1}`} width={64} height={64} className="object-cover w-full h-full" />
                 </button>
               ))}
@@ -223,10 +249,15 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
           </div>
 
           <div className="flex gap-3">
-            <Link href="/user/checkout" className="flex-1 py-3 bg-[#1E2753] text-white rounded-xl font-semibold text-sm hover:bg-[#2a3470] transition flex items-center justify-center gap-2">
+            <button
+              onClick={handleBuyNow}
+              disabled={product.stock === 0}
+              className="flex-1 py-3 bg-[#1E2753] text-white rounded-xl font-semibold text-sm hover:bg-[#2a3470] transition flex items-center justify-center gap-2 disabled:opacity-50"
+            >
               <FontAwesomeIcon icon={faBagShopping} className="w-4 h-4" />
               Beli Sekarang
-            </Link>
+            </button>
+
             <button
               onClick={handleAddToCart}
               disabled={adding || product.stock === 0}

@@ -2,318 +2,500 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { FaBox, FaBoxOpen, FaCloudUploadAlt, FaLayerGroup, FaTrash, FaSearch, FaPlus } from "react-icons/fa";
-import { Product, addProductService, deleteProductService, subscribeToProductsService, uploadMultipleImagesService } from "@/service/product.service";
+import { FaBox, FaBoxOpen, FaCloudUploadAlt, FaLayerGroup, FaTrash, FaSearch, FaPlus, FaEdit, FaTimes, FaCheck } from "react-icons/fa";
+import { Product, addProductService, deleteProductService, deleteImageFromSupabaseService, subscribeToProductsService, updateProductService, uploadMultipleImagesService } from "@/service/product.service";
 
-export default function ProductManagementPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [search, setSearch] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+const CATEGORIES = ["Televisi", "Kulkas", "AC", "Mesin Cuci", "Kipas Angin", "Audio", "Laptop", "HP", "Lainnya"];
 
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [previewImages, setPreviewImages] = useState<string[]>([]);
+const emptyForm = {
+  name: "",
+  category: "",
+  price: "",
+  stock: "",
+  description: "",
+};
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+// ── Modal Tambah / Edit Produk ─────────────────────────────────────────
+interface ProductModalProps {
+  mode: "add" | "edit";
+  initial?: Product;
+  onClose: () => void;
+  onSuccess: () => void;
+}
 
+function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) {
   const [formData, setFormData] = useState({
-    name: "",
-    category: "",
-    price: "",
-    stock: "",
+    name: initial?.name ?? "",
+    category: initial?.category ?? "",
+    price: initial?.price?.toString() ?? "",
+    stock: initial?.stock?.toString() ?? "",
+    description: initial?.description ?? "",
   });
 
-  useEffect(() => {
-    const unsubscribe = subscribeToProductsService((data) => {
-      setProducts(data);
-      setFilteredProducts(data);
-    });
+  // Gambar yang sudah tersimpan (URL) — khusus mode edit
+  const [existingImages, setExistingImages] = useState<string[]>(initial?.images ?? []);
+  // Gambar baru yang dipilih user (File + preview URL)
+  const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
+  const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
+  // URL gambar lama yang akan dihapus dari Supabase saat save
+  const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
 
-    return () => unsubscribe();
-  }, []);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const filtered = products.filter((item) => {
-      return item.name.toLowerCase().includes(search.toLowerCase()) || item.category.toLowerCase().includes(search.toLowerCase());
-    });
-
-    setFilteredProducts(filtered);
-  }, [search, products]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  const handleInput = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-
     if (files.length === 0) return;
-
-    setImageFiles((prev) => [...prev, ...files]);
-
-    const previews = files.map((file) => URL.createObjectURL(file));
-
-    setPreviewImages((prev) => [...prev, ...previews]);
+    setNewImageFiles((prev) => [...prev, ...files]);
+    setNewImagePreviews((prev) => [...prev, ...files.map((f) => URL.createObjectURL(f))]);
+    // reset input supaya bisa pilih file yang sama lagi
+    e.target.value = "";
   };
 
-  const handleRemovePreviewImage = (index: number) => {
-    setPreviewImages((prev) => prev.filter((_, i) => i !== index));
-    setImageFiles((prev) => prev.filter((_, i) => i !== index));
+  // Hapus gambar baru (belum diupload)
+  const removeNewImage = (index: number) => {
+    setNewImageFiles((prev) => prev.filter((_, i) => i !== index));
+    setNewImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleAddProduct = async (e: React.FormEvent) => {
+  // Tandai gambar lama untuk dihapus
+  const removeExistingImage = (url: string) => {
+    setExistingImages((prev) => prev.filter((u) => u !== url));
+    setImagesToDelete((prev) => [...prev, url]);
+  };
+
+  const totalImages = existingImages.length + newImageFiles.length;
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
 
-    if (!formData.name || !formData.category || !formData.price || !formData.stock || imageFiles.length === 0) {
-      alert("Semua field wajib diisi");
+    if (!formData.name || !formData.category || !formData.price || !formData.stock) {
+      setError("Nama, kategori, harga, dan stok wajib diisi.");
+      return;
+    }
+    if (totalImages === 0) {
+      setError("Minimal satu gambar produk wajib diunggah.");
       return;
     }
 
+    setIsLoading(true);
     try {
-      setIsLoading(true);
+      // 1. Upload gambar baru ke Supabase
+      const uploadedUrls = newImageFiles.length > 0 ? await uploadMultipleImagesService(newImageFiles) : [];
 
-      const imageUrls = await uploadMultipleImagesService(imageFiles);
+      // 2. Gabungkan gambar lama yang tersisa + gambar baru
+      const finalImages = [...existingImages, ...uploadedUrls];
 
-      await addProductService({
+      const payload = {
         name: formData.name,
         category: formData.category,
         price: Number(formData.price),
         stock: Number(formData.stock),
-        images: imageUrls,
-      });
+        description: formData.description,
+        images: finalImages,
+      };
 
-      setFormData({
-        name: "",
-        category: "",
-        price: "",
-        stock: "",
-      });
-
-      setImageFiles([]);
-      setPreviewImages([]);
-
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+      if (mode === "add") {
+        await addProductService(payload);
+      } else if (mode === "edit" && initial) {
+        // 3. Hapus gambar lama yang dihapus user dari Supabase
+        await Promise.all(imagesToDelete.map((url) => deleteImageFromSupabaseService(url)));
+        await updateProductService(initial.id, payload);
       }
 
-      alert("Produk berhasil ditambahkan");
-    } catch (error) {
-      console.error(error);
-      alert("Gagal menambahkan produk");
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      setError(err?.message || "Terjadi kesalahan. Coba lagi.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDeleteProduct = async (id: string) => {
-    const confirmDelete = confirm("Yakin ingin menghapus produk ini?");
-
-    if (!confirmDelete) return;
-
-    try {
-      await deleteProductService(id);
-      alert("Produk berhasil dihapus");
-    } catch (error) {
-      console.error(error);
-      alert("Gagal menghapus produk");
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-slate-100 p-6">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-slate-800">Product Management</h1>
-        <p className="mt-2 text-slate-500">Kelola produk, stok, kategori, dan gambar produk dengan lebih mudah.</p>
-      </div>
-
-      <div className="mb-8 grid grid-cols-1 gap-5 md:grid-cols-3">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Total Produk</p>
-              <h2 className="mt-2 text-3xl font-bold text-slate-800">{products.length}</h2>
-            </div>
-
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 text-2xl text-blue-600">
-              <FaBox />
-            </div>
-          </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl">
+        {/* Header */}
+        <div className="sticky top-0 bg-white flex items-center justify-between px-6 py-4 border-b border-slate-100 rounded-t-3xl">
+          <h2 className="text-xl font-bold text-slate-800">{mode === "add" ? "Tambah Produk Baru" : "Edit Produk"}</h2>
+          <button type="button" onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition">
+            <FaTimes />
+          </button>
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Total Kategori</p>
-              <h2 className="mt-2 text-3xl font-bold text-slate-800">{new Set(products.map((item) => item.category)).size}</h2>
-            </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          {error && <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-2xl px-4 py-3">{error}</div>}
 
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100 text-2xl text-purple-600">
-              <FaLayerGroup />
-            </div>
-          </div>
-        </div>
+          {/* ── Area Upload Gambar ── */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Gambar Produk <span className="text-slate-400 font-normal">(bisa lebih dari satu)</span>
+            </label>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Total Stok</p>
-              <h2 className="mt-2 text-3xl font-bold text-slate-800">{products.reduce((acc, item) => acc + item.stock, 0)}</h2>
-            </div>
+            {/* Grid preview gambar */}
+            {totalImages > 0 && (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-3">
+                {/* Gambar lama */}
+                {existingImages.map((url, i) => (
+                  <div key={`exist-${i}`} className="group relative h-28 rounded-2xl overflow-hidden bg-slate-100">
+                    <Image src={url} alt={`Gambar ${i + 1}`} fill className="object-cover" />
+                    <button type="button" onClick={() => removeExistingImage(url)} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                      <FaTimes className="text-white text-xl" />
+                    </button>
+                    {i === 0 && <span className="absolute bottom-1 left-1 bg-blue-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">Utama</span>}
+                  </div>
+                ))}
 
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-2xl text-emerald-600">
-              <FaBoxOpen />
-            </div>
-          </div>
-        </div>
-      </div>
+                {/* Gambar baru (preview lokal) */}
+                {newImagePreviews.map((url, i) => (
+                  <div key={`new-${i}`} className="group relative h-28 rounded-2xl overflow-hidden bg-slate-100">
+                    <img src={url} alt={`Preview ${i + 1}`} className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => removeNewImage(i)} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                      <FaTimes className="text-white text-xl" />
+                    </button>
+                    <span className="absolute top-1 right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                      <FaCheck className="text-white text-[8px]" />
+                    </span>
+                  </div>
+                ))}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm xl:col-span-1">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
-              <FaPlus />
-            </div>
+                {/* Tombol tambah gambar lagi */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="h-28 rounded-2xl border-2 border-dashed border-slate-300 hover:border-blue-500 hover:bg-blue-50 transition flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-blue-500"
+                >
+                  <FaPlus className="text-lg" />
+                  <span className="text-xs font-medium">Tambah</span>
+                </button>
+              </div>
+            )}
 
-            <div>
-              <h2 className="text-xl font-bold text-slate-800">Tambah Produk</h2>
-              <p className="text-sm text-slate-500">Tambahkan produk baru ke toko</p>
-            </div>
-          </div>
-
-          <form onSubmit={handleAddProduct} className="space-y-4">
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="flex min-h-[220px] cursor-pointer items-center justify-center overflow-hidden rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 transition hover:border-blue-500 hover:bg-blue-50"
-            >
-              {previewImages.length > 0 ? (
-                <div className="grid h-full w-full grid-cols-2 gap-2 p-2">
-                  {previewImages.map((image, index) => (
-                    <div key={index} className="group relative h-32 overflow-hidden rounded-2xl">
-                      <img src={image} alt={`Preview ${index + 1}`} className="h-full w-full object-cover" />
-
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemovePreviewImage(index);
-                        }}
-                        className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-sm text-white opacity-0 transition group-hover:opacity-100"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
+            {/* Area upload kosong */}
+            {totalImages === 0 && (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="flex min-h-[160px] cursor-pointer items-center justify-center rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-blue-500 hover:bg-blue-50 transition"
+              >
                 <div className="text-center">
-                  <FaCloudUploadAlt className="mx-auto mb-3 text-5xl text-slate-400" />
-                  <p className="font-semibold text-slate-700">Upload Gambar Produk</p>
-                  <p className="mt-1 text-sm text-slate-500">Bisa upload lebih dari satu gambar</p>
+                  <FaCloudUploadAlt className="mx-auto mb-2 text-4xl text-slate-400" />
+                  <p className="font-semibold text-slate-700 text-sm">Klik untuk upload gambar</p>
+                  <p className="text-xs text-slate-400 mt-1">Bisa pilih beberapa sekaligus</p>
                 </div>
-              )}
+              </div>
+            )}
 
-              <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
-            </div>
+            <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} />
+          </div>
 
-            <input
-              type="text"
-              name="name"
-              placeholder="Nama Produk"
-              value={formData.name}
-              onChange={handleInputChange}
-              className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-500"
-            />
-
-            <input
-              type="text"
-              name="category"
-              placeholder="Kategori Produk"
-              value={formData.category}
-              onChange={handleInputChange}
-              className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-500"
-            />
-
-            <input
-              type="number"
-              name="price"
-              placeholder="Harga Produk"
-              value={formData.price}
-              onChange={handleInputChange}
-              className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-500"
-            />
-
-            <input
-              type="number"
-              name="stock"
-              placeholder="Stok Produk"
-              value={formData.stock}
-              onChange={handleInputChange}
-              className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 outline-none transition focus:border-blue-500"
-            />
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              {isLoading ? "Loading..." : "Tambah Produk"}
-            </button>
-          </form>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm xl:col-span-2">
-          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-slate-800">Daftar Produk</h2>
-              <p className="text-sm text-slate-500">Total {filteredProducts.length} produk ditemukan</p>
-            </div>
-
-            <div className="relative w-full md:w-80">
-              <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-
+          {/* ── Form Fields ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-semibold text-slate-700 mb-1">
+                Nama Produk <span className="text-red-400">*</span>
+              </label>
               <input
                 type="text"
-                placeholder="Cari produk..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-2xl border border-slate-300 bg-slate-50 py-3 pl-12 pr-4 outline-none transition focus:border-blue-500"
+                name="name"
+                value={formData.name}
+                onChange={handleInput}
+                placeholder="Contoh: Smart TV Samsung 43 4K UHD"
+                className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 transition"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">
+                Kategori <span className="text-red-400">*</span>
+              </label>
+              <select name="category" value={formData.category} onChange={handleInput} className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 transition">
+                <option value="">Pilih Kategori</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">
+                Stok <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="number"
+                name="stock"
+                min={0}
+                value={formData.stock}
+                onChange={handleInput}
+                placeholder="0"
+                className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 transition"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-semibold text-slate-700 mb-1">
+                Harga <span className="text-red-400">*</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-medium">Rp</span>
+                <input
+                  type="number"
+                  name="price"
+                  min={0}
+                  value={formData.price}
+                  onChange={handleInput}
+                  placeholder="0"
+                  className="w-full rounded-2xl border border-slate-300 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 transition"
+                />
+              </div>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Deskripsi Produk</label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleInput}
+                rows={3}
+                placeholder="Jelaskan fitur dan kondisi produk..."
+                className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 transition resize-none"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {filteredProducts.map((product) => (
-              <div key={product.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4 transition hover:shadow-md">
-                <div className="relative mb-4 h-48 overflow-hidden rounded-2xl bg-slate-200">
-                  <Image src={product.images?.[0] || "/images/no-image.png"} alt={product.name} fill className="object-cover" />
+          {/* ── Tombol Submit ── */}
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="flex-1 py-3 rounded-2xl border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition">
+              Batal
+            </button>
+            <button type="submit" disabled={isLoading} className="flex-1 py-3 rounded-2xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition">
+              {isLoading ? "Menyimpan..." : mode === "add" ? "Tambah Produk" : "Simpan Perubahan"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Modal Konfirmasi Hapus ─────────────────────────────────────────────
+interface DeleteModalProps {
+  product: Product;
+  onConfirm: () => void;
+  onClose: () => void;
+  isLoading: boolean;
+}
+
+function DeleteModal({ product, onConfirm, onClose, isLoading }: DeleteModalProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center">
+        <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <FaTrash className="text-red-500 text-xl" />
+        </div>
+        <h3 className="text-lg font-bold text-slate-800 mb-2">Hapus Produk?</h3>
+        <p className="text-sm text-slate-500 mb-6">
+          Produk <span className="font-semibold text-slate-700">{product.name}</span> akan dihapus permanen beserta semua gambarnya.
+        </p>
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-3 rounded-2xl border-2 border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition">
+            Batal
+          </button>
+          <button onClick={onConfirm} disabled={isLoading} className="flex-1 py-3 rounded-2xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 disabled:opacity-60 transition">
+            {isLoading ? "Menghapus..." : "Ya, Hapus"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Halaman Utama ─────────────────────────────────────────────────────
+export default function ProductManagementPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("Semua");
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editTarget, setEditTarget] = useState<Product | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+
+  // Subscribe realtime
+  useEffect(() => {
+    const unsubscribe = subscribeToProductsService((data) => {
+      setProducts(data);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Filter produk
+  useEffect(() => {
+    let result = products;
+    if (categoryFilter !== "Semua") {
+      result = result.filter((p) => p.category === categoryFilter);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((p) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
+    }
+    setFilteredProducts(result);
+  }, [search, categoryFilter, products]);
+
+  const showToast = (msg: string, type: "success" | "error") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      // Hapus semua gambar dari Supabase terlebih dahulu
+      await Promise.all(deleteTarget.images.map((url) => deleteImageFromSupabaseService(url)));
+      await deleteProductService(deleteTarget.id);
+      showToast("Produk berhasil dihapus.", "success");
+    } catch {
+      showToast("Gagal menghapus produk.", "error");
+    } finally {
+      setIsDeleting(false);
+      setDeleteTarget(null);
+    }
+  };
+
+  const categories = ["Semua", ...Array.from(new Set(products.map((p) => p.category))).sort()];
+  const totalStock = products.reduce((acc, p) => acc + p.stock, 0);
+
+  return (
+    <div className="min-h-screen bg-slate-100 p-6">
+      {/* Toast */}
+      {toast && <div className={`fixed top-5 right-5 z-[100] px-5 py-3 rounded-2xl shadow-xl text-sm font-semibold text-white transition-all ${toast.type === "success" ? "bg-green-500" : "bg-red-500"}`}>{toast.msg}</div>}
+
+      {/* Header */}
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-800">Manajemen Produk</h1>
+          <p className="mt-1 text-slate-500 text-sm">Kelola produk, stok, kategori, dan gambar produk.</p>
+        </div>
+        <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-3 rounded-2xl transition text-sm self-start sm:self-auto">
+          <FaPlus />
+          Tambah Produk
+        </button>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
+        {[
+          { label: "Total Produk", value: products.length, icon: <FaBox />, color: "bg-blue-100 text-blue-600" },
+          {
+            label: "Total Kategori",
+            value: new Set(products.map((p) => p.category)).size,
+            icon: <FaLayerGroup />,
+            color: "bg-purple-100 text-purple-600",
+          },
+          { label: "Total Stok", value: totalStock, icon: <FaBoxOpen />, color: "bg-emerald-100 text-emerald-600" },
+        ].map((s) => (
+          <div key={s.label} className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-500">{s.label}</p>
+              <h2 className="mt-1 text-3xl font-bold text-slate-800">{s.value}</h2>
+            </div>
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl ${s.color}`}>{s.icon}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter & Search */}
+      <div className="bg-white rounded-3xl border border-slate-200 p-4 shadow-sm mb-6 flex flex-col md:flex-row gap-3">
+        <div className="relative flex-1">
+          <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
+          <input
+            type="text"
+            placeholder="Cari nama atau kategori produk..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm outline-none focus:border-blue-500 transition"
+          />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategoryFilter(cat)}
+              className={`px-3 py-2 rounded-xl text-xs font-semibold border transition ${categoryFilter === cat ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-500 border-slate-200 hover:border-blue-400"}`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tabel / Grid produk */}
+      {filteredProducts.length === 0 ? (
+        <div className="text-center py-20 text-slate-400">
+          <FaBoxOpen className="text-5xl mx-auto mb-3 text-slate-200" />
+          <p className="font-semibold">Belum ada produk</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
+          {filteredProducts.map((product) => (
+            <div key={product.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col">
+              {/* Gambar — carousel sederhana (hanya tampil gambar pertama, badge jumlah gambar) */}
+              <div className="relative h-48 bg-slate-100">
+                {product.images?.[0] ? (
+                  <Image src={product.images[0]} alt={product.name} fill className="object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-300">
+                    <FaBox className="text-4xl" />
+                  </div>
+                )}
+                {product.images.length > 1 && <span className="absolute bottom-2 right-2 bg-black/60 text-white text-[11px] font-semibold px-2 py-0.5 rounded-full">+{product.images.length - 1} foto</span>}
+              </div>
+
+              {/* Info */}
+              <div className="p-4 flex flex-col flex-1">
+                <p className="text-xs font-semibold text-blue-500 mb-1">{product.category}</p>
+                <h3 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2 mb-2">{product.name}</h3>
+                {product.description && <p className="text-xs text-slate-400 line-clamp-2 mb-2">{product.description}</p>}
+                <div className="mt-auto flex items-center justify-between">
+                  <span className="text-base font-bold text-blue-600">Rp {Number(product.price).toLocaleString("id-ID")}</span>
+                  <span className="text-xs bg-emerald-100 text-emerald-700 font-semibold px-2.5 py-1 rounded-full">Stok {product.stock}</span>
                 </div>
 
-                <div className="space-y-2">
-                  <h3 className="text-lg font-bold text-slate-800">{product.name}</h3>
-
-                  <p className="text-sm text-slate-500">{product.category}</p>
-
-                  <p className="text-sm text-slate-400">{product.images?.length || 0} foto produk</p>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-blue-600">Rp {Number(product.price).toLocaleString("id-ID")}</span>
-
-                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-600">Stok {product.stock}</span>
-                  </div>
-
-                  <button onClick={() => handleDeleteProduct(product.id)} className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-red-500 px-4 py-3 font-semibold text-white transition hover:bg-red-600">
+                {/* Aksi */}
+                <div className="flex gap-2 mt-3">
+                  <button onClick={() => setEditTarget(product)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl border-2 border-blue-200 text-blue-600 text-xs font-semibold hover:bg-blue-50 transition">
+                    <FaEdit />
+                    Edit
+                  </button>
+                  <button onClick={() => setDeleteTarget(product)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition">
                     <FaTrash />
-                    Hapus Produk
+                    Hapus
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
-      </div>
+      )}
+
+      {/* Modal Tambah */}
+      {showAddModal && <ProductModal mode="add" onClose={() => setShowAddModal(false)} onSuccess={() => showToast("Produk berhasil ditambahkan!", "success")} />}
+
+      {/* Modal Edit */}
+      {editTarget && <ProductModal mode="edit" initial={editTarget} onClose={() => setEditTarget(null)} onSuccess={() => showToast("Produk berhasil diperbarui!", "success")} />}
+
+      {/* Modal Hapus */}
+      {deleteTarget && <DeleteModal product={deleteTarget} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} isLoading={isDeleting} />}
     </div>
   );
 }

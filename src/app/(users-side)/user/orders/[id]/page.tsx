@@ -1,6 +1,8 @@
 "use client";
 
-import { use } from "react";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/config/firebase";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronLeft, faLocationDot, faMoneyBill, faWallet, faTruck, faCreditCard, faBox, faHeadset, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
@@ -87,9 +89,40 @@ function formatDate(dateStr: string) {
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const decodedId = decodeURIComponent(id);
-  const order = dummyOrders[decodedId];
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  if (!order) {
+  useEffect(() => {
+    const fetchOrder = async () => {
+      try {
+        const snap = await getDoc(doc(db, "orders", decodedId));
+        if (!snap.exists()) {
+          setLoading(false);
+          return;
+        }
+        const data = snap.data();
+        setOrder({
+          id: snap.id,
+          date: data.date ?? "",
+          status: data.status ?? "Menunggu Konfirmasi",
+          items: data.items ?? [],
+          total: data.total ?? 0,
+          paymentMethod: data.paymentMethod ?? "",
+          address: data.address ?? "",
+          phone: data.phone ?? "",
+          recipientName: data.recipientName ?? "",
+          note: data.note,
+        });
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrder();
+  }, [decodedId]);
+
+  if (loading) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 flex flex-col items-center gap-4 text-gray-400">
         <FontAwesomeIcon icon={faBox} className="w-12 h-12 text-gray-200" />
@@ -101,8 +134,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const status = statusConfig[order.status];
-  const subtotal = order.items.reduce((acc, i) => acc + i.price * i.qty, 0);
+  const status = statusConfig[order?.status ?? "Menunggu Konfirmasi"];
+  const subtotal = order?.items.reduce((acc, i) => acc + i.price * i.qty, 0);
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-4">
@@ -114,7 +147,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         <div>
           <h1 className="text-xl font-bold text-gray-800">Detail Pesanan</h1>
           <p className="text-xs text-gray-400">
-            #{order.id} • {formatDate(order.date)}
+            #{order?.id} • {formatDate(order?.date || "cek error")}
           </p>
         </div>
         <span className={`ml-auto flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${status.bg} ${status.color}`}>
@@ -126,7 +159,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       {/* Tracking */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <p className="text-sm font-bold text-gray-800 mb-5">Status Pesanan</p>
-        <OrderTracking status={order.status} />
+        <OrderTracking status={order?.status || "Diproses"} />
       </div>
 
       {/* Alamat */}
@@ -135,17 +168,17 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           <FontAwesomeIcon icon={faLocationDot} className="w-4 h-4 text-[#E85D04]" />
           <p className="text-sm font-bold text-gray-800">Alamat Pengiriman</p>
         </div>
-        <p className="text-sm font-semibold text-gray-700">{order.recipientName}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{order.phone}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{order.address}</p>
-        {order.note && <p className="text-xs text-gray-400 mt-1 italic">Catatan: {order.note}</p>}
+        <p className="text-sm font-semibold text-gray-700">{order?.recipientName}</p>
+        <p className="text-xs text-gray-500 mt-0.5">{order?.phone}</p>
+        <p className="text-xs text-gray-500 mt-0.5">{order?.address}</p>
+        {order?.note && <p className="text-xs text-gray-400 mt-1 italic">Catatan: {order.note}</p>}
       </div>
 
       {/* Produk */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <p className="text-sm font-bold text-gray-800 mb-4">Produk Dipesan</p>
         <div className="space-y-3">
-          {order.items.map((item) => (
+          {order?.items.map((item) => (
             <div key={item.id} className="flex items-center gap-3">
               <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${categoryGradient[item.category] ?? defaultGradient} flex items-center justify-center flex-shrink-0`}>
                 <FontAwesomeIcon icon={categoryIcon[item.category] ?? defaultCategoryIcon} className="w-5 h-5 text-white/80" />

@@ -6,7 +6,7 @@ import { BiSolidCategory } from "react-icons/bi";
 import { FaAngleUp } from "react-icons/fa";
 import Link from "next/link";
 import { JSX, useState } from "react";
-import { useParams, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 const NavbarAdmin = (): JSX.Element => {
   const pathname = usePathname();
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
@@ -26,12 +26,12 @@ const NavbarAdmin = (): JSX.Element => {
           Dashboard
         </Link>
 
-        <Link href={"/admin/orders-management"} className="flex items-center gap-5 text-sm p-2 my-2 text-white w-full hover:bg-gray-900 hover:rounded-md hover:cursor-pointer h-10">
-          <FiList className="mt-1 text-xl" />
+        <Link href={"/admin/product-management"} className="flex items-center gap-5 text-sm p-2 my-2 text-white w-full hover:bg-gray-900 hover:rounded-md hover:cursor-pointer h-10">
+          <IoMdPricetag className="mt-1 text-xl" />
           Management Produk
         </Link>
-        <Link href={"/admin/product-management"} className="flex items-center gap-5 text-sm p-2 my-2 text-white w-full hover:bg-gray-900 hover:rounded-md hover:cursor-pointer h-10">
-          <IoMdPricetag className="mt-1 text-xl" /> Management Pesanan
+        <Link href={"/admin/orders-management"} className="flex items-center gap-5 text-sm p-2 my-2 text-white w-full hover:bg-gray-900 hover:rounded-md hover:cursor-pointer h-10">
+          <FiList className="mt-1 text-xl" /> Management Pesanan
         </Link>
 
         <div className="flex items-center" onClick={() => setIsCategoryOpen((prev) => !prev)}>

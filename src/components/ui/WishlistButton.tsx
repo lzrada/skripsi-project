@@ -1,3 +1,4 @@
+// src/components/ui/WishlistButton.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -8,7 +9,12 @@ import { toast } from "@/components/ui/Toast";
 
 function getUid(): string | null {
   if (typeof document === "undefined") return null;
-  return document.cookie.split("; ").find((r) => r.startsWith("uid="))?.split("=")[1] ?? null;
+  return (
+    document.cookie
+      .split("; ")
+      .find((r) => r.startsWith("uid="))
+      ?.split("=")[1] ?? null
+  );
 }
 
 interface WishlistButtonProps {
@@ -26,24 +32,25 @@ export default function WishlistButton({ productId, productName, className = "",
     const u = getUid();
     setUid(u);
     if (u) setWishlisted(isWishlisted(u, productId));
+
+    // Sync state kalau wishlist diubah dari komponen/tab lain
+    const onUpdate = () => {
+      if (u) setWishlisted(isWishlisted(u, productId));
+    };
+    window.addEventListener("wishlistUpdated", onUpdate);
+    return () => window.removeEventListener("wishlistUpdated", onUpdate);
   }, [productId]);
 
   const handleToggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
     if (!uid) {
       toast.warning("Login dulu untuk menyimpan wishlist!");
       return;
     }
-
     const added = toggleWishlist(uid, productId);
     setWishlisted(added);
-    if (added) {
-      toast.success(`${productName} ditambahkan ke wishlist ❤️`);
-    } else {
-      toast.info(`${productName} dihapus dari wishlist`);
-    }
+    toast[added ? "success" : "info"](added ? `${productName} ditambahkan ke wishlist ❤️` : `${productName} dihapus dari wishlist`);
   };
 
   const s = size === "sm" ? "w-7 h-7" : "w-9 h-9";
@@ -55,11 +62,7 @@ export default function WishlistButton({ productId, productName, className = "",
       className={`${s} flex items-center justify-center rounded-full bg-white/90 shadow-sm hover:scale-110 transition-all duration-200 ${className}`}
       aria-label={wishlisted ? "Hapus dari wishlist" : "Tambah ke wishlist"}
     >
-      {wishlisted ? (
-        <FaHeart className={`${icon} text-red-500`} />
-      ) : (
-        <FiHeart className={`${icon} text-gray-400 hover:text-red-400`} />
-      )}
+      {wishlisted ? <FaHeart className={`${icon} text-red-500`} /> : <FiHeart className={`${icon} text-gray-400 hover:text-red-400`} />}
     </button>
   );
 }

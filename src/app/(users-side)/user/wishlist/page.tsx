@@ -1,6 +1,7 @@
+// src/app/(users-side)/user/wishlist/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getWishlistIds } from "@/service/wishlist.service";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/config/firebase";
@@ -8,15 +9,19 @@ import { Product } from "@/service/product.service";
 import ProductCard from "@/components/ui/ProductCard";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronLeft, faHeart } from "@fortawesome/free-solid-svg-icons";
+import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FiHeart } from "react-icons/fi";
 
 function getUid(): string | null {
   if (typeof document === "undefined") return null;
-  return document.cookie.split("; ").find((r) => r.startsWith("uid="))?.split("=")[1] ?? null;
+  return (
+    document.cookie
+      .split("; ")
+      .find((r) => r.startsWith("uid="))
+      ?.split("=")[1] ?? null
+  );
 }
 
-// Skeleton
 function SkeletonCard() {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
@@ -35,31 +40,46 @@ export default function WishlistPage() {
   const [loading, setLoading] = useState(true);
   const uid = getUid();
 
-  useEffect(() => {
-    if (!uid) { setLoading(false); return; }
+  const loadWishlist = useCallback(async () => {
+    if (!uid) {
+      setLoading(false);
+      return;
+    }
 
     const ids = getWishlistIds(uid);
-    if (ids.length === 0) { setLoading(false); return; }
+    if (ids.length === 0) {
+      setProducts([]);
+      setLoading(false);
+      return;
+    }
 
-    Promise.all(
+    const results = await Promise.all(
       ids.map(async (id) => {
         const snap = await getDoc(doc(db, "products", id));
         if (!snap.exists()) return null;
-        const d = snap.data();
-        return { id: snap.id, ...d } as Product;
-      })
-    ).then((results) => {
-      setProducts(results.filter(Boolean) as Product[]);
-      setLoading(false);
-    });
-  }, []);
+        return { id: snap.id, ...snap.data() } as Product;
+      }),
+    );
+    setProducts(results.filter(Boolean) as Product[]);
+    setLoading(false);
+  }, [uid]);
+
+  useEffect(() => {
+    loadWishlist();
+
+    // Reaktif saat produk di-toggle dari halaman ini atau ProductCard
+    window.addEventListener("wishlistUpdated", loadWishlist);
+    return () => window.removeEventListener("wishlistUpdated", loadWishlist);
+  }, [loadWishlist]);
 
   if (!uid)
     return (
       <div className="max-w-3xl mx-auto px-4 py-20 flex flex-col items-center gap-4">
         <FiHeart className="w-12 h-12 text-gray-200" />
         <p className="text-gray-600 font-semibold">Silakan login untuk melihat wishlist</p>
-        <Link href="/login" className="px-6 py-3 bg-[#1E2753] text-white rounded-xl font-semibold text-sm">Login</Link>
+        <Link href="/login" className="px-6 py-3 bg-[#1E2753] text-white rounded-xl font-semibold text-sm">
+          Login
+        </Link>
       </div>
     );
 
@@ -77,7 +97,9 @@ export default function WishlistPage() {
 
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
+          {[...Array(4)].map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
         </div>
       ) : products.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4">

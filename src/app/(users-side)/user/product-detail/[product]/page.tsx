@@ -1,18 +1,25 @@
+// src/app/(users-side)/user/product-detail/[product]/page.tsx
 "use client";
 
 import { useState, use, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCartShopping, faBagShopping, faStar, faFire, faShield, faTruck, faRotateLeft, faChevronLeft, faChevronRight, faStore } from "@fortawesome/free-solid-svg-icons";
-import { doc, getDoc, collection, query, limit, getDocs } from "firebase/firestore";
+import { faCartShopping, faBagShopping, faShield, faTruck, faRotateLeft, faChevronLeft, faChevronRight, faStore } from "@fortawesome/free-solid-svg-icons";
+import { doc, getDoc, collection, query, limit, getDocs, where } from "firebase/firestore";
 import { db } from "@/config/firebase";
 import { Product } from "@/service/product.service";
 import ProductCard from "@/components/ui/ProductCard";
 import { addToCartService } from "@/service/cart.service";
+import WishlistButton from "@/components/ui/WishlistButton";
+import { toast } from "@/components/ui/Toast";
 
 function formatPrice(price: number) {
-  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(price);
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(price);
 }
 
 function getUidFromCookie(): string | null {
@@ -49,6 +56,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
           id: snap.id,
           name: data.name,
           category: data.category,
+          condition: data.condition ?? "baru", // ✅ ambil dari Firestore
           price: data.price,
           originalPrice: data.originalPrice,
           stock: data.stock,
@@ -57,11 +65,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
         };
         setProduct(p);
 
-        const relSnap = await getDocs(query(collection(db, "products"), limit(8)));
+        // ✅ Fix: query langsung by category + exclude diri sendiri
+        const relSnap = await getDocs(query(collection(db, "products"), where("category", "==", data.category), limit(5)));
         const rel: Product[] = relSnap.docs
-          .map((d) => ({ id: d.id, ...(d.data() as Omit<Product, "id">) }))
-          .filter((r) => r.id !== productId && r.category === data.category)
-          .slice(0, 4);
+          .filter((d) => d.id !== productId)
+          .slice(0, 4)
+          .map((d) => ({ id: d.id, ...(d.data() as Omit<Product, "id">) }));
         setRelated(rel);
       } catch (err) {
         console.error(err);
@@ -76,11 +85,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
     if (!product) return;
     const uid = getUidFromCookie();
     if (!uid) {
+      toast.warning("Silakan login terlebih dahulu!");
       window.location.href = "/login";
       return;
     }
     if (product.stock <= 0) {
-      alert("Maaf, stok produk ini sudah habis.");
+      toast.error("Maaf, stok produk ini sudah habis.");
       return;
     }
     setAdding(true);
@@ -91,15 +101,16 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
         price: product.price,
         originalPrice: product.originalPrice,
         category: product.category,
-        condition: "baru",
+        condition: product.condition ?? "baru", // ✅ dari data produk
         stock: product.stock,
         image: product.images?.[0] ?? "",
         qty,
       });
       setAdded(true);
+      toast.success(`${product.name} ditambahkan ke keranjang! 🛒`);
       setTimeout(() => setAdded(false), 2000);
     } catch (err: any) {
-      alert(err?.message ?? "Gagal menambahkan ke keranjang.");
+      toast.error(err?.message ?? "Gagal menambahkan ke keranjang.");
     } finally {
       setAdding(false);
     }
@@ -109,11 +120,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
     if (!product) return;
     const uid = getUidFromCookie();
     if (!uid) {
+      toast.warning("Silakan login terlebih dahulu!");
       window.location.href = "/login";
       return;
     }
     if (product.stock <= 0) {
-      alert("Maaf, stok produk ini sudah habis.");
+      toast.error("Maaf, stok produk ini sudah habis.");
       return;
     }
     try {
@@ -123,15 +135,14 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
         price: product.price,
         originalPrice: product.originalPrice,
         category: product.category,
-        condition: "baru",
+        condition: product.condition ?? "baru", // ✅ dari data produk
         stock: product.stock,
         image: product.images?.[0] ?? "",
         qty,
       });
       window.location.href = `/user/checkout?ids=${product.id}`;
     } catch (error: any) {
-      console.error(error);
-      alert(error?.message ?? "Gagal memproses pembelian");
+      toast.error(error?.message ?? "Gagal memproses pembelian.");
     }
   };
 
@@ -161,7 +172,9 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
           Beranda
         </Link>
         <span>/</span>
-        <span className="text-gray-600 font-medium">{product.category}</span>
+        <Link href={`/user/products?category=${encodeURIComponent(product.category)}`} className="hover:text-[#1E2753]">
+          {product.category}
+        </Link>
         <span>/</span>
         <span className="text-gray-600 font-medium line-clamp-1">{product.name}</span>
       </nav>
@@ -190,6 +203,10 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
                   </>
                 )}
                 {discountPercent && <span className="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">-{discountPercent}%</span>}
+                {/* ✅ Tambah WishlistButton di halaman detail juga */}
+                <div className="absolute top-4 right-4">
+                  <WishlistButton productId={product.id} productName={product.name} size="md" />
+                </div>
               </>
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-300 text-6xl">📦</div>
@@ -210,11 +227,17 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
         <div className="space-y-4">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-gray-800 leading-snug mb-2">{product.name}</h1>
-            <div className="flex items-center gap-3 text-sm">
+            <div className="flex items-center gap-3 text-sm flex-wrap">
               <div className="flex items-center gap-1 text-gray-500">
                 <FontAwesomeIcon icon={faStore} className="w-4 h-4 text-[#1E2753]" />
                 <span>Stok {product.stock}</span>
               </div>
+              {/* ✅ Tampilkan badge kondisi dari data nyata */}
+              {product.condition && (
+                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${product.condition.toLowerCase() === "baru" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+                  {product.condition.toLowerCase() === "baru" ? "Baru" : "Bekas / Second"}
+                </span>
+              )}
             </div>
           </div>
 
@@ -245,7 +268,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
                   −
                 </button>
                 <span className="w-12 text-center font-semibold text-gray-800">{qty}</span>
-                <button onClick={() => setQty((q) => Math.min(product.stock, q + 1))} className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 font-bold text-lg">
+                <button
+                  onClick={() => setQty((q) => Math.min(product.stock, q + 1))}
+                  disabled={product.stock === 0}
+                  className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 font-bold text-lg disabled:opacity-40"
+                >
                   +
                 </button>
               </div>
@@ -253,7 +280,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
             </div>
           </div>
 
-          {/* Tampilkan warning jika stok habis */}
           {product.stock === 0 && (
             <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
               <p className="text-sm font-semibold text-red-600">Stok habis</p>
@@ -270,11 +296,12 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
               <FontAwesomeIcon icon={faBagShopping} className="w-4 h-4" />
               Beli Sekarang
             </button>
-
             <button
               onClick={handleAddToCart}
               disabled={adding || product.stock === 0}
-              className={`flex-1 py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2 border-2 ${added ? "bg-green-500 border-green-500 text-white" : "border-[#1E2753] text-[#1E2753] hover:bg-[#1E2753] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"}`}
+              className={`flex-1 py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2 border-2 ${
+                added ? "bg-green-500 border-green-500 text-white" : "border-[#1E2753] text-[#1E2753] hover:bg-[#1E2753] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              }`}
             >
               <FontAwesomeIcon icon={faCartShopping} className="w-4 h-4" />
               {adding ? "..." : added ? "Ditambahkan!" : "Keranjang"}
@@ -298,12 +325,16 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
         </div>
         <div className="p-6">
           {activeTab === "deskripsi" ? (
-            <p className="text-sm text-gray-600 leading-relaxed">{product.description || "Tidak ada deskripsi."}</p>
+            <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{product.description || "Tidak ada deskripsi."}</p>
           ) : (
             <div className="space-y-2 text-sm">
               <div className="flex py-2 border-b border-gray-100">
                 <span className="w-36 text-gray-500">Kategori</span>
                 <span className="font-medium text-gray-800">{product.category}</span>
+              </div>
+              <div className="flex py-2 border-b border-gray-100">
+                <span className="w-36 text-gray-500">Kondisi</span>
+                <span className="font-medium text-gray-800 capitalize">{product.condition ?? "Baru"}</span>
               </div>
               <div className="flex py-2 border-b border-gray-100">
                 <span className="w-36 text-gray-500">Stok</span>

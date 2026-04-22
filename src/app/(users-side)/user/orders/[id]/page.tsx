@@ -10,6 +10,7 @@ import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { categoryIcon, categoryGradient, defaultCategoryIcon, defaultGradient } from "@/constants/category";
 import { type Order, statusConfig } from "@/types/order";
 import OrderTracking from "@/components/(user)/orders/OrderTracking";
+import { WA_URL } from "@/constants/contact";
 
 const paymentIcon: Record<string, IconDefinition> = {
   "Transfer Bank": faMoneyBill,
@@ -210,7 +211,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
       <div className="flex gap-3 pb-4">
         <a
-          href="https://wa.me/62"
+          href={WA_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="flex-1 flex items-center justify-center gap-2 py-3 border-2 border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:border-[#1E2753] hover:text-[#1E2753] transition-all"

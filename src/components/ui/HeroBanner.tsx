@@ -1,3 +1,4 @@
+// src/components/ui/HeroBanner.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -11,7 +12,7 @@ const slides = [
     title: "Promo Akhir Tahun!",
     subtitle: "Diskon hingga 40% untuk semua produk elektronik pilihan",
     cta: "Belanja Sekarang",
-    href: "#produk",
+    href: "/user/products", // ✅ ke semua produk
     bg: "from-[#1E2753] to-[#2d3a8c]",
     accentBg: "bg-yellow-400",
     accentText: "text-yellow-400",
@@ -23,7 +24,7 @@ const slides = [
     title: "AC Terbaru Telah Hadir",
     subtitle: "Hemat listrik, ruangan sejuk sepanjang hari",
     cta: "Lihat Produk AC",
-    href: "/user/product-detail/ac",
+    href: "/user/products?category=AC", // ✅ filter kategori AC
     bg: "from-[#0f4c75] to-[#1b6ca8]",
     accentBg: "bg-sky-300",
     accentText: "text-sky-300",
@@ -35,7 +36,7 @@ const slides = [
     title: "Kulkas Second Berkualitas",
     subtitle: "Kondisi mulus, harga terjangkau, garansi toko",
     cta: "Cek Stok",
-    href: "/user/product-detail/kulkas",
+    href: "/user/products?category=Kulkas", // ✅ filter kategori Kulkas
     bg: "from-[#1a1a2e] to-[#16213e]",
     accentBg: "bg-emerald-400",
     accentText: "text-emerald-400",
@@ -56,16 +57,13 @@ export default function HeroBanner() {
 
   const prev = () => setCurrent((c) => (c - 1 + slides.length) % slides.length);
   const next = () => setCurrent((c) => (c + 1) % slides.length);
-
   const slide = slides[current];
 
   return (
     <div className={`relative w-full h-64 md:h-80 rounded-2xl overflow-hidden bg-gradient-to-r ${slide.bg} transition-all duration-700`}>
-      {/* Lingkaran dekoratif */}
       <div className="absolute -right-10 -top-10 w-48 h-48 rounded-full bg-white/5" />
       <div className="absolute -right-5 -bottom-10 w-32 h-32 rounded-full bg-white/5" />
 
-      {/* Konten */}
       <div className="absolute inset-0 flex items-center px-8 md:px-16">
         <div className="flex-1">
           <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full ${slide.accentBg} text-gray-900 mb-3`}>{slide.tag}</span>
@@ -75,24 +73,18 @@ export default function HeroBanner() {
             {slide.cta}
           </Link>
         </div>
-
-        {/* Emoji besar kanan — desktop only */}
         <div className="hidden md:flex items-center justify-center w-52 h-52 opacity-20">
           <span className="text-9xl">{slide.emoji}</span>
         </div>
       </div>
 
-      {/* Tombol prev */}
       <button onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors">
         <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
       </button>
-
-      {/* Tombol next */}
       <button onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors">
         <FontAwesomeIcon icon={faChevronRight} className="w-3 h-3" />
       </button>
 
-      {/* Dot indicator */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
         {slides.map((_, i) => (
           <button key={i} onClick={() => setCurrent(i)} className={`h-1.5 rounded-full transition-all duration-300 ${i === current ? "w-6 bg-white" : "w-1.5 bg-white/40"}`} />

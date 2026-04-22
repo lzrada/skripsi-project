@@ -1,10 +1,8 @@
 // src/service/wishlist.service.ts
-// Wishlist disimpan di localStorage per uid agar tidak perlu koleksi Firestore tambahan.
-// Kalau mau persist ke Firestore, bisa diganti dengan addDoc/deleteDoc ke koleksi "wishlists".
-
-import { Product } from "./product.service";
-
 const KEY = (uid: string) => `wishlist_${uid}`;
+
+// Custom event agar komponen lain bisa reaktif saat wishlist berubah
+const dispatch = () => window.dispatchEvent(new Event("wishlistUpdated"));
 
 export function getWishlistIds(uid: string): string[] {
   if (typeof window === "undefined") return [];
@@ -20,7 +18,8 @@ export function toggleWishlist(uid: string, productId: string): boolean {
   const exists = ids.includes(productId);
   const updated = exists ? ids.filter((id) => id !== productId) : [...ids, productId];
   localStorage.setItem(KEY(uid), JSON.stringify(updated));
-  return !exists; // true = ditambahkan, false = dihapus
+  dispatch(); // notify semua listener
+  return !exists;
 }
 
 export function isWishlisted(uid: string, productId: string): boolean {

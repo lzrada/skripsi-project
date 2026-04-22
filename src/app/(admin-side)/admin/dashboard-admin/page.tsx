@@ -1,18 +1,23 @@
+// src/app/(admin-side)/admin/dashboard-admin/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
 import { db } from "@/config/firebase";
 import { IoCartOutline } from "react-icons/io5";
-import { FaAngleUp, FaBoxOpen, FaUsers } from "react-icons/fa";
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from "chart.js";
+import { FaBoxOpen, FaUsers } from "react-icons/fa";
 import ChartLine from "@/components/(admin)/ui/ChartLine";
 import { ChartOrange, ChartGreen, ChartBlue } from "@/components/(admin)/svg/Chart";
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+// ✅ ChartJS.register DIHAPUS dari sini — sudah ada di ChartLine.tsx
+// Tidak perlu register dua kali
 
 function formatPrice(price: number) {
-  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(price);
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(price);
 }
 
 export default function Dashboard() {
@@ -24,26 +29,33 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const [ordersSnap, productsSnap, usersSnap] = await Promise.all([getDocs(collection(db, "orders")), getDocs(collection(db, "products")), getDocs(query(collection(db, "users")))]);
+    // ✅ onSnapshot untuk orders — real-time update saat ada order baru
+    const unsubOrders = onSnapshot(collection(db, "orders"), (snap) => {
+      const orders = snap.docs.map((d) => d.data());
+      const revenue = orders.filter((o) => o.status === "Selesai").reduce((acc, o) => acc + (o.total ?? 0), 0);
+      const pending = orders.filter((o) => o.status === "Menunggu Konfirmasi").length;
 
-        const orders = ordersSnap.docs.map((d) => d.data());
-        const revenue = orders.filter((o) => o.status === "Selesai").reduce((acc, o) => acc + (o.total ?? 0), 0);
-        const pending = orders.filter((o) => o.status === "Menunggu Konfirmasi").length;
+      setTotalOrders(snap.size);
+      setTotalRevenue(revenue);
+      setPendingOrders(pending);
+      setLoading(false);
+    });
 
-        setTotalOrders(ordersSnap.size);
-        setTotalRevenue(revenue);
-        setPendingOrders(pending);
-        setTotalProducts(productsSnap.size);
-        setTotalUsers(usersSnap.size);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+    // ✅ onSnapshot untuk products
+    const unsubProducts = onSnapshot(collection(db, "products"), (snap) => {
+      setTotalProducts(snap.size);
+    });
+
+    // ✅ onSnapshot untuk users
+    const unsubUsers = onSnapshot(collection(db, "users"), (snap) => {
+      setTotalUsers(snap.size);
+    });
+
+    return () => {
+      unsubOrders();
+      unsubProducts();
+      unsubUsers();
     };
-    fetchStats();
   }, []);
 
   const statCards = [
@@ -51,9 +63,9 @@ export default function Dashboard() {
       label: "Total Pendapatan",
       value: loading ? "..." : formatPrice(totalRevenue),
       sub: "Dari pesanan selesai",
-      icon: <span className="font-semibold text-blue-500">Rp</span>,
+      icon: <span className="font-semibold text-blue-500 text-sm">Rp</span>,
       bg: "bg-[#ECF2FF]",
-      up: true,
+      chart: <ChartBlue />,
     },
     {
       label: "Total Pesanan",
@@ -61,7 +73,7 @@ export default function Dashboard() {
       sub: `${pendingOrders} menunggu konfirmasi`,
       icon: <IoCartOutline className="text-blue-500" />,
       bg: "bg-[#ECF2FF]",
-      up: true,
+      chart: <ChartBlue />,
     },
     {
       label: "Total Produk",
@@ -69,7 +81,7 @@ export default function Dashboard() {
       sub: "Produk terdaftar",
       icon: <FaBoxOpen className="text-orange-500" />,
       bg: "bg-orange-100",
-      up: true,
+      chart: <ChartOrange />,
     },
     {
       label: "Total Pengguna",
@@ -77,7 +89,7 @@ export default function Dashboard() {
       sub: "Akun terdaftar",
       icon: <FaUsers className="text-green-500" />,
       bg: "bg-green-100",
-      up: true,
+      chart: <ChartGreen />,
     },
   ];
 
@@ -103,12 +115,12 @@ export default function Dashboard() {
       </div>
 
       {/* Chart + sidebar */}
-      <div className="flex gap-5 justify-between">
-        <div className="w-3/4 bg-white rounded-2xl shadow-sm border border-gray-100">
+      <div className="flex gap-5 justify-between flex-col xl:flex-row">
+        <div className="xl:w-3/4 bg-white rounded-2xl shadow-sm border border-gray-100">
           <ChartLine />
         </div>
-        <div className="flex gap-5 p-6 flex-col w-1/4 rounded-2xl bg-white shadow-sm border border-gray-100">
-          <p className="font-bold text-gray-800">Ringkasan Bulan Ini</p>
+        <div className="flex gap-5 p-6 flex-col xl:w-1/4 rounded-2xl bg-white shadow-sm border border-gray-100">
+          <p className="font-bold text-gray-800">Ringkasan</p>
           <div>
             <p className="font-bold text-2xl text-gray-800">{loading ? "..." : totalOrders}</p>
             <p className="text-sm text-gray-500">Total Pesanan</p>

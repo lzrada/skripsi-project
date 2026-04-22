@@ -4,10 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faBars, faXmark, faMagnifyingGlass, faCartShopping,
-  faUser, faRightFromBracket, faBoxOpen, faGear, faChevronDown, faHeart,
-} from "@fortawesome/free-solid-svg-icons";
+import { faBars, faXmark, faMagnifyingGlass, faCartShopping, faUser, faRightFromBracket, faBoxOpen, faGear, faChevronDown, faHeart } from "@fortawesome/free-solid-svg-icons";
 import { FiHeart } from "react-icons/fi";
 import { logout } from "@/service/auth.service";
 import { subscribeToCartService, CartItem } from "@/service/cart.service";
@@ -39,11 +36,17 @@ export default function NavbarUser() {
   ];
 
   const getUid = () =>
-    document.cookie.split("; ").find((r) => r.startsWith("uid="))?.split("=")[1] ?? null;
+    document.cookie
+      .split("; ")
+      .find((r) => r.startsWith("uid="))
+      ?.split("=")[1] ?? null;
 
   // Cek login + nama user
   useEffect(() => {
-    const token = document.cookie.split("; ").find((r) => r.startsWith("firebaseToken="))?.split("=")[1];
+    const token = document.cookie
+      .split("; ")
+      .find((r) => r.startsWith("firebaseToken="))
+      ?.split("=")[1];
     setIsLoggedIn(!!token);
     if (token) {
       const uid = getUid();
@@ -65,14 +68,18 @@ export default function NavbarUser() {
     return () => unsub();
   }, []);
 
-  // Sync wishlist count tiap halaman aktif (simpel: listen storage event)
   useEffect(() => {
     const syncWishlist = () => {
       const uid = getUid();
       if (uid) setWishlistCount(getWishlistIds(uid).length);
     };
+
+    window.addEventListener("wishlistUpdated", syncWishlist);
     window.addEventListener("storage", syncWishlist);
-    return () => window.removeEventListener("storage", syncWishlist);
+    return () => {
+      window.removeEventListener("wishlistUpdated", syncWishlist);
+      window.removeEventListener("storage", syncWishlist);
+    };
   }, []);
 
   // Tutup dropdown klik luar
@@ -111,9 +118,13 @@ export default function NavbarUser() {
         <div className="bg-[#1E2753] text-white text-xs py-1.5 px-6 flex justify-between items-center">
           <span>Gratis ongkir untuk wilayah Blitar dan sekitarnya!</span>
           <div className="flex gap-4 items-center">
-            <Link href="/login" className="hover:text-yellow-300 transition-colors">Masuk</Link>
+            <Link href="/login" className="hover:text-yellow-300 transition-colors">
+              Masuk
+            </Link>
             <span className="text-gray-400">|</span>
-            <Link href="/register" className="hover:text-yellow-300 transition-colors">Daftar</Link>
+            <Link href="/register" className="hover:text-yellow-300 transition-colors">
+              Daftar
+            </Link>
           </div>
         </div>
       )}
@@ -121,7 +132,6 @@ export default function NavbarUser() {
       <nav className="bg-white border-b border-gray-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 gap-4">
-
             {/* Logo */}
             <Link href="/user/dashboard-user" className="flex-shrink-0 flex items-center gap-2">
               <div className="w-9 h-9 bg-[#1E2753] rounded-lg flex items-center justify-center">
@@ -154,37 +164,25 @@ export default function NavbarUser() {
 
             {/* Right icons */}
             <div className="flex items-center gap-1">
-
               {/* ─── Wishlist ─── */}
               <Link href="/user/wishlist" className="relative flex px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-red-500 transition-colors" title="Wishlist">
                 <FiHeart className="w-5 h-5" />
                 {wishlistCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                    {wishlistCount > 99 ? "99+" : wishlistCount}
-                  </span>
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">{wishlistCount > 99 ? "99+" : wishlistCount}</span>
                 )}
               </Link>
 
               {/* ─── Cart ─── */}
               <Link href="/user/cart" className="relative flex px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-[#1E2753] transition-colors" title="Keranjang">
                 <FontAwesomeIcon icon={faCartShopping} className="w-5 h-5" />
-                {cartCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-[#E85D04] text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                    {cartCount > 99 ? "99+" : cartCount}
-                  </span>
-                )}
+                {cartCount > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-[#E85D04] text-white text-[9px] font-bold rounded-full flex items-center justify-center">{cartCount > 99 ? "99+" : cartCount}</span>}
               </Link>
 
               {/* ─── Akun dropdown ─── */}
               {isLoggedIn ? (
                 <div className="relative hidden md:block" ref={dropdownRef}>
-                  <button
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-[#1E2753] transition-colors"
-                  >
-                    <div className="w-7 h-7 rounded-full bg-[#1E2753] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                      {userName?.charAt(0)?.toUpperCase() || "U"}
-                    </div>
+                  <button onClick={() => setDropdownOpen(!dropdownOpen)} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 hover:text-[#1E2753] transition-colors">
+                    <div className="w-7 h-7 rounded-full bg-[#1E2753] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{userName?.charAt(0)?.toUpperCase() || "U"}</div>
                     <span className="text-sm font-medium max-w-[80px] truncate">{userName || "Akun"}</span>
                     <FontAwesomeIcon icon={faChevronDown} className={`w-3 h-3 transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`} />
                   </button>
@@ -208,9 +206,7 @@ export default function NavbarUser() {
                         <Link href="/user/wishlist" onClick={() => setDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                           <FontAwesomeIcon icon={faHeart} className="w-4 h-4 text-red-400" />
                           Wishlist Saya
-                          {wishlistCount > 0 && (
-                            <span className="ml-auto text-xs bg-red-100 text-red-500 font-bold px-1.5 py-0.5 rounded-full">{wishlistCount}</span>
-                          )}
+                          {wishlistCount > 0 && <span className="ml-auto text-xs bg-red-100 text-red-500 font-bold px-1.5 py-0.5 rounded-full">{wishlistCount}</span>}
                         </Link>
                         <Link href="/user/account" onClick={() => setDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                           <FontAwesomeIcon icon={faGear} className="w-4 h-4 text-gray-400" />
@@ -234,10 +230,7 @@ export default function NavbarUser() {
               )}
 
               {/* Hamburger mobile */}
-              <button
-                className="md:hidden flex px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
-                onClick={() => setMenuOpen(!menuOpen)}
-              >
+              <button className="md:hidden flex px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors" onClick={() => setMenuOpen(!menuOpen)}>
                 <FontAwesomeIcon icon={menuOpen ? faXmark : faBars} className="w-5 h-5" />
               </button>
             </div>
@@ -253,18 +246,13 @@ export default function NavbarUser() {
                   key={cat.slug}
                   href={`/user/products?category=${encodeURIComponent(cat.slug)}`}
                   className={`whitespace-nowrap px-4 py-3 text-sm font-medium transition-all duration-150 border-b-2 ${
-                    selectedCategory === cat.slug
-                      ? "text-[#E85D04] border-[#E85D04]"
-                      : "text-gray-600 border-transparent hover:text-[#1E2753] hover:border-[#1E2753]"
+                    selectedCategory === cat.slug ? "text-[#E85D04] border-[#E85D04]" : "text-gray-600 border-transparent hover:text-[#1E2753] hover:border-[#1E2753]"
                   }`}
                 >
                   {cat.name}
                 </Link>
               ))}
-              <Link
-                href="/user/products"
-                className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-[#E85D04] border-b-2 border-transparent hover:underline"
-              >
+              <Link href="/user/products" className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-[#E85D04] border-b-2 border-transparent hover:underline">
                 Lihat Semua
               </Link>
             </div>
@@ -292,9 +280,7 @@ export default function NavbarUser() {
               <Link
                 key={cat.slug}
                 href={`/user/products?category=${encodeURIComponent(cat.slug)}`}
-                className={`block px-3 py-2.5 text-sm rounded-lg font-medium transition-all ${
-                  selectedCategory === cat.slug ? "bg-orange-50 text-[#E85D04]" : "text-gray-700 hover:bg-gray-50"
-                }`}
+                className={`block px-3 py-2.5 text-sm rounded-lg font-medium transition-all ${selectedCategory === cat.slug ? "bg-orange-50 text-[#E85D04]" : "text-gray-700 hover:bg-gray-50"}`}
                 onClick={() => setMenuOpen(false)}
               >
                 {cat.name}
@@ -322,9 +308,7 @@ export default function NavbarUser() {
                   <Link href="/user/wishlist" onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-3 py-2.5 text-sm text-gray-700 hover:bg-red-50 rounded-lg font-medium">
                     <FontAwesomeIcon icon={faHeart} className="w-4 h-4 text-red-400" />
                     Wishlist Saya
-                    {wishlistCount > 0 && (
-                      <span className="ml-auto text-xs bg-red-100 text-red-500 font-bold px-1.5 py-0.5 rounded-full">{wishlistCount}</span>
-                    )}
+                    {wishlistCount > 0 && <span className="ml-auto text-xs bg-red-100 text-red-500 font-bold px-1.5 py-0.5 rounded-full">{wishlistCount}</span>}
                   </Link>
                   <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-500 hover:bg-red-50 rounded-lg font-medium">
                     <FontAwesomeIcon icon={faRightFromBracket} className="w-4 h-4" />

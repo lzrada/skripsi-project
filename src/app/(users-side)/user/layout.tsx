@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "../../globals.css";
 import NavbarUser from "@/components/(user)/Navbar-user";
 import FooterUser from "@/components/(user)/Footer-user";
+import { ToastContainer } from "@/components/ui/Toast";
+import WhatsAppButton from "@/components/ui/WhatsAppButton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,7 +27,7 @@ export default function UserLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-gray-50 flex flex-col`}>
       {/* Navbar */}
       <NavbarUser />
 
@@ -34,6 +36,13 @@ export default function UserLayout({
 
       {/* Footer */}
       <FooterUser />
+
+      {/* ─── Global UI ──────────────────────────── */}
+      {/* Toast notifications (muncul kanan bawah) */}
+      <ToastContainer />
+
+      {/* WhatsApp floating button (kiri bawah) */}
+      <WhatsAppButton />
     </div>
   );
 }

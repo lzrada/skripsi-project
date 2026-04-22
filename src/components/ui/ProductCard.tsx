@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { FiShoppingCart, FiStar } from "react-icons/fi";
+import { FiShoppingCart, FiStar, FiZap } from "react-icons/fi";
 import { HiOutlineFire } from "react-icons/hi";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { categoryIcon, categoryGradient, defaultCategoryIcon, defaultGradient } from "@/constants/category";
 import { addToCartService } from "@/service/cart.service";
+import { toast } from "@/components/ui/Toast";
+import WishlistButton from "@/components/ui/WishlistButton";
 import Image from "next/image";
 
 export interface Product {
@@ -26,13 +28,6 @@ export interface Product {
 interface ProductCardProps {
   product: Product;
 }
-
-const badgeConfig: Record<string, { label: string; bg: string }> = {
-  sale: { label: "DISKON", bg: "bg-red-500" },
-  new: { label: "BARU", bg: "bg-green-500" },
-  best: { label: "TERLARIS", bg: "bg-amber-500" },
-  limited: { label: "STOK TERBATAS", bg: "bg-purple-600" },
-};
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(price);
@@ -60,7 +55,12 @@ export default function ProductCard({ product }: ProductCardProps) {
     e.preventDefault();
     const uid = getUidFromCookie();
     if (!uid) {
+      toast.warning("Silakan login terlebih dahulu!");
       window.location.href = "/login";
+      return;
+    }
+    if (product.stock === 0) {
+      toast.error("Stok produk habis!");
       return;
     }
     setAdding(true);
@@ -77,11 +77,44 @@ export default function ProductCard({ product }: ProductCardProps) {
         qty: 1,
       });
       setAdded(true);
+      toast.success(`${product.name} ditambahkan ke keranjang! 🛒`);
       setTimeout(() => setAdded(false), 2000);
     } catch (err) {
+      toast.error("Gagal menambahkan ke keranjang");
       console.error(err);
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleBuyNow = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    const uid = getUidFromCookie();
+    if (!uid) {
+      toast.warning("Silakan login terlebih dahulu!");
+      window.location.href = "/login";
+      return;
+    }
+    if (product.stock === 0) {
+      toast.error("Stok produk habis!");
+      return;
+    }
+    try {
+      await addToCartService(uid, {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        originalPrice: product.originalPrice,
+        category: product.category,
+        condition: product.condition ?? "baru",
+        stock: product.stock,
+        image: product.images?.[0] ?? "",
+        qty: 1,
+      });
+      window.location.href = `/user/checkout?ids=${product.id}`;
+    } catch (err) {
+      toast.error("Terjadi kesalahan, coba lagi!");
+      console.error(err);
     }
   };
 
@@ -95,8 +128,13 @@ export default function ProductCard({ product }: ProductCardProps) {
             <FontAwesomeIcon icon={icon} className="w-16 h-16 text-white/30 group-hover:scale-110 transition-transform duration-300" />
           )}
           {isOnSale && <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">DISKON</span>}
-          {product.condition === "bekas" && <span className="absolute top-2 right-2 bg-amber-400/80 text-amber-900 text-[10px] font-semibold px-2 py-0.5 rounded-full">Second</span>}
+          {product.condition === "bekas" && <span className="absolute top-2 right-10 bg-amber-400/80 text-amber-900 text-[10px] font-semibold px-2 py-0.5 rounded-full">Second</span>}
           {discountPercent && <span className="absolute bottom-2 left-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">-{discountPercent}%</span>}
+
+          {/* Wishlist button */}
+          <div className="absolute top-2 right-2">
+            <WishlistButton productId={product.id} productName={product.name} size="sm" />
+          </div>
         </div>
       </Link>
 
@@ -127,16 +165,29 @@ export default function ProductCard({ product }: ProductCardProps) {
         </div>
         {product.stock <= 3 && product.stock > 0 && <p className="text-[10px] text-red-500 font-medium mt-1">Sisa {product.stock} lagi!</p>}
         {product.stock === 0 && <p className="text-[10px] text-gray-400 font-medium mt-1">Stok habis</p>}
-        <button
-          onClick={handleAddToCart}
-          disabled={adding || product.stock === 0}
-          className={`mt-2 w-full py-2 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 border-2 ${
-            added ? "bg-green-500 border-green-500 text-white" : "border-[#1E2753] text-[#1E2753] hover:bg-[#1E2753] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-          }`}
-        >
-          <FiShoppingCart className="text-sm" />
-          {adding ? "Menambahkan..." : added ? "Ditambahkan!" : "Keranjang"}
-        </button>
+
+        {/* Action buttons */}
+        <div className="flex gap-1.5 mt-2">
+          {/* Keranjang */}
+          <button
+            onClick={handleAddToCart}
+            disabled={adding || product.stock === 0}
+            className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-1 border-2 ${
+              added ? "bg-green-500 border-green-500 text-white" : "border-[#1E2753] text-[#1E2753] hover:bg-[#1E2753] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+            }`}
+          >
+            <FiShoppingCart className="text-sm" />
+            {adding ? "..." : added ? "Ditambahkan!" : "Keranjang"}
+          </button>
+
+          {/* Beli Sekarang */}
+          {product.stock > 0 && (
+            <button onClick={handleBuyNow} className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[#E85D04] text-white hover:bg-orange-600 transition-all duration-200 flex items-center justify-center gap-1">
+              <FiZap className="text-sm" />
+              Beli
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

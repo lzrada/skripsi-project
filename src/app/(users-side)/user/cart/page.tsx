@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrash, faCartShopping, faChevronLeft, faTag, faTruck, faShield, faTicket } from "@fortawesome/free-solid-svg-icons";
+import { faTrash, faCartShopping, faChevronLeft, faTag, faTruck, faShield, faTicket, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
 import { subscribeToCartService, updateCartQtyService, removeFromCartService, CartItem } from "@/service/cart.service";
 import { categoryGradient, defaultGradient } from "@/constants/category";
+import { toast } from "@/components/ui/Toast";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(price);
@@ -22,6 +23,45 @@ function getUid(): string | null {
   );
 }
 
+// ─── Delete Confirmation Modal ───────────────────────────────────────────────
+interface DeleteConfirmModalProps {
+  itemName: string;
+  isBulk?: boolean;
+  bulkCount?: number;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+function DeleteConfirmModal({ itemName, isBulk, bulkCount, onConfirm, onCancel }: DeleteConfirmModalProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onCancel}>
+      <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center" onClick={(e) => e.stopPropagation()}>
+        <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <FontAwesomeIcon icon={faTrash} className="text-red-500 w-6 h-6" />
+        </div>
+        <h3 className="text-lg font-bold text-gray-800 mb-2">Hapus dari Keranjang?</h3>
+        {isBulk ? (
+          <p className="text-sm text-gray-500 mb-6">
+            <span className="font-semibold text-gray-700">{bulkCount} produk</span> yang dipilih akan dihapus dari keranjangmu.
+          </p>
+        ) : (
+          <p className="text-sm text-gray-500 mb-6">
+            <span className="font-semibold text-gray-700">{itemName}</span> akan dihapus dari keranjangmu.
+          </p>
+        )}
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 py-3 rounded-2xl border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition">
+            Batal
+          </button>
+          <button onClick={onConfirm} className="flex-1 py-3 rounded-2xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition">
+            Ya, Hapus
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CartPage() {
   const [uid, setUid] = useState<string | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -29,6 +69,10 @@ export default function CartPage() {
   const [coupon, setCoupon] = useState("");
   const [couponApplied, setCouponApplied] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Delete confirmation state
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteBulk, setDeleteBulk] = useState(false);
 
   useEffect(() => {
     const u = getUid();
@@ -57,20 +101,35 @@ export default function CartPage() {
     await updateCartQtyService(uid, id, newQty);
   };
 
-  const removeItem = async (id: string) => {
-    if (!uid) return;
-    await removeFromCartService(uid, id);
-    setSelectedIds((prev) => prev.filter((i) => i !== id));
+  // Trigger modal untuk hapus satu item
+  const handleDeleteClick = (id: string, name: string) => {
+    setDeleteBulk(false);
+    setDeleteTarget({ id, name });
   };
 
-  const removeSelected = async () => {
+  // Trigger modal untuk hapus bulk
+  const handleDeleteBulkClick = () => {
+    setDeleteBulk(true);
+    setDeleteTarget({ id: "", name: "" });
+  };
+
+  // Eksekusi hapus setelah konfirmasi
+  const confirmDelete = async () => {
     if (!uid) return;
-    await Promise.all(selectedIds.map((id) => removeFromCartService(uid, id)));
-    setSelectedIds([]);
+    if (deleteBulk) {
+      await Promise.all(selectedIds.map((id) => removeFromCartService(uid, id)));
+      toast.success(`${selectedIds.length} produk berhasil dihapus dari keranjang.`);
+      setSelectedIds([]);
+    } else if (deleteTarget) {
+      await removeFromCartService(uid, deleteTarget.id);
+      setSelectedIds((prev) => prev.filter((i) => i !== deleteTarget.id));
+      toast.success("Produk dihapus dari keranjang.");
+    }
+    setDeleteTarget(null);
+    setDeleteBulk(false);
   };
 
   const toggleSelect = (id: string) => setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
-
   const toggleSelectAll = () => setSelectedIds(selectedIds.length === cartItems.length ? [] : cartItems.map((i) => i.id));
 
   const selectedItems = cartItems.filter((i) => selectedIds.includes(i.id));
@@ -79,8 +138,12 @@ export default function CartPage() {
   const total = subtotal - diskonKupon;
 
   const handleCoupon = () => {
-    if (coupon.toLowerCase() === "rizky50") setCouponApplied(true);
-    else alert("Kode kupon tidak valid!");
+    if (coupon.toLowerCase() === "rizky50") {
+      setCouponApplied(true);
+      toast.success("Kode kupon RIZKY50 berhasil dipakai! Hemat Rp 50.000 🎉");
+    } else {
+      toast.error("Kode kupon tidak valid. Coba lagi.");
+    }
   };
 
   if (loading)
@@ -116,6 +179,20 @@ export default function CartPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Delete Confirmation Modal */}
+      {deleteTarget !== null && (
+        <DeleteConfirmModal
+          itemName={deleteTarget.name}
+          isBulk={deleteBulk}
+          bulkCount={selectedIds.length}
+          onConfirm={confirmDelete}
+          onCancel={() => {
+            setDeleteTarget(null);
+            setDeleteBulk(false);
+          }}
+        />
+      )}
+
       <div className="flex items-center gap-3 mb-6">
         <Link href="/user/dashboard-user" className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 hover:bg-gray-50 transition text-gray-500">
           <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
@@ -134,8 +211,9 @@ export default function CartPage() {
               <span className="text-sm font-semibold text-gray-700">Pilih Semua ({cartItems.length})</span>
             </label>
             {selectedIds.length > 0 && (
-              <button onClick={removeSelected} className="text-xs text-red-500 hover:underline font-medium">
-                Hapus Dipilih
+              <button onClick={handleDeleteBulkClick} className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-600 font-medium transition">
+                <FontAwesomeIcon icon={faTrash} className="w-3 h-3" />
+                Hapus Dipilih ({selectedIds.length})
               </button>
             )}
           </div>
@@ -155,7 +233,7 @@ export default function CartPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug">{item.name}</p>
-                      <button onClick={() => removeItem(item.id)} className="text-gray-300 hover:text-red-500 transition flex-shrink-0">
+                      <button onClick={() => handleDeleteClick(item.id, item.name)} className="text-gray-300 hover:text-red-500 transition flex-shrink-0" title="Hapus dari keranjang">
                         <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
                       </button>
                     </div>
@@ -207,6 +285,7 @@ export default function CartPage() {
                   onClick={() => {
                     setCouponApplied(false);
                     setCoupon("");
+                    toast.info("Kode kupon dihapus.");
                   }}
                   className="text-xs text-red-500 hover:underline"
                 >
@@ -219,8 +298,9 @@ export default function CartPage() {
                   type="text"
                   value={coupon}
                   onChange={(e) => setCoupon(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleCoupon()}
                   placeholder="Masukkan kode kupon"
-                  className="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#1E2753]"
+                  className="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#1E2753] uppercase"
                 />
                 <button onClick={handleCoupon} className="px-3 py-2 bg-[#1E2753] text-white rounded-xl text-xs font-semibold hover:bg-[#2a3470]">
                   Pakai

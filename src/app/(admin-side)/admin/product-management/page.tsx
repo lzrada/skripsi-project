@@ -497,10 +497,13 @@ export default function ProductManagementPage() {
                   </div>
                 </div>
                 <div className="flex gap-2 mt-3">
-                  <button onClick={() => setEditTarget(product)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl border-2 border-blue-200 text-blue-600 text-xs font-semibold hover:bg-blue-50 transition">
+                  <button
+                    onClick={() => setEditTarget(product)}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl border-2 border-blue-200 text-blue-600 text-xs font-semibold hover:bg-blue-50 transition cursor-pointer"
+                  >
                     <FaEdit /> Edit
                   </button>
-                  <button onClick={() => setDeleteTarget(product)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition">
+                  <button onClick={() => setDeleteTarget(product)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-2xl bg-red-500 text-white text-xs font-semibold hover:bg-red-600 transition cursor-pointer">
                     <FaTrash /> Hapus
                   </button>
                 </div>

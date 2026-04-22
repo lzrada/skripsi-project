@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { FiShoppingCart, FiStar, FiZap } from "react-icons/fi";
-import { HiOutlineFire } from "react-icons/hi";
+import { useState } from "react";
+import { FiShoppingCart, FiZap } from "react-icons/fi";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { categoryIcon, categoryGradient, defaultCategoryIcon, defaultGradient } from "@/constants/category";
 import { addToCartService } from "@/service/cart.service";
@@ -47,19 +46,25 @@ export default function ProductCard({ product }: ProductCardProps) {
   const gradient = categoryGradient[product.category] ?? defaultGradient;
   const icon = categoryIcon[product.category] ?? defaultCategoryIcon;
   const discountPercent = product.originalPrice ? Math.round((1 - product.price / product.originalPrice) * 100) : null;
-  const isOnSale = !!discountPercent;
+
+  // ✅ FIX: case-insensitive comparison — admin simpan "Bekas", bukan "bekas"
+  const isBekas = product.condition?.toLowerCase() === "bekas";
+  const isOutOfStock = product.stock === 0;
+  const isLowStock = product.stock > 0 && product.stock <= 3;
+
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     const uid = getUidFromCookie();
     if (!uid) {
       toast.warning("Silakan login terlebih dahulu!");
       window.location.href = "/login";
       return;
     }
-    if (product.stock === 0) {
+    if (isOutOfStock) {
       toast.error("Stok produk habis!");
       return;
     }
@@ -71,7 +76,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         price: product.price,
         originalPrice: product.originalPrice,
         category: product.category,
-        condition: product.condition ?? "baru",
+        condition: product.condition ?? "Baru",
         stock: product.stock,
         image: product.images?.[0] ?? "",
         qty: 1,
@@ -79,9 +84,8 @@ export default function ProductCard({ product }: ProductCardProps) {
       setAdded(true);
       toast.success(`${product.name} ditambahkan ke keranjang! 🛒`);
       setTimeout(() => setAdded(false), 2000);
-    } catch (err) {
-      toast.error("Gagal menambahkan ke keranjang");
-      console.error(err);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Gagal menambahkan ke keranjang");
     } finally {
       setAdding(false);
     }
@@ -89,13 +93,14 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   const handleBuyNow = async (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     const uid = getUidFromCookie();
     if (!uid) {
       toast.warning("Silakan login terlebih dahulu!");
       window.location.href = "/login";
       return;
     }
-    if (product.stock === 0) {
+    if (isOutOfStock) {
       toast.error("Stok produk habis!");
       return;
     }
@@ -106,88 +111,87 @@ export default function ProductCard({ product }: ProductCardProps) {
         price: product.price,
         originalPrice: product.originalPrice,
         category: product.category,
-        condition: product.condition ?? "baru",
+        condition: product.condition ?? "Baru",
         stock: product.stock,
         image: product.images?.[0] ?? "",
         qty: 1,
       });
       window.location.href = `/user/checkout?ids=${product.id}`;
-    } catch (err) {
-      toast.error("Terjadi kesalahan, coba lagi!");
-      console.error(err);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Terjadi kesalahan, coba lagi!");
     }
   };
 
   return (
-    <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-gray-100 hover:-translate-y-1 transition-all duration-300 flex flex-col">
+    <div
+      className={`group bg-white rounded-2xl overflow-hidden border transition-all duration-300 flex flex-col ${
+        isOutOfStock ? "border-gray-100 opacity-75" : "border-gray-100 hover:border-[#1E2753]/20 hover:shadow-lg hover:shadow-blue-900/8 hover:-translate-y-0.5"
+      }`}
+    >
+      {/* ── Image Area ── */}
       <Link href={`/user/product-detail/${product.id}`} className="relative block">
-        <div className={`h-48 bg-gradient-to-br ${gradient} flex items-center justify-center relative overflow-hidden`}>
+        <div className={`h-44 bg-gradient-to-br ${gradient} flex items-center justify-center relative overflow-hidden`}>
           {product.images?.[0] ? (
-            <Image src={product.images[0]} alt={product.name} fill className="object-cover" />
+            <Image src={product.images[0]} alt={product.name} fill className={`object-cover transition-transform duration-500 ${isOutOfStock ? "" : "group-hover:scale-105"}`} />
           ) : (
-            <FontAwesomeIcon icon={icon} className="w-16 h-16 text-white/30 group-hover:scale-110 transition-transform duration-300" />
+            <FontAwesomeIcon icon={icon} className="w-14 h-14 text-white/25 group-hover:scale-110 transition-transform duration-300" />
           )}
-          {isOnSale && <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">DISKON</span>}
-          {product.condition === "bekas" && <span className="absolute top-2 right-10 bg-amber-400/80 text-amber-900 text-[10px] font-semibold px-2 py-0.5 rounded-full">Second</span>}
-          {discountPercent && <span className="absolute bottom-2 left-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">-{discountPercent}%</span>}
 
-          {/* Wishlist button */}
+          {/* Overlay badges */}
+          <div className="absolute top-2 left-2 flex flex-col gap-1">
+            {discountPercent && <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full leading-tight">-{discountPercent}%</span>}
+            {isBekas && <span className="bg-amber-400 text-amber-900 text-[10px] font-semibold px-2 py-0.5 rounded-full leading-tight">Second</span>}
+          </div>
+
+          {isOutOfStock && (
+            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+              <span className="bg-white/90 text-gray-700 text-xs font-bold px-3 py-1 rounded-full">Stok Habis</span>
+            </div>
+          )}
+
+          {/* Wishlist */}
           <div className="absolute top-2 right-2">
             <WishlistButton productId={product.id} productName={product.name} size="sm" />
           </div>
         </div>
       </Link>
 
+      {/* ── Info ── */}
       <div className="p-3 flex flex-col flex-1">
         <Link href={`/user/product-detail/${product.id}`}>
-          <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug hover:text-[#1E2753] transition-colors mb-1">{product.name}</h3>
+          <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug hover:text-[#1E2753] transition-colors mb-2">{product.name}</h3>
         </Link>
-        {(product.rating || product.sold) && (
-          <div className="flex items-center gap-2 mb-2">
-            {product.rating && (
-              <div className="flex items-center gap-0.5">
-                <FiStar className="text-yellow-400 text-xs fill-yellow-400" />
-                <span className="text-xs text-gray-500 font-medium">{product.rating}</span>
-              </div>
-            )}
-            {product.rating && product.sold && <span className="text-gray-300 text-xs">|</span>}
-            {product.sold && (
-              <div className="flex items-center gap-1 text-xs text-gray-500">
-                <HiOutlineFire className="text-orange-400" />
-                <span>Terjual {product.sold}</span>
-              </div>
-            )}
-          </div>
-        )}
-        <div className="mt-auto">
-          {product.originalPrice && <p className="text-xs text-gray-400 line-through">{formatPrice(product.originalPrice)}</p>}
-          <p className="text-base font-bold text-[#1E2753]">{formatPrice(product.price)}</p>
+
+        {/* Price */}
+        <div className="mt-auto mb-2">
+          {product.originalPrice && product.originalPrice > product.price && <p className="text-xs text-gray-400 line-through leading-none mb-0.5">{formatPrice(product.originalPrice)}</p>}
+          <p className="text-base font-bold text-[#1E2753] leading-none">{formatPrice(product.price)}</p>
         </div>
-        {product.stock <= 3 && product.stock > 0 && <p className="text-[10px] text-red-500 font-medium mt-1">Sisa {product.stock} lagi!</p>}
-        {product.stock === 0 && <p className="text-[10px] text-gray-400 font-medium mt-1">Stok habis</p>}
+
+        {/* Stock warning */}
+        {isLowStock && <p className="text-[10px] text-red-500 font-semibold mb-1.5">⚡ Sisa {product.stock} lagi!</p>}
 
         {/* Action buttons */}
-        <div className="flex gap-1.5 mt-2">
-          {/* Keranjang */}
-          <button
-            onClick={handleAddToCart}
-            disabled={adding || product.stock === 0}
-            className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-1 border-2 ${
-              added ? "bg-green-500 border-green-500 text-white" : "border-[#1E2753] text-[#1E2753] hover:bg-[#1E2753] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
-            }`}
-          >
-            <FiShoppingCart className="text-sm" />
-            {adding ? "..." : added ? "Ditambahkan!" : "Keranjang"}
-          </button>
-
-          {/* Beli Sekarang */}
-          {product.stock > 0 && (
-            <button onClick={handleBuyNow} className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[#E85D04] text-white hover:bg-orange-600 transition-all duration-200 flex items-center justify-center gap-1">
-              <FiZap className="text-sm" />
-              Beli
+        {!isOutOfStock ? (
+          <div className="flex gap-1.5">
+            <button
+              onClick={handleAddToCart}
+              disabled={adding}
+              className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1 border-2 ${
+                added ? "bg-green-500 border-green-500 text-white" : "border-[#1E2753] text-[#1E2753] hover:bg-[#1E2753] hover:text-white disabled:opacity-50"
+              }`}
+            >
+              <FiShoppingCart className="text-xs flex-shrink-0" />
+              <span className="truncate">{adding ? "..." : added ? "Ditambahkan!" : "Keranjang"}</span>
             </button>
-          )}
-        </div>
+            <button onClick={handleBuyNow} className="flex-1 py-2 rounded-xl text-xs font-bold bg-[#E85D04] text-white hover:bg-orange-600 transition-all duration-200 flex items-center justify-center gap-1">
+              <FiZap className="text-xs flex-shrink-0" />
+              <span>Beli</span>
+            </button>
+          </div>
+        ) : (
+          <div className="py-2 rounded-xl text-xs font-semibold text-center text-gray-400 bg-gray-50 border border-gray-100">Tidak tersedia</div>
+        )}
       </div>
     </div>
   );

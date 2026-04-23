@@ -20,9 +20,11 @@ import {
   faUser,
   faPhone,
   faMapMarkerAlt,
+  faTicket,
 } from "@fortawesome/free-solid-svg-icons";
 import { subscribeToCartService, clearCartService, CartItem } from "@/service/cart.service";
 import { createOrderService } from "@/service/order.service";
+import { incrementCouponUsageService } from "@/service/coupon.service";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(price);
@@ -45,22 +47,24 @@ const paymentMethods = [
   { id: "cod", label: "Bayar di Tempat (COD)", desc: "Hanya wilayah Blitar & sekitarnya", icon: faTruck, color: "text-orange-500" },
 ];
 
-// ─── Confirmation Modal ───────────────────────────────────────────────────────
+// ─── Confirm Modal ────────────────────────────────────────────────────────────
 interface ConfirmOrderModalProps {
   form: { nama: string; telepon: string; alamat: string; kota: string; kodePos: string; catatan: string };
   paymentLabel: string;
   orderItems: CartItem[];
+  subtotal: number;
+  diskonKupon: number;
+  couponCode: string;
   total: number;
   loading: boolean;
   onConfirm: () => void;
   onClose: () => void;
 }
 
-function ConfirmOrderModal({ form, paymentLabel, orderItems, total, loading, onConfirm, onClose }: ConfirmOrderModalProps) {
+function ConfirmOrderModal({ form, paymentLabel, orderItems, subtotal, diskonKupon, couponCode, total, loading, onConfirm, onClose }: ConfirmOrderModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
         <div className="bg-[#1E2753] px-6 py-5">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
@@ -123,22 +127,30 @@ function ConfirmOrderModal({ form, paymentLabel, orderItems, total, loading, onC
               <span className="font-semibold text-gray-800">{paymentLabel}</span>
             </div>
             <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Subtotal Produk</span>
+              <span className="font-semibold text-gray-700">{formatPrice(subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
               <span className="text-gray-500">Ongkos Kirim</span>
               <span className="font-semibold text-green-600">Gratis</span>
             </div>
+            {diskonKupon > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Diskon Kupon {couponCode && <span className="font-semibold text-green-600">({couponCode})</span>}</span>
+                <span className="font-semibold text-red-500">-{formatPrice(diskonKupon)}</span>
+              </div>
+            )}
             <div className="border-t border-gray-200 pt-2 flex justify-between">
               <span className="text-sm font-bold text-gray-800">Total Pembayaran</span>
               <span className="text-base font-bold text-[#1E2753]">{formatPrice(total)}</span>
             </div>
           </div>
 
-          {/* Warning */}
           <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
             <FontAwesomeIcon icon={faExclamationCircle} className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-amber-700">Pastikan alamat dan data sudah benar. Pesanan yang sudah dibuat tidak bisa diubah.</p>
           </div>
 
-          {/* Actions */}
           <div className="flex gap-3 pt-1">
             <button onClick={onClose} disabled={loading} className="flex-1 py-3 rounded-2xl border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition disabled:opacity-50">
               Cek Lagi
@@ -167,6 +179,9 @@ function ConfirmOrderModal({ form, paymentLabel, orderItems, total, loading, onC
 function CheckoutForm() {
   const searchParams = useSearchParams();
   const selectedIds = searchParams.get("ids")?.split(",") ?? [];
+  const couponCode = searchParams.get("coupon") ?? "";
+  const couponId = searchParams.get("couponId") ?? "";
+  const diskonKupon = Number(searchParams.get("discount") ?? 0);
 
   const [uid, setUid] = useState<string | null>(null);
   const [orderItems, setOrderItems] = useState<CartItem[]>([]);
@@ -177,7 +192,14 @@ function CheckoutForm() {
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [formError, setFormError] = useState("");
-  const [form, setForm] = useState({ nama: "", telepon: "", alamat: "", kota: "", kodePos: "", catatan: "" });
+  const [form, setForm] = useState({
+    nama: "",
+    telepon: "",
+    alamat: "",
+    kota: "",
+    kodePos: "",
+    catatan: "",
+  });
 
   useEffect(() => {
     const u = getUid();
@@ -188,7 +210,7 @@ function CheckoutForm() {
       setOrderItems(filtered);
     });
     return () => unsub();
-  }, []);
+  }, [selectedIds.join(",")]);
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -196,8 +218,8 @@ function CheckoutForm() {
   };
 
   const subtotal = orderItems.reduce((acc, i) => acc + i.price * i.qty, 0);
+  const total = subtotal - diskonKupon;
 
-  // Validasi form sebelum tampil modal konfirmasi
   const handleCheckoutClick = () => {
     if (!form.nama.trim()) {
       setFormError("Nama lengkap wajib diisi.");
@@ -236,12 +258,20 @@ function CheckoutForm() {
         note: form.catatan,
         paymentMethod: paymentMethods.find((p) => p.id === selectedPayment)?.label ?? selectedPayment,
         items: orderItems.map((i) => ({ id: i.id, name: i.name, price: i.price, qty: i.qty, category: i.category })),
-        total: subtotal,
+        total,
+        ...(couponCode && diskonKupon > 0 ? { couponCode, diskonKupon } : {}),
       });
+
       await clearCartService(
         uid,
         orderItems.map((i) => i.id),
       );
+
+      // Increment pemakaian kupon di Firestore
+      if (couponId && diskonKupon > 0) {
+        await incrementCouponUsageService(couponId);
+      }
+
       setOrderId(id);
       setShowConfirm(false);
       setIsSuccess(true);
@@ -258,6 +288,7 @@ function CheckoutForm() {
     }
   };
 
+  // ─── Success screen ───────────────────────────────────────────────────────
   if (isSuccess)
     return (
       <div className="max-w-lg mx-auto px-4 py-20 flex flex-col items-center text-center gap-4">
@@ -272,8 +303,18 @@ function CheckoutForm() {
             <span className="font-bold text-gray-800">#{orderId.slice(0, 8).toUpperCase()}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Total Bayar</span>
-            <span className="font-bold text-[#1E2753]">{formatPrice(subtotal)}</span>
+            <span className="text-gray-500">Subtotal Produk</span>
+            <span className="font-medium text-gray-700">{formatPrice(subtotal)}</span>
+          </div>
+          {diskonKupon > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Diskon Kupon {couponCode && `(${couponCode})`}</span>
+              <span className="font-bold text-red-500">-{formatPrice(diskonKupon)}</span>
+            </div>
+          )}
+          <div className="flex justify-between text-sm border-t border-gray-200 pt-2">
+            <span className="text-gray-500 font-bold">Total Bayar</span>
+            <span className="font-bold text-[#1E2753]">{formatPrice(total)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Metode Bayar</span>
@@ -291,6 +332,7 @@ function CheckoutForm() {
       </div>
     );
 
+  // ─── Checkout form ────────────────────────────────────────────────────────
   return (
     <>
       {showConfirm && (
@@ -298,7 +340,10 @@ function CheckoutForm() {
           form={form}
           paymentLabel={paymentMethods.find((p) => p.id === selectedPayment)?.label ?? selectedPayment}
           orderItems={orderItems}
-          total={subtotal}
+          subtotal={subtotal}
+          diskonKupon={diskonKupon}
+          couponCode={couponCode}
+          total={total}
           loading={loading}
           onConfirm={handleOrder}
           onClose={() => !loading && setShowConfirm(false)}
@@ -316,7 +361,6 @@ function CheckoutForm() {
           </div>
         </div>
 
-        {/* Error Banner */}
         {formError && (
           <div className="mb-4 flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
             <FontAwesomeIcon icon={faExclamationCircle} className="w-4 h-4 text-red-500 flex-shrink-0" />
@@ -324,9 +368,19 @@ function CheckoutForm() {
           </div>
         )}
 
+        {/* Kupon info banner jika ada kupon dari cart */}
+        {couponCode && diskonKupon > 0 && (
+          <div className="mb-4 flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl px-4 py-3">
+            <FontAwesomeIcon icon={faTicket} className="w-4 h-4 text-green-600 flex-shrink-0" />
+            <p className="text-sm text-green-700">
+              Kupon <span className="font-bold">{couponCode}</span> aktif — hemat <span className="font-bold">{formatPrice(diskonKupon)}</span>
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
-            {/* Alamat */}
+            {/* Alamat Pengiriman */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
               <div className="flex items-center gap-2 mb-4">
                 <FontAwesomeIcon icon={faLocationDot} className="w-4 h-4 text-[#E85D04]" />
@@ -370,7 +424,7 @@ function CheckoutForm() {
               </div>
             </div>
 
-            {/* Pengiriman */}
+            {/* Metode Pengiriman */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
               <div className="flex items-center gap-2 mb-3">
                 <FontAwesomeIcon icon={faTruck} className="w-4 h-4 text-[#1E2753]" />
@@ -385,7 +439,7 @@ function CheckoutForm() {
               </div>
             </div>
 
-            {/* Pembayaran */}
+            {/* Metode Pembayaran */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
               <div className="flex items-center gap-2 mb-4">
                 <FontAwesomeIcon icon={faShield} className="w-4 h-4 text-[#1E2753]" />
@@ -406,7 +460,7 @@ function CheckoutForm() {
             </div>
           </div>
 
-          {/* Ringkasan */}
+          {/* Ringkasan Pembayaran */}
           <div className="space-y-4">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
               <button onClick={() => setShowOrderDetail(!showOrderDetail)} className="w-full flex items-center justify-between">
@@ -440,10 +494,16 @@ function CheckoutForm() {
                   <span>Ongkos Kirim</span>
                   <span className="font-medium text-green-600">Gratis</span>
                 </div>
+                {diskonKupon > 0 && (
+                  <div className="flex justify-between text-gray-500">
+                    <span>Diskon Kupon {couponCode && <span className="text-green-600 font-semibold">({couponCode})</span>}</span>
+                    <span className="font-medium text-red-500">-{formatPrice(diskonKupon)}</span>
+                  </div>
+                )}
               </div>
               <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
                 <span className="text-sm font-bold text-gray-800">Total Pembayaran</span>
-                <span className="text-lg font-bold text-[#1E2753]">{formatPrice(subtotal)}</span>
+                <span className="text-lg font-bold text-[#1E2753]">{formatPrice(total)}</span>
               </div>
               <button onClick={handleCheckoutClick} disabled={orderItems.length === 0} className="w-full py-3 bg-[#1E2753] text-white rounded-xl font-bold text-sm hover:bg-[#2a3470] transition disabled:opacity-60">
                 Periksa & Buat Pesanan

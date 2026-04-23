@@ -130,7 +130,7 @@ export const subscribeToProductsService = (callback: (products: Product[]) => vo
           id: docItem.id,
           name: data.name || "",
           category: data.category || "",
-          condition: data.condition || "Bekas",
+          condition: data.condition ?? "Bekas",
           originalPrice: data.originalPrice ?? undefined,
           price: data.price || 0,
           stock: data.stock || 0,

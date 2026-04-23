@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrash, faCartShopping, faChevronLeft, faTag, faTruck, faShield, faTicket, faExclamationTriangle } from "@fortawesome/free-solid-svg-icons";
+import { faTrash, faCartShopping, faChevronLeft, faTag, faTruck, faShield, faTicket } from "@fortawesome/free-solid-svg-icons";
 import { subscribeToCartService, updateCartQtyService, removeFromCartService, CartItem } from "@/service/cart.service";
+import { validateCouponService } from "@/service/coupon.service";
 import { categoryGradient, defaultGradient } from "@/constants/category";
 import { toast } from "@/components/ui/Toast";
 
@@ -66,9 +67,12 @@ export default function CartPage() {
   const [uid, setUid] = useState<string | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [coupon, setCoupon] = useState("");
-  const [couponApplied, setCouponApplied] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Kupon state
+  const [couponInput, setCouponInput] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<{ id: string; code: string; discount: number } | null>(null);
 
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
@@ -92,6 +96,15 @@ export default function CartPage() {
     return () => unsub();
   }, []);
 
+  // Reset kupon jika subtotal berubah dan kupon punya minOrder
+  const selectedItems = cartItems.filter((i) => selectedIds.includes(i.id));
+  const subtotal = selectedItems.reduce((acc, i) => acc + i.price * i.qty, 0);
+
+  useEffect(() => {
+    // Jika subtotal turun di bawah minOrder kupon, hapus kupon otomatis
+    // (minOrder tidak disimpan di appliedCoupon, cukup re-validate saat checkout)
+  }, [subtotal]);
+
   const updateQty = async (id: string, type: "inc" | "dec") => {
     if (!uid) return;
     const item = cartItems.find((i) => i.id === id);
@@ -101,19 +114,16 @@ export default function CartPage() {
     await updateCartQtyService(uid, id, newQty);
   };
 
-  // Trigger modal untuk hapus satu item
   const handleDeleteClick = (id: string, name: string) => {
     setDeleteBulk(false);
     setDeleteTarget({ id, name });
   };
 
-  // Trigger modal untuk hapus bulk
   const handleDeleteBulkClick = () => {
     setDeleteBulk(true);
     setDeleteTarget({ id: "", name: "" });
   };
 
-  // Eksekusi hapus setelah konfirmasi
   const confirmDelete = async () => {
     if (!uid) return;
     if (deleteBulk) {
@@ -132,18 +142,40 @@ export default function CartPage() {
   const toggleSelect = (id: string) => setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
   const toggleSelectAll = () => setSelectedIds(selectedIds.length === cartItems.length ? [] : cartItems.map((i) => i.id));
 
-  const selectedItems = cartItems.filter((i) => selectedIds.includes(i.id));
-  const subtotal = selectedItems.reduce((acc, i) => acc + i.price * i.qty, 0);
-  const diskonKupon = couponApplied ? 50000 : 0;
+  const diskonKupon = appliedCoupon?.discount ?? 0;
   const total = subtotal - diskonKupon;
 
-  const handleCoupon = () => {
-    if (coupon.toLowerCase() === "rizky50") {
-      setCouponApplied(true);
-      toast.success("Kode kupon RIZKY50 berhasil dipakai! Hemat Rp 50.000 🎉");
-    } else {
-      toast.error("Kode kupon tidak valid. Coba lagi.");
+  const handleApplyCoupon = async () => {
+    if (!couponInput.trim()) return;
+    if (selectedItems.length === 0) {
+      toast.error("Pilih produk terlebih dahulu sebelum memakai kupon.");
+      return;
     }
+    setCouponLoading(true);
+    const result = await validateCouponService(couponInput, subtotal);
+    setCouponLoading(false);
+    if (result.valid) {
+      setAppliedCoupon({ id: result.coupon.id, code: result.coupon.code, discount: result.coupon.discount });
+      setCouponInput("");
+      toast.success(`Kupon ${result.coupon.code} berhasil dipakai! Hemat ${formatPrice(result.coupon.discount)} 🎉`);
+    } else {
+      toast.error(result.message);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput("");
+    toast.info("Kode kupon dihapus.");
+  };
+
+  const checkoutHref = () => {
+    if (selectedIds.length === 0) return "#";
+    let url = `/user/checkout?ids=${selectedIds.join(",")}`;
+    if (appliedCoupon) {
+      url += `&coupon=${encodeURIComponent(appliedCoupon.code)}&discount=${appliedCoupon.discount}&couponId=${appliedCoupon.id}`;
+    }
+    return url;
   };
 
   if (loading)
@@ -204,7 +236,9 @@ export default function CartPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* ── Kiri: list produk ── */}
         <div className="lg:col-span-2 space-y-3">
+          {/* Select all bar */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3 flex items-center justify-between">
             <label className="flex items-center gap-3 cursor-pointer">
               <input type="checkbox" checked={selectedIds.length === cartItems.length && cartItems.length > 0} onChange={toggleSelectAll} className="w-4 h-4 accent-[#1E2753]" />
@@ -218,6 +252,7 @@ export default function CartPage() {
             )}
           </div>
 
+          {/* Cart items */}
           {cartItems.map((item) => {
             const gradient = categoryGradient[item.category] ?? defaultGradient;
             const isSelected = selectedIds.includes(item.id);
@@ -269,26 +304,22 @@ export default function CartPage() {
           </div>
         </div>
 
+        {/* ── Kanan: ringkasan ── */}
         <div className="space-y-4">
+          {/* Kupon */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
             <div className="flex items-center gap-2 mb-3">
               <FontAwesomeIcon icon={faTicket} className="w-4 h-4 text-[#E85D04]" />
               <p className="text-sm font-bold text-gray-800">Kode Kupon</p>
             </div>
-            {couponApplied ? (
-              <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
                 <div>
-                  <p className="text-xs font-bold text-green-700">RIZKY50 berhasil dipakai!</p>
-                  <p className="text-xs text-green-600">Hemat {formatPrice(50000)}</p>
+                  <p className="text-xs font-bold text-green-700">{appliedCoupon.code} berhasil dipakai!</p>
+                  <p className="text-xs text-green-600 mt-0.5">Hemat {formatPrice(appliedCoupon.discount)}</p>
                 </div>
-                <button
-                  onClick={() => {
-                    setCouponApplied(false);
-                    setCoupon("");
-                    toast.info("Kode kupon dihapus.");
-                  }}
-                  className="text-xs text-red-500 hover:underline"
-                >
+                <button onClick={handleRemoveCoupon} className="text-xs text-red-500 hover:underline ml-2 flex-shrink-0">
                   Hapus
                 </button>
               </div>
@@ -296,19 +327,20 @@ export default function CartPage() {
               <div className="flex gap-2">
                 <input
                   type="text"
-                  value={coupon}
-                  onChange={(e) => setCoupon(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleCoupon()}
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => e.key === "Enter" && handleApplyCoupon()}
                   placeholder="Masukkan kode kupon"
-                  className="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#1E2753] uppercase"
+                  className="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#1E2753] uppercase tracking-wider"
                 />
-                <button onClick={handleCoupon} className="px-3 py-2 bg-[#1E2753] text-white rounded-xl text-xs font-semibold hover:bg-[#2a3470]">
-                  Pakai
+                <button onClick={handleApplyCoupon} disabled={couponLoading || !couponInput.trim()} className="px-3 py-2 bg-[#1E2753] text-white rounded-xl text-xs font-semibold hover:bg-[#2a3470] disabled:opacity-50 transition">
+                  {couponLoading ? "..." : "Pakai"}
                 </button>
               </div>
             )}
           </div>
 
+          {/* Ringkasan harga */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
             <p className="text-sm font-bold text-gray-800">Ringkasan Belanja</p>
             <div className="space-y-2 text-sm">
@@ -320,9 +352,11 @@ export default function CartPage() {
                 <span>Ongkos Kirim</span>
                 <span className="font-medium text-green-600">Gratis</span>
               </div>
-              {couponApplied && (
+              {appliedCoupon && (
                 <div className="flex justify-between text-gray-500">
-                  <span>Diskon Kupon</span>
+                  <span>
+                    Diskon Kupon <span className="text-green-600 font-semibold">({appliedCoupon.code})</span>
+                  </span>
                   <span className="font-medium text-red-500">-{formatPrice(diskonKupon)}</span>
                 </div>
               )}
@@ -332,13 +366,14 @@ export default function CartPage() {
               <span className="text-lg font-bold text-[#1E2753]">{formatPrice(total)}</span>
             </div>
             <Link
-              href={selectedIds.length > 0 ? `/user/checkout?ids=${selectedIds.join(",")}` : "#"}
+              href={checkoutHref()}
               className={`block w-full py-3 rounded-xl text-center font-bold text-sm transition-all duration-200 ${selectedIds.length > 0 ? "bg-[#1E2753] text-white hover:bg-[#2a3470]" : "bg-gray-100 text-gray-400 pointer-events-none"}`}
             >
               Checkout ({selectedIds.length} produk)
             </Link>
           </div>
 
+          {/* Trust badges */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-2">
             {[
               { icon: faShield, text: "Transaksi aman & terpercaya", color: "text-blue-500" },

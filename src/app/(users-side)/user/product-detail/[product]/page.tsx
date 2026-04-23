@@ -65,8 +65,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
         };
         setProduct(p);
 
-        // ✅ Fix: query langsung by category + exclude diri sendiri
-        const relSnap = await getDocs(query(collection(db, "products"), where("category", "==", data.category), limit(5)));
+        const relSnap = await getDocs(query(collection(db, "products"), where("category", "==", data.category), limit(6)));
         const rel: Product[] = relSnap.docs
           .filter((d) => d.id !== productId)
           .slice(0, 4)

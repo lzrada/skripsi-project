@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { subscribeToProductsService, Product } from "@/service/product.service";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -41,6 +41,7 @@ function ProductSkeleton() {
 
 function ProductsContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const selectedCategory = searchParams.get("category") || "";
   const searchQuery = searchParams.get("search") || "";
 
@@ -62,10 +63,21 @@ function ProductsContent() {
     return () => unsub();
   }, []);
 
-  // Sync category dari URL
+  // Sync category dari URL setiap kali URL berubah
   useEffect(() => {
-    if (selectedCategory) setActiveCategory(selectedCategory);
+    setActiveCategory(selectedCategory);
   }, [selectedCategory]);
+
+  // Helper: ganti kategori aktif + update URL supaya konsisten
+  const handleCategoryChange = (cat: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (cat) {
+      params.set("category", cat);
+    } else {
+      params.delete("category");
+    }
+    router.push(`/user/products?${params.toString()}`);
+  };
 
   const activeRange = PRICE_RANGES[priceRange];
 
@@ -99,9 +111,12 @@ function ProductsContent() {
   const hasFilter = activeCategory || priceRange > 0 || conditionFilter !== "semua";
 
   const resetFilters = () => {
-    setActiveCategory("");
     setPriceRange(0);
     setConditionFilter("semua");
+    // Hapus parameter category dari URL supaya navbar dan filter konsisten
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("category");
+    router.push(`/user/products?${params.toString()}`);
   };
 
   const pageTitle = searchQuery ? `Hasil: "${searchQuery}"` : activeCategory ? `Kategori: ${activeCategory}` : "Semua Produk";
@@ -156,7 +171,7 @@ function ProductsContent() {
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Kategori</p>
                 <div className="flex flex-wrap gap-2">
                   <button
-                    onClick={() => setActiveCategory("")}
+                    onClick={() => handleCategoryChange("")}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${!activeCategory ? "bg-[#1E2753] text-white border-[#1E2753]" : "bg-white text-gray-600 border-gray-200 hover:border-[#1E2753]"}`}
                   >
                     Semua
@@ -164,7 +179,7 @@ function ProductsContent() {
                   {CATEGORIES.map((cat) => (
                     <button
                       key={cat}
-                      onClick={() => setActiveCategory(cat === activeCategory ? "" : cat)}
+                      onClick={() => handleCategoryChange(cat === activeCategory ? "" : cat)}
                       className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${activeCategory === cat ? "bg-[#1E2753] text-white border-[#1E2753]" : "bg-white text-gray-600 border-gray-200 hover:border-[#1E2753]"}`}
                     >
                       {cat}

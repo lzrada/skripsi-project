@@ -2,6 +2,7 @@ import { db } from "@/config/firebase";
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, serverTimestamp, runTransaction, where } from "firebase/firestore";
 import { Order, OrderStatus } from "@/types/order";
 
+// Tambah di interface CreateOrderPayload:
 export interface CreateOrderPayload {
   uid: string;
   recipientName: string;
@@ -13,12 +14,11 @@ export interface CreateOrderPayload {
   paymentMethod: string;
   items: { id: string; name: string; price: number; qty: number; category: string }[];
   total: number;
+  couponCode?: string;
+  diskonKupon?: number;
+  couponId?: string;
 }
 
-/**
- * Membuat order baru dan mengurangi stok produk secara atomik (transaction).
- * Jika stok tidak mencukupi untuk salah satu item, seluruh transaksi dibatalkan.
- */
 export const createOrderService = async (payload: CreateOrderPayload): Promise<string> => {
   return await runTransaction(db, async (transaction) => {
     // 1. Baca stok semua produk terlebih dahulu
@@ -39,6 +39,7 @@ export const createOrderService = async (payload: CreateOrderPayload): Promise<s
     }
 
     // 3. Buat dokumen order
+    // 3. Buat dokumen order
     const orderRef = doc(collection(db, "orders"));
     transaction.set(orderRef, {
       uid: payload.uid,
@@ -52,6 +53,12 @@ export const createOrderService = async (payload: CreateOrderPayload): Promise<s
       status: "Menunggu Konfirmasi" as OrderStatus,
       date: new Date().toISOString(),
       createdAt: serverTimestamp(),
+      ...(payload.couponCode
+        ? {
+            couponCode: payload.couponCode,
+            diskonKupon: payload.diskonKupon ?? 0,
+          }
+        : {}),
     });
 
     // 4. Kurangi stok tiap produk

@@ -1,5 +1,5 @@
 import { db } from "@/config/firebase";
-import { collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs, where, serverTimestamp, Timestamp } from "firebase/firestore";
+import { collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs, getDoc, where, serverTimestamp, Timestamp } from "firebase/firestore";
 
 export interface Coupon {
   id: string;
@@ -87,9 +87,9 @@ export const validateCouponService = async (code: string, orderTotal: number): P
 // ── Increment usedCount setelah order berhasil ────────────────────────────────
 export const incrementCouponUsageService = async (couponId: string) => {
   const ref = doc(db, "coupons", couponId);
-  const snap = await getDocs(query(collection(db, "coupons"), where("__name__", "==", couponId)));
-  if (snap.empty) return;
-  const current = snap.docs[0].data().usedCount ?? 0;
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return;
+  const current = snap.data().usedCount ?? 0;
   await updateDoc(ref, { usedCount: current + 1 });
 };
 

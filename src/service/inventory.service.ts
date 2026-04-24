@@ -1,38 +1,76 @@
-import { Firestore } from "@google-cloud/firestore";
+import { db } from "@/config/firebase";
+import { collection, onSnapshot, query, where, doc, updateDoc } from "firebase/firestore";
 
-const firestore = new Firestore();
-
-export class InventoryService {
-  // Calculate reorder point
-  calculateReorderPoint(averageDailySales: number, leadTime: number): number {
-    return averageDailySales * leadTime;
-  }
-
-  // Get low stock products below reorder point
-  async getLowStockProducts(threshold: number): Promise<{ id: string; name: string; stock: number; reorderPoint: number }[]> {
-    const productsRef = firestore.collection("products");
-    const snapshot = await productsRef.where("stock", "<", threshold).get();
-    return snapshot.docs.map((doc) => doc.data());
-  }
-
-  // Calculate economic order quantity
-  calculateEOQ(demand: number, orderingCost: number, holdingCost: number): number {
-    return Math.sqrt((2 * demand * orderingCost) / holdingCost);
-  }
-
-  // Subscribe to inventory alerts in real-time
-  subscribeToInventoryAlerts(callback: (data: any) => void): void {
-    const productsRef = firestore.collection("products");
-    productsRef.onSnapshot((snapshot) => {
-      snapshot.forEach((doc) => {
-        callback(doc.data());
-      });
-    });
-  }
-
-  // Mark products as restocked
-  async markAsRestocked(productId: string): Promise<void> {
-    const productRef = firestore.collection("products").doc(productId);
-    await productRef.update({ restocked: true });
-  }
+export interface LowStockProduct {
+  id: string;
+  name: string;
+  stock: number;
+  reorderPoint: number;
 }
+
+// Hitung reorder point berdasarkan rata-rata penjualan harian & lead time
+export function calculateReorderPoint(averageDailySales: number, leadTime: number): number {
+  return averageDailySales * leadTime;
+}
+
+// Hitung Economic Order Quantity (EOQ)
+export function calculateEOQ(demand: number, orderingCost: number, holdingCost: number): number {
+  return Math.sqrt((2 * demand * orderingCost) / holdingCost);
+}
+
+// Subscribe realtime ke produk dengan stok di bawah threshold
+export const subscribeToLowStockProductsService = (threshold: number, callback: (products: LowStockProduct[]) => void) => {
+  try {
+    const q = query(collection(db, "products"), where("stock", "<", threshold));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const products: LowStockProduct[] = snapshot.docs.map((docItem) => {
+        const data = docItem.data();
+        return {
+          id: docItem.id,
+          name: data.name ?? "",
+          stock: data.stock ?? 0,
+          reorderPoint: data.reorderPoint ?? threshold,
+        };
+      });
+      callback(products);
+    });
+    return unsubscribe;
+  } catch (error) {
+    console.error("subscribeToLowStockProductsService Error:", error);
+    return () => {};
+  }
+};
+
+// Subscribe realtime ke semua produk untuk alert inventory
+export const subscribeToInventoryAlertsService = (callback: (products: LowStockProduct[]) => void) => {
+  try {
+    const q = query(collection(db, "products"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const products: LowStockProduct[] = snapshot.docs.map((docItem) => {
+        const data = docItem.data();
+        return {
+          id: docItem.id,
+          name: data.name ?? "",
+          stock: data.stock ?? 0,
+          reorderPoint: data.reorderPoint ?? 0,
+        };
+      });
+      callback(products);
+    });
+    return unsubscribe;
+  } catch (error) {
+    console.error("subscribeToInventoryAlertsService Error:", error);
+    return () => {};
+  }
+};
+
+// Tandai produk sebagai sudah direstok
+export const markAsRestockedService = async (productId: string): Promise<void> => {
+  try {
+    const productRef = doc(db, "products", productId);
+    await updateDoc(productRef, { restocked: true });
+  } catch (error) {
+    console.error("markAsRestockedService Error:", error);
+    throw error;
+  }
+};

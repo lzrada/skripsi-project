@@ -32,7 +32,7 @@ export const loginWithEmail = async (email: string, password: string) => {
 
     return { role };
   } catch (error: any) {
-    console.log("LOGIN EMAIL ERROR:", error);
+    console.error("LOGIN EMAIL ERROR:", error);
     throw error;
   }
 };
@@ -43,7 +43,7 @@ export const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     await signInWithRedirect(auth, provider);
   } catch (error: any) {
-    console.log("GOOGLE LOGIN ERROR:", error);
+    console.error("GOOGLE LOGIN ERROR:", error);
     throw error;
   }
 };
@@ -76,7 +76,7 @@ export const handleGoogleRedirect = async () => {
 
     return { success: true, role };
   } catch (error: any) {
-    console.log("GOOGLE REDIRECT ERROR:", error);
+    console.error("GOOGLE REDIRECT ERROR:", error);
     return { success: false };
   }
 };
@@ -109,7 +109,7 @@ export const registerWithEmail = async (email: string, password: string, fullNam
 
     return { success: true };
   } catch (error: any) {
-    console.log("REGISTER ERROR:", error);
+    console.error("REGISTER ERROR:", error);
     throw error;
   }
 };
@@ -120,7 +120,7 @@ export const resetPassword = async (email: string) => {
     await sendPasswordResetEmail(auth, email);
     return { success: true };
   } catch (error: any) {
-    console.log("RESET PASSWORD ERROR:", error);
+    console.error("RESET PASSWORD ERROR:", error);
     throw error;
   }
 };
@@ -133,7 +133,7 @@ export const logout = async () => {
     document.cookie = "userRole=; path=/; max-age=0";
     document.cookie = "uid=; path=/; max-age=0";
   } catch (error: any) {
-    console.log("LOGOUT ERROR:", error);
+    console.error("LOGOUT ERROR:", error);
     throw error;
   }
 };

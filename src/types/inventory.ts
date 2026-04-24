@@ -1,13 +1,6 @@
-export interface InventoryItem {
-  id: number;
+export interface LowStockProduct {
+  id: string;
   name: string;
-  quantity: number;
+  stock: number;
   reorderPoint: number;
-  lowStockAlert: boolean;
-}
-
-export interface InventoryManagement {
-  items: InventoryItem[];
-  calculateReorderPoint(item: InventoryItem): number;
-  checkLowStock(item: InventoryItem): boolean;
 }

@@ -5,6 +5,9 @@ import { useEffect, useState } from "react";
 import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
 import { db } from "@/config/firebase";
 import ChartLine from "@/components/(admin)/ui/ChartLine";
+import LowStockAlert from "@/components/(admin)/ui/LowStockAlert";
+import CategoryBreakdown from "@/components/(admin)/ui/CategoryBreakdown";
+import TopProductsChart from "@/components/(admin)/ui/TopProductChart";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -219,6 +222,13 @@ export default function Dashboard() {
             })}
           </div>
         )}
+      </div>
+
+      {/* ── Inventory & Analytics ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mt-5">
+        <LowStockAlert />
+        <CategoryBreakdown />
+        <TopProductsChart />
       </div>
     </div>
   );

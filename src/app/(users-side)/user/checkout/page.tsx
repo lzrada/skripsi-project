@@ -25,6 +25,7 @@ import {
 import { subscribeToCartService, clearCartService, CartItem } from "@/service/cart.service";
 import { createOrderService } from "@/service/order.service";
 import { incrementCouponUsageService } from "@/service/coupon.service";
+import { createMidtransTransaction } from "@/service/payment.service";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(price);
@@ -61,7 +62,7 @@ interface ConfirmOrderModalProps {
   onClose: () => void;
 }
 
-function ConfirmOrderModal({ form, paymentLabel, orderItems, subtotal, diskonKupon, couponCode, total, loading, onConfirm, onClose }: ConfirmOrderModalProps) {
+export function ConfirmOrderModal({ form, paymentLabel, orderItems, subtotal, diskonKupon, couponCode, total, loading, onConfirm, onClose }: ConfirmOrderModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4" onClick={onClose}>
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -246,43 +247,97 @@ function CheckoutForm() {
       window.location.href = "/login";
       return;
     }
+
     setLoading(true);
+
     try {
-      const id = await createOrderService({
-        uid,
-        recipientName: form.nama,
-        phone: form.telepon,
-        address: form.alamat,
-        kota: form.kota,
-        kodePos: form.kodePos,
-        note: form.catatan,
-        paymentMethod: paymentMethods.find((p) => p.id === selectedPayment)?.label ?? selectedPayment,
-        items: orderItems.map((i) => ({ id: i.id, name: i.name, price: i.price, qty: i.qty, category: i.category })),
-        total,
-        ...(couponCode && diskonKupon > 0 ? { couponCode, diskonKupon } : {}),
+      // 🔥 1. CREATE MIDTRANS TRANSACTION
+      const midtrans = await createMidtransTransaction({
+        items: orderItems,
+        user: {
+          name: form.nama,
+          email: "user@email.com",
+        },
+        totalPrice: total,
       });
 
-      await clearCartService(
-        uid,
-        orderItems.map((i) => i.id),
-      );
-
-      // Increment pemakaian kupon di Firestore
-      if (couponId && diskonKupon > 0) {
-        await incrementCouponUsageService(couponId);
+      if (!window.snap) {
+        alert("Midtrans belum load");
+        setLoading(false);
+        return;
       }
 
-      setOrderId(id);
+      // 🔥 2. OPEN MIDTRANS POPUP
+      window.snap.pay(midtrans.token, {
+        onSuccess: async (result: any) => {
+          const id = await createOrderService({
+            uid,
+            recipientName: form.nama,
+            phone: form.telepon,
+            address: form.alamat,
+            kota: form.kota,
+            kodePos: form.kodePos,
+            note: form.catatan,
+            paymentMethod: paymentMethods.find((p) => p.id === selectedPayment)?.label ?? selectedPayment,
+            items: orderItems.map((i) => ({
+              id: i.id,
+              name: i.name,
+              price: i.price,
+              qty: i.qty,
+              category: i.category,
+            })),
+            total,
+            paymentStatus: "paid",
+            midtransResult: result,
+          });
+
+          await clearCartService(
+            uid,
+            orderItems.map((i) => i.id),
+          );
+
+          if (couponId && diskonKupon > 0) {
+            await incrementCouponUsageService(couponId);
+          }
+
+          setOrderId(id);
+          setShowConfirm(false);
+          setIsSuccess(true);
+        },
+
+        onPending: async (result: any) => {
+          await createOrderService({
+            uid,
+            recipientName: form.nama,
+            phone: form.telepon,
+            address: form.alamat,
+            kota: form.kota,
+            kodePos: form.kodePos,
+            note: form.catatan,
+            paymentMethod: paymentMethods.find((p) => p.id === selectedPayment)?.label ?? selectedPayment,
+            items: orderItems,
+            total,
+            paymentStatus: "pending",
+            midtransResult: result,
+          });
+
+          setShowConfirm(false);
+          alert("Pembayaran pending");
+        },
+
+        onError: (err: any) => {
+          console.error(err);
+          alert("Pembayaran gagal");
+        },
+
+        onClose: () => {
+          alert("Kamu menutup pembayaran");
+        },
+      });
+    } catch (err) {
+      console.error(err);
+      setFormError("Gagal memproses pembayaran");
       setShowConfirm(false);
-      setIsSuccess(true);
-    } catch (err: any) {
-      setShowConfirm(false);
-      const msg = err?.message ?? "";
-      if (msg.includes("tidak mencukupi") || msg.includes("habis") || msg.includes("tidak ditemukan")) {
-        setFormError(`Gagal memesan: ${msg}`);
-      } else {
-        setFormError("Gagal membuat pesanan. Coba lagi.");
-      }
     } finally {
       setLoading(false);
     }

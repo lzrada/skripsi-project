@@ -17,6 +17,8 @@ export interface CreateOrderPayload {
   couponCode?: string;
   diskonKupon?: number;
   couponId?: string;
+  paymentStatus?: "pending" | "paid" | "failed";
+  midtransResult?: any;
 }
 
 export const createOrderService = async (payload: CreateOrderPayload): Promise<string> => {

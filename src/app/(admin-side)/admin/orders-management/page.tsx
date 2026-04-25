@@ -4,11 +4,9 @@ import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBoxOpen, faChevronDown, faChevronUp, faLocationDot, faMoneyBill, faWallet, faTruck, faCreditCard, faSearch } from "@fortawesome/free-solid-svg-icons";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
-import { db } from "@/config/firebase";
-import { collection, onSnapshot, orderBy, query, doc, updateDoc } from "firebase/firestore";
 import { type Order, type OrderStatus, statusConfig, statusSteps } from "@/types/order";
 import { categoryIcon, categoryGradient, defaultCategoryIcon, defaultGradient } from "@/constants/category";
-import { cancelOrderService } from "@/service/order.service";
+import { cancelOrderService, subscribeToAllOrdersService, updateOrderStatusService } from "@/service/order.service";
 
 const ALL_STATUSES: (OrderStatus | "Semua")[] = ["Semua", "Menunggu Konfirmasi", "Diproses", "Dikirim", "Selesai", "Dibatalkan"];
 
@@ -199,23 +197,7 @@ export default function OrdersManagementPage() {
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
   useEffect(() => {
-    const q = query(collection(db, "orders"), orderBy("date", "desc"));
-    const unsub = onSnapshot(q, (snap) => {
-      const data: Order[] = snap.docs.map((d) => {
-        const raw = d.data();
-        return {
-          id: d.id,
-          date: raw.date ?? "",
-          status: raw.status ?? "Menunggu Konfirmasi",
-          items: raw.items ?? [],
-          total: raw.total ?? 0,
-          paymentMethod: raw.paymentMethod ?? "",
-          address: raw.address ?? "",
-          phone: raw.phone ?? "",
-          recipientName: raw.recipientName ?? "",
-          note: raw.note,
-        } as Order;
-      });
+    const unsub = subscribeToAllOrdersService((data) => {
       setOrders(data);
       setLoading(false);
     });
@@ -229,7 +211,7 @@ export default function OrdersManagementPage() {
 
   const handleStatusChange = async (id: string, status: OrderStatus) => {
     try {
-      await updateDoc(doc(db, "orders", id), { status });
+      await updateOrderStatusService(id, status);
       showToast(`Status diperbarui: ${status}`, "success");
     } catch {
       showToast("Gagal memperbarui status.", "error");

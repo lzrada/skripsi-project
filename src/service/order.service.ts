@@ -17,8 +17,6 @@ export interface CreateOrderPayload {
   couponCode?: string;
   diskonKupon?: number;
   couponId?: string;
-  paymentStatus?: "pending" | "paid" | "failed";
-  midtransResult?: any;
 }
 
 export const createOrderService = async (payload: CreateOrderPayload): Promise<string> => {
@@ -40,7 +38,6 @@ export const createOrderService = async (payload: CreateOrderPayload): Promise<s
       }
     }
 
-    // 3. Buat dokumen order
     // 3. Buat dokumen order
     const orderRef = doc(collection(db, "orders"));
     transaction.set(orderRef, {
@@ -132,4 +129,42 @@ export const cancelOrderService = async (orderId: string): Promise<void> => {
 
     transaction.update(orderRef, { status: "Dibatalkan" as OrderStatus });
   });
+};
+
+/**
+ * Subscribe realtime ke SEMUA order — untuk admin dashboard.
+ */
+export const subscribeToAllOrdersService = (callback: (orders: Order[]) => void) => {
+  const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+  return onSnapshot(q, (snap) => {
+    const orders: Order[] = snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        date: data.date ?? "",
+        status: data.status ?? "Menunggu Konfirmasi",
+        items: data.items ?? [],
+        total: data.total ?? 0,
+        paymentMethod: data.paymentMethod ?? "",
+        address: data.address ?? "",
+        phone: data.phone ?? "",
+        recipientName: data.recipientName ?? "",
+        note: data.note,
+      } as Order;
+    });
+    callback(orders);
+  });
+};
+
+/**
+ * Update status order oleh admin.
+ */
+export const updateOrderStatusService = async (orderId: string, status: OrderStatus): Promise<void> => {
+  try {
+    const orderRef = doc(db, "orders", orderId);
+    await updateDoc(orderRef, { status });
+  } catch (error) {
+    console.error("updateOrderStatusService Error:", error);
+    throw error;
+  }
 };

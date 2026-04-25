@@ -25,6 +25,7 @@ import {
 import { subscribeToCartService, clearCartService, CartItem } from "@/service/cart.service";
 import { createOrderService } from "@/service/order.service";
 import { incrementCouponUsageService } from "@/service/coupon.service";
+import { toast } from "@/components/ui/Toast";
 import { createMidtransTransaction } from "@/service/payment.service";
 
 function formatPrice(price: number) {
@@ -262,7 +263,7 @@ function CheckoutForm() {
       });
 
       if (!window.snap) {
-        alert("Midtrans belum load");
+        toast.error("Payment gateway belum siap. Coba refresh halaman.");
         setLoading(false);
         return;
       }
@@ -322,16 +323,16 @@ function CheckoutForm() {
           });
 
           setShowConfirm(false);
-          alert("Pembayaran pending");
+          toast.info("Pembayaran pending. Selesaikan pembayaranmu sebelum batas waktu.");
         },
 
         onError: (err: any) => {
           console.error(err);
-          alert("Pembayaran gagal");
+          toast.error("Pembayaran gagal. Silakan coba lagi.");
         },
 
         onClose: () => {
-          alert("Kamu menutup pembayaran");
+          toast.info("Kamu menutup jendela pembayaran.");
         },
       });
     } catch (err) {

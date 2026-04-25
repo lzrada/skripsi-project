@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { doc, updateDoc } from "firebase/firestore";
-import { db } from "@/config/firebase";
+import { updateUserAddressService } from "@/service/user.service";
 import { UserData } from "@/types/user";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faSpinner } from "@fortawesome/free-solid-svg-icons";
@@ -46,14 +45,12 @@ export default function AccountAddressCard({ user }: AccountAddressCardProps) {
     setLoading(true);
     setError("");
     try {
-      await updateDoc(doc(db, "users", user.uid), {
-        address: {
-          province: form.province.trim(),
-          city: form.city.trim(),
-          district: form.district.trim(),
-          postalCode: form.postalCode.trim(),
-          detailAddress: form.detailAddress.trim(),
-        },
+      await updateUserAddressService(user.uid, {
+        province: form.province.trim(),
+        city: form.city.trim(),
+        district: form.district.trim(),
+        postalCode: form.postalCode.trim(),
+        detailAddress: form.detailAddress.trim(),
       });
       setSuccess(true);
       setTimeout(() => {

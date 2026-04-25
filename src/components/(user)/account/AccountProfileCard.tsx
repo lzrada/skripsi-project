@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { doc, updateDoc } from "firebase/firestore";
 import { sendPasswordResetEmail } from "firebase/auth";
-import { auth, db } from "@/config/firebase";
+import { auth } from "@/config/firebase";
+import { updateUserProfileService } from "@/service/user.service";
 import { UserData } from "@/types/user";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faSpinner, faCircleCheck } from "@fortawesome/free-solid-svg-icons";
@@ -36,7 +36,7 @@ export default function AccountProfileCard({ user }: AccountProfileCardProps) {
     setEditLoading(true);
     setEditError("");
     try {
-      await updateDoc(doc(db, "users", user.uid), {
+      await updateUserProfileService(user.uid, {
         fullName: fullName.trim(),
         photoURL: photoURL.trim(),
       });

@@ -3,10 +3,12 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthP
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 // ── Helper: set kedua cookie sekaligus ──────────────────────────────
+const COOKIE_OPTIONS = "path=/; max-age=604800; SameSite=Strict";
+
 const setCookies = (token: string, role: string, uid: string) => {
-  document.cookie = `firebaseToken=${token}; path=/`;
-  document.cookie = `userRole=${role}; path=/`;
-  document.cookie = `uid=${uid}; path=/`;
+  document.cookie = `firebaseToken=${token}; ${COOKIE_OPTIONS}`;
+  document.cookie = `userRole=${role}; ${COOKIE_OPTIONS}`;
+  document.cookie = `uid=${uid}; ${COOKIE_OPTIONS}`;
 };
 
 // ── LOGIN — Email & Password ─────────────────────────────────────────
@@ -81,7 +83,6 @@ export const handleGoogleRedirect = async () => {
   }
 };
 
-// ── REGISTER — Email & Password ──────────────────────────────────────
 // ── REGISTER — Email & Password ──────────────────────────────────────
 export const registerWithEmail = async (email: string, password: string, fullName: string, phoneNumber: string) => {
   try {

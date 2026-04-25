@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { deleteDoc, doc } from "firebase/firestore";
-import { deleteUser } from "firebase/auth";
-import { auth, db } from "@/config/firebase";
+import { deleteUserAccountService } from "@/service/user.service";
 import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTriangleExclamation, faSpinner, faXmark } from "@fortawesome/free-solid-svg-icons";
@@ -22,16 +20,13 @@ export default function AccountDangerZone({ uid }: AccountDangerZoneProps) {
     setLoading(true);
     setError("");
     try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) return;
+      await deleteUserAccountService(uid);
 
-      await deleteDoc(doc(db, "users", uid));
-      await deleteUser(currentUser);
-
-      // Clear semua cookie
-      document.cookie = "firebaseToken=; path=/; max-age=0";
-      document.cookie = "userRole=; path=/; max-age=0";
-      document.cookie = "uid=; path=/; max-age=0";
+      // Clear semua cookie konsisten dengan auth.service.ts
+      const CLEAR = "path=/; max-age=0; SameSite=Strict";
+      document.cookie = `firebaseToken=; ${CLEAR}`;
+      document.cookie = `userRole=; ${CLEAR}`;
+      document.cookie = `uid=; ${CLEAR}`;
 
       router.push("/register");
     } catch (err: any) {

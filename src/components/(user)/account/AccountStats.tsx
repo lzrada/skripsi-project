@@ -2,8 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "@/config/firebase";
+import { getUserStatsService } from "@/service/user.service";
 import { getWishlistIds } from "@/service/wishlist.service";
 
 interface AccountStatsProps {
@@ -20,18 +19,10 @@ export default function AccountStats({ uid }: AccountStatsProps) {
 
     const getStats = async () => {
       try {
-        // Orders: ambil dari koleksi root "orders" filter by uid
-        const ordersSnapshot = await getDocs(query(collection(db, "orders"), where("uid", "==", uid)));
-
-        // Cart: sudah benar, ini memang subkoleksi di users/{uid}/cart
-        const cartSnapshot = await getDocs(collection(db, "users", uid, "cart"));
-
-        // Wishlist: disimpan di localStorage per arsitektur wishlist.service.ts
-        const wishlistIds = getWishlistIds(uid);
-
-        setOrdersCount(ordersSnapshot.size);
-        setCartCount(cartSnapshot.size);
-        setWishlistCount(wishlistIds.length);
+        const { ordersCount, cartCount, wishlistCount } = await getUserStatsService(uid, getWishlistIds);
+        setOrdersCount(ordersCount);
+        setCartCount(cartCount);
+        setWishlistCount(wishlistCount);
       } catch (error) {
         console.error(error);
       }

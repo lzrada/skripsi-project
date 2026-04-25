@@ -17,6 +17,8 @@ export interface CreateOrderPayload {
   couponCode?: string;
   diskonKupon?: number;
   couponId?: string;
+  paymentStatus?: "paid" | "pending" | "unpaid";
+  midtransResult?: Record<string, any>;
 }
 
 export const createOrderService = async (payload: CreateOrderPayload): Promise<string> => {
@@ -58,6 +60,8 @@ export const createOrderService = async (payload: CreateOrderPayload): Promise<s
             diskonKupon: payload.diskonKupon ?? 0,
           }
         : {}),
+      ...(payload.paymentStatus ? { paymentStatus: payload.paymentStatus } : {}),
+      ...(payload.midtransResult ? { midtransResult: payload.midtransResult } : {}),
     });
 
     // 4. Kurangi stok tiap produk
@@ -83,6 +87,7 @@ export const subscribeToUserOrdersService = (uid: string, callback: (orders: Ord
       const data = d.data();
       return {
         id: d.id,
+        uid: data.uid ?? "",
         date: data.date ?? "",
         status: data.status ?? "Menunggu Konfirmasi",
         items: data.items ?? [],
@@ -141,6 +146,7 @@ export const subscribeToAllOrdersService = (callback: (orders: Order[]) => void)
       const data = d.data();
       return {
         id: d.id,
+        uid: data.uid ?? "",
         date: data.date ?? "",
         status: data.status ?? "Menunggu Konfirmasi",
         items: data.items ?? [],
@@ -167,4 +173,31 @@ export const updateOrderStatusService = async (orderId: string, status: OrderSta
     console.error("updateOrderStatusService Error:", error);
     throw error;
   }
+};
+
+/**
+ * Subscribe realtime ke satu order berdasarkan ID — untuk order detail user.
+ */
+export const subscribeToOrderByIdService = (orderId: string, callback: (order: Order | null) => void) => {
+  const orderRef = doc(db, "orders", orderId);
+  return onSnapshot(orderRef, (snap) => {
+    if (!snap.exists()) {
+      callback(null);
+      return;
+    }
+    const data = snap.data();
+    callback({
+      id: snap.id,
+      uid: data.uid ?? "",
+      date: data.date ?? "",
+      status: data.status ?? "Menunggu Konfirmasi",
+      items: data.items ?? [],
+      total: data.total ?? 0,
+      paymentMethod: data.paymentMethod ?? "",
+      address: data.address ?? "",
+      phone: data.phone ?? "",
+      recipientName: data.recipientName ?? "",
+      note: data.note ?? "",
+    } as Order);
+  });
 };

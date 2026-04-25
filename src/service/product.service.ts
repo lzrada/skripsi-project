@@ -1,6 +1,6 @@
 import { db } from "@/config/firebase";
 import { supabase } from "@/config/supabase";
-import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where, limit } from "firebase/firestore";
 
 export interface Product {
   id: string;
@@ -145,5 +145,80 @@ export const subscribeToProductsService = (callback: (products: Product[]) => vo
   } catch (error) {
     console.error("subscribeToProductsService Error:", error);
     return () => {};
+  }
+};
+
+export const getProductByIdService = async (productId: string): Promise<Product | null> => {
+  try {
+    const snap = await getDoc(doc(db, "products", productId));
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    return {
+      id: snap.id,
+      name: data.name ?? "",
+      category: data.category ?? "",
+      condition: data.condition ?? "Bekas",
+      originalPrice: data.originalPrice ?? undefined,
+      price: data.price ?? 0,
+      stock: data.stock ?? 0,
+      description: data.description ?? "",
+      images: data.images ?? [],
+      createdAt: data.createdAt ?? null,
+    };
+  } catch (error) {
+    console.error("getProductByIdService Error:", error);
+    return null;
+  }
+};
+
+export const getRelatedProductsService = async (category: string, excludeId: string, limitCount = 4): Promise<Product[]> => {
+  try {
+    const snap = await getDocs(query(collection(db, "products"), where("category", "==", category), limit(limitCount + 1)));
+    return snap.docs
+      .filter((d) => d.id !== excludeId)
+      .slice(0, limitCount)
+      .map((d) => {
+        const data = d.data();
+        return {
+          id: d.id,
+          name: data.name ?? "",
+          category: data.category ?? "",
+          condition: data.condition ?? "Bekas",
+          originalPrice: data.originalPrice ?? undefined,
+          price: data.price ?? 0,
+          stock: data.stock ?? 0,
+          description: data.description ?? "",
+          images: data.images ?? [],
+        };
+      });
+  } catch (error) {
+    console.error("getRelatedProductsService Error:", error);
+    return [];
+  }
+};
+
+export const getProductsByIdsService = async (ids: string[]): Promise<Product[]> => {
+  if (ids.length === 0) return [];
+  try {
+    const snaps = await Promise.all(ids.map((id) => getDoc(doc(db, "products", id))));
+    return snaps
+      .filter((s) => s.exists())
+      .map((s) => {
+        const data = s.data()!;
+        return {
+          id: s.id,
+          name: data.name ?? "",
+          category: data.category ?? "",
+          condition: data.condition ?? "Bekas",
+          originalPrice: data.originalPrice ?? undefined,
+          price: data.price ?? 0,
+          stock: data.stock ?? 0,
+          description: data.description ?? "",
+          images: data.images ?? [],
+        };
+      });
+  } catch (error) {
+    console.error("getProductsByIdsService Error:", error);
+    return [];
   }
 };

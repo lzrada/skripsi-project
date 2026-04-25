@@ -3,9 +3,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { getWishlistIds } from "@/service/wishlist.service";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/config/firebase";
-import { Product } from "@/service/product.service";
+import { getProductsByIdsService, Product } from "@/service/product.service";
 import ProductCard from "@/components/ui/ProductCard";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -45,22 +43,14 @@ export default function WishlistPage() {
       setLoading(false);
       return;
     }
-
     const ids = getWishlistIds(uid);
     if (ids.length === 0) {
       setProducts([]);
       setLoading(false);
       return;
     }
-
-    const results = await Promise.all(
-      ids.map(async (id) => {
-        const snap = await getDoc(doc(db, "products", id));
-        if (!snap.exists()) return null;
-        return { id: snap.id, ...snap.data() } as Product;
-      }),
-    );
-    setProducts(results.filter(Boolean) as Product[]);
+    const results = await getProductsByIdsService(ids);
+    setProducts(results);
     setLoading(false);
   }, [uid]);
 

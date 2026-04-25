@@ -1,7 +1,6 @@
 "use client";
 
-import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "@/config/firebase";
+import { subscribeToOrderByIdService } from "@/service/order.service";
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -56,35 +55,20 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     const uid = getUid();
 
-    // Subscribe realtime — status update admin langsung kelihatan tanpa refresh
-    const unsub = onSnapshot(doc(db, "orders", decodedId), (snap) => {
-      if (!snap.exists()) {
+    const unsub = subscribeToOrderByIdService(decodedId, (data) => {
+      if (!data) {
         setOrder(null);
         setLoading(false);
         return;
       }
 
-      const data = snap.data();
-
-      // Validasi kepemilikan — user hanya boleh lihat order miliknya sendiri
       if (uid && data.uid !== uid) {
         setForbidden(true);
         setLoading(false);
         return;
       }
 
-      setOrder({
-        id: snap.id,
-        date: data.date ?? "",
-        status: data.status ?? "Menunggu Konfirmasi",
-        items: data.items ?? [],
-        total: data.total ?? 0,
-        paymentMethod: data.paymentMethod ?? "",
-        address: data.address ?? "",
-        phone: data.phone ?? "",
-        recipientName: data.recipientName ?? "",
-        note: data.note ?? "",
-      });
+      setOrder(data);
       setLoading(false);
     });
 

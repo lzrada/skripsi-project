@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { doc, updateDoc } from "firebase/firestore";
-import { db } from "@/config/firebase";
+import { updateUserPersonalInfoService } from "@/service/user.service";
 import { UserData } from "@/types/user";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faSpinner } from "@fortawesome/free-solid-svg-icons";
@@ -32,7 +31,7 @@ export default function AccountPersonalInfo({ user }: AccountPersonalInfoProps) 
     setLoading(true);
     setError("");
     try {
-      await updateDoc(doc(db, "users", user.uid), {
+      await updateUserPersonalInfoService(user.uid, {
         fullName: form.fullName.trim(),
         phoneNumber: form.phoneNumber.trim(),
       });

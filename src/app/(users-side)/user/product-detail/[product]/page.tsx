@@ -181,29 +181,33 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Gambar */}
         <div className="space-y-3">
-          <div className="w-full h-80 md:h-96 rounded-2xl overflow-hidden relative bg-gray-100">
+          <div className="w-full aspect-square md:aspect-[4/3] rounded-2xl overflow-hidden relative bg-white border border-gray-100 shadow-sm">
             {product.images && product.images.length > 0 ? (
               <>
-                <Image src={product.images[activeImage]} alt={product.name} fill className="object-cover" />
+                <Image src={product.images[activeImage]} alt={product.name} fill className="object-contain p-3" />
                 {product.images.length > 1 && (
                   <>
                     <button
                       onClick={() => setActiveImage((i) => (i - 1 + product.images!.length) % product.images!.length)}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white hover:bg-gray-50 rounded-full flex items-center justify-center text-gray-600 shadow-md border border-gray-100 transition"
                     >
                       <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
                     </button>
                     <button
                       onClick={() => setActiveImage((i) => (i + 1) % product.images!.length)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/30 hover:bg-black/50 rounded-full flex items-center justify-center text-white transition"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white hover:bg-gray-50 rounded-full flex items-center justify-center text-gray-600 shadow-md border border-gray-100 transition"
                     >
                       <FontAwesomeIcon icon={faChevronRight} className="w-3 h-3" />
                     </button>
+                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                      {product.images.map((_, i) => (
+                        <button key={i} onClick={() => setActiveImage(i)} className={`w-1.5 h-1.5 rounded-full transition-all ${i === activeImage ? "bg-[#1E2753] w-4" : "bg-gray-300"}`} />
+                      ))}
+                    </div>
                   </>
                 )}
-                {discountPercent && <span className="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">-{discountPercent}%</span>}
-                {/* ✅ Tambah WishlistButton di halaman detail juga */}
-                <div className="absolute top-4 right-4">
+                {discountPercent && <span className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">-{discountPercent}%</span>}
+                <div className="absolute top-3 right-3">
                   <WishlistButton productId={product.id} productName={product.name} size="md" />
                 </div>
               </>
@@ -212,10 +216,16 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
             )}
           </div>
           {product.images && product.images.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {product.images.map((img, i) => (
-                <button key={i} onClick={() => setActiveImage(i)} className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition ${i === activeImage ? "border-[#1E2753]" : "border-transparent opacity-60 hover:opacity-100"}`}>
-                  <Image src={img} alt={`Foto ${i + 1}`} width={64} height={64} className="object-cover w-full h-full" />
+                <button
+                  key={i}
+                  onClick={() => setActiveImage(i)}
+                  className={`shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition bg-white flex items-center justify-center ${
+                    i === activeImage ? "border-[#1E2753] shadow-sm" : "border-gray-100 opacity-60 hover:opacity-100 hover:border-gray-300"
+                  }`}
+                >
+                  <Image src={img} alt={`Foto ${i + 1}`} width={80} height={80} className="object-contain w-full h-full p-1" />
                 </button>
               ))}
             </div>
@@ -231,7 +241,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
                 <FontAwesomeIcon icon={faStore} className="w-4 h-4 text-[#1E2753]" />
                 <span>Stok {product.stock}</span>
               </div>
-              {/* ✅ Tampilkan badge kondisi dari data nyata */}
               {product.condition && (
                 <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${product.condition.toLowerCase() === "baru" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
                   {product.condition.toLowerCase() === "baru" ? "Baru" : "Bekas / Second"}

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -16,7 +16,6 @@ import {
   faWallet,
   faChevronDown,
   faChevronUp,
-  faCircleCheck,
   faExclamationCircle,
   faBoxOpen,
   faUser,
@@ -50,7 +49,6 @@ function getUid(): string | null {
   );
 }
 
-// COD tidak perlu Midtrans, sisanya pakai Midtrans
 const paymentMethods = [
   {
     id: "transfer",
@@ -60,6 +58,7 @@ const paymentMethods = [
     color: "text-blue-500",
     bg: "bg-blue-50",
     useMidtrans: true,
+    paymentType: "transfer" as const,
   },
   {
     id: "kartu",
@@ -69,6 +68,7 @@ const paymentMethods = [
     color: "text-purple-500",
     bg: "bg-purple-50",
     useMidtrans: true,
+    paymentType: "kartu" as const,
   },
   {
     id: "ewallet",
@@ -78,6 +78,7 @@ const paymentMethods = [
     color: "text-green-500",
     bg: "bg-green-50",
     useMidtrans: true,
+    paymentType: "ewallet" as const,
   },
   {
     id: "cod",
@@ -87,10 +88,59 @@ const paymentMethods = [
     color: "text-orange-500",
     bg: "bg-orange-50",
     useMidtrans: false,
+    paymentType: undefined,
   },
 ];
 
-// ─── Confirm Modal ────────────────────────────────────────────────────────────
+// ─── Helper: redirect ke halaman sukses dengan semua data di URL ──────────────
+function redirectToSuccess({
+  router,
+  orderId,
+  orderItems, // snapshot SEBELUM cart di-clear
+  subtotal,
+  total,
+  diskonKupon,
+  couponCode,
+  paymentMethod,
+  isCod,
+}: {
+  router: ReturnType<typeof useRouter>;
+  orderId: string;
+  orderItems: CartItem[];
+  subtotal: number;
+  total: number;
+  diskonKupon: number;
+  couponCode: string;
+  paymentMethod: string;
+  isCod: boolean;
+}) {
+  const itemsParam = encodeURIComponent(
+    JSON.stringify(
+      orderItems.map((i) => ({
+        id: i.id,
+        name: i.name,
+        price: i.price,
+        qty: i.qty,
+        image: i.image ?? "",
+      })),
+    ),
+  );
+
+  const q = new URLSearchParams({
+    orderId,
+    total: String(total),
+    subtotal: String(subtotal),
+    diskon: String(diskonKupon),
+    coupon: couponCode,
+    method: paymentMethod,
+    isCod: String(isCod),
+    items: itemsParam,
+  });
+
+  router.replace(`/user/checkout/success?${q.toString()}`);
+}
+
+// ─── Confirm Modal ─────────────────────────────────────────────────────────────
 
 interface ConfirmOrderModalProps {
   form: { nama: string; telepon: string; alamat: string; kota: string; kodePos: string; catatan: string };
@@ -110,7 +160,6 @@ export function ConfirmOrderModal({ form, paymentLabel, isCod, orderItems, subto
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4" onClick={onClose}>
       <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
         <div className="bg-[#1E2753] px-6 py-5">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
@@ -192,7 +241,6 @@ export function ConfirmOrderModal({ form, paymentLabel, isCod, orderItems, subto
             </div>
           </div>
 
-          {/* Info COD vs Midtrans */}
           {isCod ? (
             <div className="flex items-start gap-2 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2.5">
               <FontAwesomeIcon icon={faHandHoldingDollar} className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
@@ -238,10 +286,12 @@ export function ConfirmOrderModal({ form, paymentLabel, isCod, orderItems, subto
   );
 }
 
-// ─── Checkout Form ────────────────────────────────────────────────────────────
+// ─── Checkout Form ─────────────────────────────────────────────────────────────
 
 function CheckoutForm() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+
   const selectedIds = searchParams.get("ids")?.split(",") ?? [];
   const couponCode = searchParams.get("coupon") ?? "";
   const couponId = searchParams.get("couponId") ?? "";
@@ -251,8 +301,6 @@ function CheckoutForm() {
   const [orderItems, setOrderItems] = useState<CartItem[]>([]);
   const [selectedPayment, setSelectedPayment] = useState("transfer");
   const [showOrderDetail, setShowOrderDetail] = useState(true);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [orderId, setOrderId] = useState("");
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [formError, setFormError] = useState("");
@@ -300,10 +348,14 @@ function CheckoutForm() {
     setShowConfirm(true);
   };
 
-  // ── Buat order COD langsung tanpa Midtrans ──────────────────
+  // ── COD ──────────────────────────────────────────────────────────────────
   const handleCodOrder = async () => {
     if (!uid) return;
     setLoading(true);
+
+    // ⚡ Simpan snapshot SEBELUM cart di-clear
+    const snapshot = [...orderItems];
+
     try {
       const id = await createOrderService({
         uid,
@@ -314,7 +366,7 @@ function CheckoutForm() {
         kodePos: form.kodePos,
         note: form.catatan,
         paymentMethod: selectedMethod.label,
-        items: orderItems.map((i) => ({
+        items: snapshot.map((i) => ({
           id: i.id,
           name: i.name,
           price: i.price,
@@ -328,13 +380,22 @@ function CheckoutForm() {
 
       await clearCartService(
         uid,
-        orderItems.map((i) => i.id),
+        snapshot.map((i) => i.id),
       );
       if (couponId && diskonKupon > 0) await incrementCouponUsageService(couponId);
 
-      setOrderId(id);
-      setShowConfirm(false);
-      setIsSuccess(true);
+      // Redirect ke halaman sukses dengan semua data
+      redirectToSuccess({
+        router,
+        orderId: id,
+        orderItems: snapshot,
+        subtotal,
+        total,
+        diskonKupon,
+        couponCode,
+        paymentMethod: selectedMethod.label,
+        isCod: true,
+      });
     } catch (err: any) {
       toast.error(err?.message ?? "Gagal membuat pesanan, coba lagi.");
       setShowConfirm(false);
@@ -343,15 +404,20 @@ function CheckoutForm() {
     }
   };
 
-  // ── Buat order via Midtrans ──────────────────────────────────
+  // ── Midtrans ──────────────────────────────────────────────────────────────
   const handleMidtransOrder = async () => {
     if (!uid) return;
     setLoading(true);
+
+    // ⚡ Simpan snapshot SEBELUM cart di-clear
+    const snapshot = [...orderItems];
+
     try {
       const midtrans = await createMidtransTransaction({
-        items: orderItems,
+        items: snapshot,
         user: { name: form.nama, email: "user@email.com" },
         totalPrice: total,
+        paymentType: selectedMethod.paymentType,
       });
 
       if (!window.snap) {
@@ -371,7 +437,7 @@ function CheckoutForm() {
             kodePos: form.kodePos,
             note: form.catatan,
             paymentMethod: selectedMethod.label,
-            items: orderItems.map((i) => ({
+            items: snapshot.map((i) => ({
               id: i.id,
               name: i.name,
               price: i.price,
@@ -386,13 +452,21 @@ function CheckoutForm() {
 
           await clearCartService(
             uid,
-            orderItems.map((i) => i.id),
+            snapshot.map((i) => i.id),
           );
           if (couponId && diskonKupon > 0) await incrementCouponUsageService(couponId);
 
-          setOrderId(id);
-          setShowConfirm(false);
-          setIsSuccess(true);
+          redirectToSuccess({
+            router,
+            orderId: id,
+            orderItems: snapshot,
+            subtotal,
+            total,
+            diskonKupon,
+            couponCode,
+            paymentMethod: selectedMethod.label,
+            isCod: false,
+          });
         },
         onPending: async (result: any) => {
           await createOrderService({
@@ -404,7 +478,7 @@ function CheckoutForm() {
             kodePos: form.kodePos,
             note: form.catatan,
             paymentMethod: selectedMethod.label,
-            items: orderItems.map((i) => ({
+            items: snapshot.map((i) => ({
               id: i.id,
               name: i.name,
               price: i.price,
@@ -441,56 +515,7 @@ function CheckoutForm() {
     else handleMidtransOrder();
   };
 
-  // ─── Success Screen ───────────────────────────────────────────────────────
-  if (isSuccess)
-    return (
-      <div className="max-w-lg mx-auto px-4 py-16 flex flex-col items-center text-center gap-4">
-        {/* Animasi centang */}
-        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center animate-[bounceIn_0.5s_ease]">
-          <FontAwesomeIcon icon={faCircleCheck} className="w-12 h-12 text-green-500" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Pesanan Berhasil! 🎉</h1>
-          <p className="text-sm text-gray-500 mt-1">{isCod ? "Pesananmu sedang diproses. Bayar saat barang tiba ya!" : "Pembayaran diterima. Pesananmu sedang diproses!"}</p>
-        </div>
-
-        <div className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-left space-y-2.5 mt-1">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">No. Pesanan</span>
-            <span className="font-bold text-gray-800">#{orderId.slice(0, 8).toUpperCase()}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Subtotal</span>
-            <span className="font-medium text-gray-700">{formatPrice(subtotal)}</span>
-          </div>
-          {diskonKupon > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Diskon {couponCode && `(${couponCode})`}</span>
-              <span className="font-bold text-red-500">-{formatPrice(diskonKupon)}</span>
-            </div>
-          )}
-          <div className="flex justify-between text-sm border-t border-gray-200 pt-2.5">
-            <span className="font-bold text-gray-800">Total Bayar</span>
-            <span className="font-bold text-[#1E2753]">{formatPrice(total)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Metode Bayar</span>
-            <span className="font-semibold text-gray-800">{selectedMethod.label}</span>
-          </div>
-        </div>
-
-        <div className="flex gap-3 w-full mt-1">
-          <Link href="/user/dashboard-user" className="flex-1 py-3 border-2 border-[#1E2753] text-[#1E2753] rounded-xl font-semibold text-sm text-center hover:bg-[#1E2753]/5 transition">
-            Lanjut Belanja
-          </Link>
-          <Link href="/user/orders" className="flex-1 py-3 bg-[#1E2753] text-white rounded-xl font-semibold text-sm text-center hover:bg-[#2a3470] transition">
-            Lihat Pesanan
-          </Link>
-        </div>
-      </div>
-    );
-
-  // ─── Main Checkout Form ───────────────────────────────────────────────────
+  // ─── Main Form ─────────────────────────────────────────────────────────────
   return (
     <>
       {showConfirm && (
@@ -521,7 +546,6 @@ function CheckoutForm() {
           </div>
         </div>
 
-        {/* Error banner */}
         {formError && (
           <div className="mb-4 flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">
             <FontAwesomeIcon icon={faExclamationCircle} className="w-4 h-4 text-red-500 shrink-0" />
@@ -529,7 +553,6 @@ function CheckoutForm() {
           </div>
         )}
 
-        {/* Kupon aktif */}
         {couponCode && diskonKupon > 0 && (
           <div className="mb-4 flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl px-4 py-3">
             <FontAwesomeIcon icon={faTicket} className="w-4 h-4 text-green-600 shrink-0" />
@@ -542,7 +565,7 @@ function CheckoutForm() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* ── Kiri: Form ── */}
           <div className="lg:col-span-2 space-y-4">
-            {/* Alamat Pengiriman */}
+            {/* Alamat */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center">
@@ -633,20 +656,18 @@ function CheckoutForm() {
                 ))}
               </div>
 
-              {/* Info tambahan sesuai metode */}
-              {isCod && (
+              {isCod ? (
                 <div className="mt-3 flex items-start gap-2 bg-orange-50 border border-orange-100 rounded-xl px-3.5 py-3">
                   <FontAwesomeIcon icon={faHandHoldingDollar} className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
                   <p className="text-xs text-orange-700">
                     Bayar langsung ke kurir saat barang tiba. Hanya tersedia di wilayah <strong>Blitar & sekitarnya</strong>.
                   </p>
                 </div>
-              )}
-              {!isCod && (
+              ) : (
                 <div className="mt-3 flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-xl px-3.5 py-3">
                   <FontAwesomeIcon icon={faLock} className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
                   <p className="text-xs text-blue-700">
-                    Pembayaran diproses aman via <strong>Midtrans</strong>. Mendukung transfer bank, kartu kredit & e-wallet.
+                    Pembayaran diproses aman via <strong>Midtrans</strong>. Popup akan langsung menampilkan metode <strong>{selectedMethod.label}</strong> yang kamu pilih.
                   </p>
                 </div>
               )}
@@ -655,7 +676,6 @@ function CheckoutForm() {
 
           {/* ── Kanan: Ringkasan ── */}
           <div className="space-y-4">
-            {/* Detail produk */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               <button onClick={() => setShowOrderDetail(!showOrderDetail)} className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition">
                 <p className="text-sm font-bold text-gray-800">
@@ -668,7 +688,6 @@ function CheckoutForm() {
                 <div className="px-4 pb-4 space-y-3 border-t border-gray-50">
                   {orderItems.map((item) => (
                     <div key={item.id} className="flex items-center gap-3 pt-3">
-                      {/* Gambar produk kecil */}
                       <div className="w-12 h-12 rounded-xl bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
                         {item.image ? <Image src={item.image} alt={item.name} width={48} height={48} className="object-contain w-full h-full p-1" /> : <span className="text-xl">📦</span>}
                       </div>
@@ -685,10 +704,8 @@ function CheckoutForm() {
               )}
             </div>
 
-            {/* Ringkasan harga + tombol */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
               <p className="text-sm font-bold text-gray-800">Ringkasan Pembayaran</p>
-
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-gray-500">
                   <span>Subtotal Produk</span>
@@ -714,8 +731,7 @@ function CheckoutForm() {
               <button
                 onClick={handleCheckoutClick}
                 disabled={orderItems.length === 0}
-                className="w-full py-3.5 bg-[#1E2753] text-white rounded-xl font-bold text-sm
-                  hover:bg-[#2a3470] transition disabled:opacity-60 flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-[#1E2753] text-white rounded-xl font-bold text-sm hover:bg-[#2a3470] transition disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {isCod ? (
                   <>
@@ -733,7 +749,6 @@ function CheckoutForm() {
               <p className="text-[10px] text-gray-400 text-center">{isCod ? "Pesanan dibuat langsung tanpa perlu bayar di muka." : "Kamu akan dikonfirmasi sebelum diarahkan ke halaman bayar."}</p>
             </div>
 
-            {/* Trust badge */}
             <div className="bg-gray-50 rounded-2xl p-3 flex items-center justify-center gap-4 text-center">
               {[
                 { icon: "🔒", text: "Transaksi Aman" },

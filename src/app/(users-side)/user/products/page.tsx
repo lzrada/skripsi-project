@@ -134,9 +134,7 @@ function ProductsContent() {
             {/* Filter toggle */}
             <button
               onClick={() => setFilterOpen((o) => !o)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${
-                hasFilter ? "bg-[#1E2753] text-white border-[#1E2753]" : "bg-white border-gray-200 text-gray-600 hover:border-[#1E2753]"
-              }`}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${hasFilter ? "bg-[#1E2753] text-white border-[#1E2753]" : "bg-white border-gray-200 text-gray-600 hover:border-[#1E2753]"}`}
             >
               <FontAwesomeIcon icon={faSliders} className="w-3.5 h-3.5" />
               Filter {hasFilter && <span className="bg-white/30 text-xs px-1.5 rounded-full">aktif</span>}
@@ -238,7 +236,9 @@ function ProductsContent() {
         {/* ─── Grid ───────────────────────────────────────────── */}
         {loading ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {[...Array(8)].map((_, i) => <ProductSkeleton key={i} />)}
+            {[...Array(8)].map((_, i) => (
+              <ProductSkeleton key={i} />
+            ))}
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="bg-white border border-gray-100 rounded-2xl p-10 text-center">

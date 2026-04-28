@@ -163,6 +163,14 @@ export const subscribeToAllOrdersService = (callback: (orders: Order[]) => void)
 };
 
 /**
+ * Update paymentStatus order — dipanggil dari onSuccess callback Midtrans.
+ */
+export const updatePaymentStatusService = async (orderId: string, paymentStatus: "paid" | "pending" | "unpaid"): Promise<void> => {
+  const orderRef = doc(db, "orders", orderId);
+  await updateDoc(orderRef, { paymentStatus });
+};
+
+/**
  * Update status order oleh admin.
  */
 export const updateOrderStatusService = async (orderId: string, status: OrderStatus): Promise<void> => {

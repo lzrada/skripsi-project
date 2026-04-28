@@ -9,6 +9,7 @@ export const paymentMethods = [
     color: "text-blue-500",
     bg: "bg-blue-50",
     useMidtrans: true,
+    paymentType: "transfer" as const,
   },
   {
     id: "kartu",
@@ -18,6 +19,7 @@ export const paymentMethods = [
     color: "text-purple-500",
     bg: "bg-purple-50",
     useMidtrans: true,
+    paymentType: "kartu" as const,
   },
   {
     id: "ewallet",
@@ -27,6 +29,7 @@ export const paymentMethods = [
     color: "text-green-500",
     bg: "bg-green-50",
     useMidtrans: true,
+    paymentType: "ewallet" as const,
   },
   {
     id: "cod",
@@ -36,5 +39,8 @@ export const paymentMethods = [
     color: "text-orange-500",
     bg: "bg-orange-50",
     useMidtrans: false,
+    paymentType: undefined,
   },
 ];
+
+export type PaymentMethod = (typeof paymentMethods)[number];

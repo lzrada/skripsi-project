@@ -10,6 +10,9 @@ export interface Product {
   originalPrice?: number;
   price: number;
   stock: number;
+  // ── Reorder Point: batas minimum stok per produk ──
+  // Jika stock <= reorderPoint, admin akan dapat notifikasi di dashboard
+  reorderPoint: number;
   description?: string;
   images: string[];
   createdAt?: any;
@@ -22,6 +25,7 @@ export interface AddProductPayload {
   originalPrice?: number;
   price: number;
   stock: number;
+  reorderPoint: number;
   description?: string;
   images: string[];
 }
@@ -33,6 +37,7 @@ export interface UpdateProductPayload {
   originalPrice?: number;
   price: number;
   stock: number;
+  reorderPoint: number;
   description?: string;
   images: string[];
 }
@@ -82,6 +87,8 @@ export const addProductService = async (payload: AddProductPayload) => {
       originalPrice: payload.originalPrice ?? null,
       price: payload.price,
       stock: payload.stock,
+      // Simpan reorderPoint ke Firestore — default 2 jika tidak diisi
+      reorderPoint: payload.reorderPoint ?? 2,
       description: payload.description ?? "",
       images: payload.images,
       createdAt: serverTimestamp(),
@@ -102,6 +109,7 @@ export const updateProductService = async (id: string, payload: UpdateProductPay
       originalPrice: payload.originalPrice ?? null,
       price: payload.price,
       stock: payload.stock,
+      reorderPoint: payload.reorderPoint ?? 2,
       description: payload.description ?? "",
       images: payload.images,
     });
@@ -134,6 +142,8 @@ export const subscribeToProductsService = (callback: (products: Product[]) => vo
           originalPrice: data.originalPrice ?? undefined,
           price: data.price || 0,
           stock: data.stock || 0,
+          // Ambil reorderPoint dari Firestore, default 2 untuk produk lama
+          reorderPoint: data.reorderPoint ?? 2,
           description: data.description || "",
           images: data.images || [],
           createdAt: data.createdAt || null,
@@ -161,6 +171,7 @@ export const getProductByIdService = async (productId: string): Promise<Product 
       originalPrice: data.originalPrice ?? undefined,
       price: data.price ?? 0,
       stock: data.stock ?? 0,
+      reorderPoint: data.reorderPoint ?? 2,
       description: data.description ?? "",
       images: data.images ?? [],
       createdAt: data.createdAt ?? null,
@@ -187,6 +198,7 @@ export const getRelatedProductsService = async (category: string, excludeId: str
           originalPrice: data.originalPrice ?? undefined,
           price: data.price ?? 0,
           stock: data.stock ?? 0,
+          reorderPoint: data.reorderPoint ?? 2,
           description: data.description ?? "",
           images: data.images ?? [],
         };
@@ -213,6 +225,7 @@ export const getProductsByIdsService = async (ids: string[]): Promise<Product[]>
           originalPrice: data.originalPrice ?? undefined,
           price: data.price ?? 0,
           stock: data.stock ?? 0,
+          reorderPoint: data.reorderPoint ?? 2,
           description: data.description ?? "",
           images: data.images ?? [],
         };

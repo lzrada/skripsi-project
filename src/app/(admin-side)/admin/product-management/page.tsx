@@ -24,6 +24,7 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
     price: initial?.price?.toString() ?? "",
     originalPrice: initial?.originalPrice?.toString() ?? "",
     stock: initial?.stock?.toString() ?? "",
+    reorderPoint: initial?.reorderPoint?.toString() ?? "2",
     description: initial?.description ?? "",
   });
 
@@ -90,10 +91,10 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
         originalPrice: originalPriceNum,
         price: priceNum,
         stock: Number(formData.stock),
+        reorderPoint: Number(formData.reorderPoint) || 2,
         description: formData.description,
         images: finalImages,
       };
-
       if (mode === "add") {
         await addProductService(payload);
       } else if (mode === "edit" && initial) {
@@ -235,6 +236,24 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
                 placeholder="0"
                 className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 transition"
               />
+            </div>
+
+            {/* Reorder Point */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">
+                Reorder Point
+                <span className="text-slate-400 font-normal text-xs ml-1">(batas minimum stok)</span>
+              </label>
+              <input
+                type="number"
+                name="reorderPoint"
+                min={1}
+                value={formData.reorderPoint}
+                onChange={handleInput}
+                placeholder="2"
+                className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 transition"
+              />
+              <p className="text-xs text-slate-400 mt-1">Admin akan diberi notifikasi jika stok ≤ nilai ini</p>
             </div>
 
             {/* Harga Jual */}

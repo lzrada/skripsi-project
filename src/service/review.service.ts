@@ -1,6 +1,5 @@
-// src/service/review.service.ts
 import { db } from "@/config/firebase";
-import { collection, addDoc, onSnapshot, query, where, orderBy, serverTimestamp, doc, updateDoc, runTransaction } from "firebase/firestore";
+import { collection, addDoc, onSnapshot, query, where, orderBy, serverTimestamp, doc, getDocs, runTransaction } from "firebase/firestore";
 import { Review } from "@/types/product";
 
 export const subscribeToProductReviews = (productId: string, callback: (reviews: Review[]) => void) => {
@@ -15,9 +14,34 @@ export const subscribeToProductReviews = (productId: string, callback: (reviews:
   });
 };
 
+export const checkUserCanReviewService = async (uid: string, productId: string): Promise<{ canReview: boolean; reason?: string }> => {
+  const ordersSnap = await getDocs(query(collection(db, "orders"), where("uid", "==", uid), where("status", "==", "Selesai")));
+
+  const hasBought = ordersSnap.docs.some((d) => {
+    const items: { id: string }[] = d.data().items ?? [];
+    return items.some((item) => item.id === productId);
+  });
+
+  if (!hasBought) {
+    return { canReview: false, reason: "Kamu harus membeli dan menyelesaikan pesanan produk ini terlebih dahulu sebelum dapat memberikan ulasan." };
+  }
+
+  const existingReview = await getDocs(query(collection(db, "reviews"), where("productId", "==", productId), where("uid", "==", uid)));
+
+  if (!existingReview.empty) {
+    return { canReview: false, reason: "Kamu sudah memberikan ulasan untuk produk ini." };
+  }
+
+  return { canReview: true };
+};
+
 export const addReviewService = async (productId: string, uid: string, userName: string, userPhoto: string | undefined, rating: number, comment: string): Promise<void> => {
+  const check = await checkUserCanReviewService(uid, productId);
+  if (!check.canReview) {
+    throw new Error(check.reason);
+  }
+
   await runTransaction(db, async (transaction) => {
-    // 1. Tambah review baru
     const reviewRef = doc(collection(db, "reviews"));
     transaction.set(reviewRef, {
       productId,
@@ -29,7 +53,6 @@ export const addReviewService = async (productId: string, uid: string, userName:
       createdAt: serverTimestamp(),
     });
 
-    // 2. Update average rating & total reviews di produk
     const productRef = doc(db, "products", productId);
     const productSnap = await transaction.get(productRef);
 

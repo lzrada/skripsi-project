@@ -1,18 +1,19 @@
-// src/app/(users-side)/user/product-detail/[product]/page.tsx
 "use client";
 
 import { useState, use, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCartShopping, faBagShopping, faShield, faTruck, faRotateLeft, faChevronLeft, faChevronRight, faStore } from "@fortawesome/free-solid-svg-icons";
+import { faCartShopping, faBagShopping, faShield, faTruck, faRotateLeft, faChevronLeft, faChevronRight, faStore, faStar, faStarHalfAlt } from "@fortawesome/free-solid-svg-icons";
+import { faStar as faStarEmpty } from "@fortawesome/free-regular-svg-icons";
 import { doc, getDoc, collection, query, limit, getDocs, where } from "firebase/firestore";
 import { db } from "@/config/firebase";
-import { Product } from "@/types/product";
+import { Product, Review } from "@/types/product";
 import ProductCard from "@/components/ui/ProductCard";
 import { addToCartService } from "@/service/cart.service";
 import WishlistButton from "@/components/ui/WishlistButton";
 import { toast } from "@/components/ui/Toast";
+import { subscribeToProductReviews, addReviewService, checkUserCanReviewService } from "@/service/review.service";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -20,6 +21,12 @@ function formatPrice(price: number) {
     currency: "IDR",
     minimumFractionDigits: 0,
   }).format(price);
+}
+
+function formatDate(dateStr: any) {
+  if (!dateStr) return "";
+  const date = dateStr?.toDate ? dateStr.toDate() : new Date(dateStr);
+  return date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
 }
 
 function getUidFromCookie(): string | null {
@@ -32,6 +39,30 @@ function getUidFromCookie(): string | null {
   );
 }
 
+function StarDisplay({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }) {
+  const sizeClass = size === "md" ? "w-5 h-5" : "w-3.5 h-3.5";
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <FontAwesomeIcon key={i} icon={rating >= i ? faStar : rating >= i - 0.5 ? faStarHalfAlt : faStarEmpty} className={`${sizeClass} ${rating >= i - 0.5 ? "text-amber-400" : "text-gray-300"}`} />
+      ))}
+    </div>
+  );
+}
+
+function StarInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [hovered, setHovered] = useState(0);
+  return (
+    <div className="flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <button key={i} type="button" onClick={() => onChange(i)} onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(0)} className="p-0.5">
+          <FontAwesomeIcon icon={faStar} className={`w-7 h-7 transition-colors ${i <= (hovered || value) ? "text-amber-400" : "text-gray-300"}`} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function ProductDetailPage({ params }: { params: Promise<{ product: string }> }) {
   const { product: productId } = use(params);
 
@@ -40,9 +71,16 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
   const [qty, setQty] = useState(1);
-  const [activeTab, setActiveTab] = useState<"deskripsi" | "spesifikasi">("deskripsi");
+  const [activeTab, setActiveTab] = useState<"deskripsi" | "spesifikasi" | "ulasan">("deskripsi");
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
+
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [canReview, setCanReview] = useState(false);
+  const [alreadyReviewed, setAlreadyReviewed] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -62,7 +100,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
           price: data.price,
           originalPrice: data.originalPrice,
           stock: data.stock,
-          reorderPoint: data.reorderPoint ?? 5, // tetap diambil (untuk internal)
+          reorderPoint: data.reorderPoint ?? 5,
           description: data.description ?? "",
           images: data.images ?? [],
           averageRating: data.averageRating ?? 0,
@@ -70,16 +108,11 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
         };
         setProduct(p);
 
-        // Produk terkait
         const relSnap = await getDocs(query(collection(db, "products"), where("category", "==", data.category), limit(6)));
-
         const rel: Product[] = relSnap.docs
           .filter((d) => d.id !== productId)
           .slice(0, 4)
-          .map((d) => ({
-            id: d.id,
-            ...(d.data() as Omit<Product, "id">),
-          }));
+          .map((d) => ({ id: d.id, ...(d.data() as Omit<Product, "id">) }));
         setRelated(rel);
       } catch (err) {
         console.error(err);
@@ -89,6 +122,23 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
     };
 
     fetchProduct();
+  }, [productId]);
+
+  useEffect(() => {
+    const unsub = subscribeToProductReviews(productId, setReviews);
+    return () => unsub();
+  }, [productId]);
+
+  useEffect(() => {
+    const uid = getUidFromCookie();
+    if (!uid) return;
+    checkUserCanReviewService(uid, productId).then((result) => {
+      if (result.canReview) {
+        setCanReview(true);
+      } else if (result.reason?.includes("sudah memberikan ulasan")) {
+        setAlreadyReviewed(true);
+      }
+    });
   }, [productId]);
 
   const handleAddToCart = async () => {
@@ -156,6 +206,37 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
     }
   };
 
+  const handleSubmitReview = async () => {
+    const uid = getUidFromCookie();
+    if (!uid) {
+      toast.warning("Silakan login terlebih dahulu!");
+      return;
+    }
+    if (reviewRating === 0) {
+      toast.warning("Pilih rating bintang terlebih dahulu.");
+      return;
+    }
+    if (reviewComment.trim().length < 5) {
+      toast.warning("Ulasan minimal 5 karakter.");
+      return;
+    }
+    setSubmittingReview(true);
+    try {
+      const userSnap = await getDoc(doc(db, "users", uid));
+      const userData = userSnap.data();
+      await addReviewService(productId, uid, userData?.fullName ?? "Pengguna", userData?.photoURL ?? undefined, reviewRating, reviewComment);
+      toast.success("Ulasan berhasil dikirim!");
+      setReviewRating(0);
+      setReviewComment("");
+      setCanReview(false);
+      setAlreadyReviewed(true);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Gagal mengirim ulasan.");
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
   if (loading)
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -190,7 +271,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
       </nav>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Gambar Produk */}
         <div className="space-y-3">
           <div className="w-full aspect-square md:aspect-[4/3] rounded-2xl overflow-hidden relative bg-white border border-gray-100 shadow-sm">
             {product.images && product.images.length > 0 ? (
@@ -244,11 +324,18 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
           )}
         </div>
 
-        {/* Info Produk */}
         <div className="space-y-4">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-gray-800 leading-snug mb-2">{product.name}</h1>
             <div className="flex items-center gap-3 text-sm flex-wrap">
+              {(product.averageRating ?? 0) > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <StarDisplay rating={product.averageRating ?? 0} />
+                  <span className="text-xs text-gray-500">
+                    {product.averageRating?.toFixed(1)} ({product.totalReviews} ulasan)
+                  </span>
+                </div>
+              )}
               <div className="flex items-center gap-1 text-gray-500">
                 <FontAwesomeIcon icon={faStore} className="w-4 h-4 text-[#1E2753]" />
                 <span>Stok {product.stock}</span>
@@ -330,23 +417,23 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
         </div>
       </div>
 
-      {/* Tab Deskripsi & Spesifikasi */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="flex border-b border-gray-100">
-          {(["deskripsi", "spesifikasi"] as const).map((tab) => (
+          {(["deskripsi", "spesifikasi", "ulasan"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`flex-1 py-4 text-sm font-semibold capitalize transition-colors ${activeTab === tab ? "text-[#1E2753] border-b-2 border-[#1E2753]" : "text-gray-500 hover:text-gray-700"}`}
             >
-              {tab}
+              {tab === "ulasan" ? `Ulasan (${product.totalReviews ?? 0})` : tab}
             </button>
           ))}
         </div>
+
         <div className="p-6">
-          {activeTab === "deskripsi" ? (
-            <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{product.description || "Tidak ada deskripsi."}</p>
-          ) : (
+          {activeTab === "deskripsi" && <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{product.description || "Tidak ada deskripsi."}</p>}
+
+          {activeTab === "spesifikasi" && (
             <div className="space-y-2 text-sm">
               <div className="flex py-2 border-b border-gray-100">
                 <span className="w-36 text-gray-500">Kategori</span>
@@ -366,10 +453,78 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
               </div>
             </div>
           )}
+
+          {activeTab === "ulasan" && (
+            <div className="space-y-6">
+              {(product.averageRating ?? 0) > 0 && (
+                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                  <div className="text-center">
+                    <p className="text-4xl font-bold text-[#1E2753]">{product.averageRating?.toFixed(1)}</p>
+                    <StarDisplay rating={product.averageRating ?? 0} size="md" />
+                    <p className="text-xs text-gray-400 mt-1">{product.totalReviews} ulasan</p>
+                  </div>
+                </div>
+              )}
+
+              {canReview && (
+                <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+                  <p className="text-sm font-semibold text-gray-800">Tulis Ulasanmu</p>
+                  <StarInput value={reviewRating} onChange={setReviewRating} />
+                  <textarea
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    placeholder="Bagikan pengalamanmu dengan produk ini..."
+                    rows={3}
+                    className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:border-[#1E2753]"
+                  />
+                  <button
+                    onClick={handleSubmitReview}
+                    disabled={submittingReview || reviewRating === 0}
+                    className="px-5 py-2.5 bg-[#1E2753] text-white rounded-xl text-sm font-semibold hover:bg-[#2a3470] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submittingReview ? "Mengirim..." : "Kirim Ulasan"}
+                  </button>
+                </div>
+              )}
+
+              {alreadyReviewed && (
+                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                  <p className="text-sm text-green-700 font-medium">Kamu sudah memberikan ulasan untuk produk ini.</p>
+                </div>
+              )}
+
+              {!canReview && !alreadyReviewed && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+                  <p className="text-sm text-blue-700">Hanya pembeli yang telah menyelesaikan pesanan yang dapat memberikan ulasan.</p>
+                </div>
+              )}
+
+              {reviews.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-6">Belum ada ulasan untuk produk ini.</p>
+              ) : (
+                <div className="space-y-4">
+                  {reviews.map((r) => (
+                    <div key={r.id} className="flex gap-3 pb-4 border-b border-gray-100 last:border-0">
+                      <div className="w-9 h-9 rounded-full bg-[#1E2753] flex items-center justify-center text-white text-sm font-bold shrink-0 overflow-hidden">
+                        {r.userPhoto ? <Image src={r.userPhoto} alt={r.userName} width={36} height={36} className="object-cover w-full h-full" /> : (r.userName?.[0]?.toUpperCase() ?? "U")}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <p className="text-sm font-semibold text-gray-800">{r.userName}</p>
+                          <p className="text-xs text-gray-400 shrink-0">{formatDate(r.createdAt)}</p>
+                        </div>
+                        <StarDisplay rating={r.rating} />
+                        <p className="text-sm text-gray-600 mt-1.5 leading-relaxed">{r.comment}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Produk Terkait */}
       {related.length > 0 && (
         <section>
           <h2 className="text-lg font-bold text-gray-800 mb-4">Produk Terkait</h2>

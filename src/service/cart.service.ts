@@ -26,18 +26,12 @@ export const subscribeToCartService = (uid: string, callback: (items: CartItem[]
   });
 };
 
-/**
- * Tambah produk ke cart dengan validasi stok real-time dari Firestore.
- * Jika produk sudah ada di cart, qty dijumlahkan — tapi tidak boleh melebihi stok.
- */
 export const addToCartService = async (uid: string, item: CartItem) => {
   const cartRef = doc(db, "users", uid, "cart", item.id);
   const productRef = doc(db, "products", item.id);
 
-  // Ambil data cart dan produk secara paralel
   const [cartSnap, productSnap] = await Promise.all([getDoc(cartRef), getDoc(productRef)]);
 
-  // Gunakan stok dari Firestore (sumber kebenaran), bukan dari item lokal
   const realStock: number = productSnap.exists() ? (productSnap.data().stock ?? 0) : item.stock;
 
   if (realStock <= 0) {
@@ -70,9 +64,6 @@ export const addToCartService = async (uid: string, item: CartItem) => {
   }
 };
 
-/**
- * Update qty item di cart — tidak boleh melebihi stok real-time dari Firestore.
- */
 export const updateCartQtyService = async (uid: string, productId: string, qty: number) => {
   const cartRef = doc(db, "users", uid, "cart", productId);
   const productRef = doc(db, "products", productId);

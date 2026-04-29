@@ -1,11 +1,20 @@
-export const REORDER_POINT = 50; // Example reorder point
-export const MINIMUM_STOCK_THRESHOLD = 20; // Minimum stock threshold
+export const DEFAULT_REORDER_POINT = 5;
 
-export function calculateInventoryLevel(currentStock: number): string {
-  if (currentStock < REORDER_POINT) {
-    return "Reorder required";
-  } else if (currentStock < MINIMUM_STOCK_THRESHOLD) {
-    return "Warning: Low stock";
+export const MINIMUM_STOCK_THRESHOLD = 2;
+
+export function calculateInventoryLevel(currentStock: number, reorderPoint: number = DEFAULT_REORDER_POINT): string {
+  if (currentStock <= MINIMUM_STOCK_THRESHOLD) {
+    return "Stok Kritis";
+  } else if (currentStock <= reorderPoint) {
+    return "Perlu Restock";
   }
-  return "Stock level is sufficient";
+  return "Stok Aman";
+}
+
+export function isLowStock(currentStock: number, reorderPoint: number = DEFAULT_REORDER_POINT): boolean {
+  return currentStock <= reorderPoint;
+}
+
+export function isCriticalStock(currentStock: number): boolean {
+  return currentStock <= MINIMUM_STOCK_THRESHOLD;
 }

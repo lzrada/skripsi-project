@@ -1,6 +1,6 @@
-// src/service/inventory.service.ts
 import { db } from "@/config/firebase";
 import { collection, onSnapshot, query, doc, updateDoc } from "firebase/firestore";
+import { isLowStock, isCriticalStock, DEFAULT_REORDER_POINT } from "@/constants/inventory";
 
 export interface LowStockProduct {
   id: string;
@@ -10,18 +10,10 @@ export interface LowStockProduct {
   suggestedReorder?: number;
 }
 
-// Hitung Reorder Point (sesuai teori skripsi)
 export function calculateReorderPoint(averageDailySales: number, leadTime: number): number {
   return Math.ceil(averageDailySales * leadTime);
 }
 
-// Hitung EOQ (opsional)
-export function calculateEOQ(demand: number, orderingCost: number, holdingCost: number): number {
-  return Math.sqrt((2 * demand * orderingCost) / holdingCost);
-}
-
-// ==================== MONITORING REORDER POINT ====================
-// Subscribe ke produk dengan stok rendah
 export const subscribeToLowStockProductsService = (callback: (products: LowStockProduct[]) => void) => {
   try {
     const q = query(collection(db, "products"));
@@ -30,21 +22,19 @@ export const subscribeToLowStockProductsService = (callback: (products: LowStock
       const allProducts: LowStockProduct[] = snapshot.docs.map((docItem) => {
         const data = docItem.data();
         const stock = data.stock ?? 0;
-        const reorderPoint = data.reorderPoint ?? 5;
+        const reorderPoint = data.reorderPoint ?? DEFAULT_REORDER_POINT;
 
         return {
           id: docItem.id,
           name: data.name ?? "",
           stock,
           reorderPoint,
-          suggestedReorder: stock < reorderPoint ? reorderPoint * 2 : undefined,
+          suggestedReorder: isLowStock(stock, reorderPoint) ? reorderPoint * 2 : undefined,
         };
       });
 
-      // Filter hanya produk yang perlu diperhatikan (stok <= reorderPoint)
-      const lowStockProducts = allProducts.filter((p) => p.stock <= p.reorderPoint);
+      const lowStockProducts = allProducts.filter((p) => isLowStock(p.stock, p.reorderPoint));
 
-      // Pengecekan penting agar tidak error "callback is not a function"
       if (typeof callback === "function") {
         callback(lowStockProducts);
       }
@@ -57,7 +47,6 @@ export const subscribeToLowStockProductsService = (callback: (products: LowStock
   }
 };
 
-// Subscribe ke semua produk (untuk dashboard inventory)
 export const subscribeToInventoryAlertsService = (callback: (products: LowStockProduct[]) => void) => {
   try {
     const q = query(collection(db, "products"));
@@ -69,7 +58,7 @@ export const subscribeToInventoryAlertsService = (callback: (products: LowStockP
           id: docItem.id,
           name: data.name ?? "",
           stock: data.stock ?? 0,
-          reorderPoint: data.reorderPoint ?? 5,
+          reorderPoint: data.reorderPoint ?? DEFAULT_REORDER_POINT,
         };
       });
 
@@ -85,7 +74,6 @@ export const subscribeToInventoryAlertsService = (callback: (products: LowStockP
   }
 };
 
-// Update Reorder Point
 export const updateReorderPointService = async (productId: string, newReorderPoint: number): Promise<void> => {
   try {
     const productRef = doc(db, "products", productId);
@@ -98,7 +86,6 @@ export const updateReorderPointService = async (productId: string, newReorderPoi
   }
 };
 
-// Tandai sudah direstock
 export const markAsRestockedService = async (productId: string): Promise<void> => {
   try {
     const productRef = doc(db, "products", productId);

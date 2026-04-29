@@ -2,7 +2,6 @@ import { auth, db } from "@/config/firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
-// ── Helper: set kedua cookie sekaligus ──────────────────────────────
 const COOKIE_OPTIONS = "path=/; max-age=604800; SameSite=Strict";
 
 const setCookies = (token: string, role: string, uid: string) => {
@@ -11,7 +10,6 @@ const setCookies = (token: string, role: string, uid: string) => {
   document.cookie = `uid=${uid}; ${COOKIE_OPTIONS}`;
 };
 
-// ── LOGIN — Email & Password ─────────────────────────────────────────
 export const loginWithEmail = async (email: string, password: string) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -39,7 +37,6 @@ export const loginWithEmail = async (email: string, password: string) => {
   }
 };
 
-// ── LOGIN — Google (Redirect) ────────────────────────────────────────
 export const loginWithGoogle = async () => {
   try {
     const provider = new GoogleAuthProvider();
@@ -83,7 +80,6 @@ export const handleGoogleRedirect = async () => {
   }
 };
 
-// ── REGISTER — Email & Password ──────────────────────────────────────
 export const registerWithEmail = async (email: string, password: string, fullName: string, phoneNumber: string) => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -115,7 +111,6 @@ export const registerWithEmail = async (email: string, password: string, fullNam
   }
 };
 
-// ── RESET PASSWORD ───────────────────────────────────────────────────
 export const resetPassword = async (email: string) => {
   try {
     await sendPasswordResetEmail(auth, email);
@@ -126,7 +121,6 @@ export const resetPassword = async (email: string) => {
   }
 };
 
-// ── LOGOUT ───────────────────────────────────────────────────────────
 export const logout = async () => {
   try {
     await signOut(auth);

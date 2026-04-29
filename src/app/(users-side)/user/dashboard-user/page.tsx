@@ -7,8 +7,8 @@ import { faFire, faTag, faTableCells, faTruckFast, faRecycle, faShield } from "@
 import HeroBanner from "@/components/ui/HeroBanner";
 import CategoryGrid from "@/components/ui/CategoryGrid";
 import ProductCard from "@/components/ui/ProductCard";
-import { subscribeToProductsService, Product } from "@/service/product.service";
-
+import { subscribeToProductsService } from "@/service/product.service";
+import { Product } from "@/types/product";
 const tabs = ["Semua", "Promo"];
 
 // ─── Skeleton Components ────────────────────────────────────────────────────
@@ -73,21 +73,20 @@ export default function DashboardUser() {
   }, []);
 
   const inStockProducts = products.filter((p) => p.stock > 0);
-  const filtered = activeTab === "Promo"
-    ? inStockProducts.filter((p) => p.originalPrice && p.originalPrice > p.price)
-    : inStockProducts;
+  const filtered = activeTab === "Promo" ? inStockProducts.filter((p) => p.originalPrice && p.originalPrice > p.price) : inStockProducts;
 
   const flashSale = inStockProducts.filter((p) => p.originalPrice && p.originalPrice > p.price).slice(0, 4);
   const bestSeller = inStockProducts.slice(0, 4);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-10">
-
       {/* Hero Banner — tampil langsung, tidak perlu data */}
       <HeroBanner />
 
       {/* Promo cards */}
-      {loading ? <SkeletonPromoCards /> : (
+      {loading ? (
+        <SkeletonPromoCards />
+      ) : (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { title: "Barang Second Berkualitas", desc: "Harga bersahabat, kondisi terawat", icon: faRecycle, color: "from-amber-500 to-orange-600" },
@@ -121,7 +120,9 @@ export default function DashboardUser() {
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {flashSale.map((p) => <ProductCard key={p.id} product={p} />)}
+            {flashSale.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
           </div>
         </section>
       ) : null}
@@ -136,26 +137,23 @@ export default function DashboardUser() {
             <h2 className="text-lg font-bold text-gray-800">Produk Terbaru</h2>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {bestSeller.map((p) => <ProductCard key={p.id} product={p} />)}
+            {bestSeller.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
           </div>
         </section>
       ) : null}
 
-      {/* CTA banner */}
+      {/* CTA banner
       <div className="bg-gradient-to-r from-[#1E2753] to-[#E85D04] rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
           <p className="text-white font-bold text-lg">Mau jual barang elektronik bekas?</p>
           <p className="text-white/70 text-sm mt-1">Kami terima barang dengan harga terbaik!</p>
         </div>
-        <a
-          href="https://wa.me/62"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="bg-white text-[#1E2753] font-bold text-sm px-6 py-2.5 rounded-xl hover:bg-yellow-300 transition-colors whitespace-nowrap"
-        >
+        <a href="https://wa.me/62" target="_blank" rel="noopener noreferrer" className="bg-white text-[#1E2753] font-bold text-sm px-6 py-2.5 rounded-xl hover:bg-yellow-300 transition-colors whitespace-nowrap">
           Hubungi Kami
         </a>
-      </div>
+      </div> */}
 
       {/* Semua Produk */}
       <section id="produk">
@@ -169,10 +167,11 @@ export default function DashboardUser() {
           {tabs.map((tab) => (
             <button
               key={tab}
-              onClick={() => { setActiveTab(tab); setVisibleCount(10); }}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all duration-200 ${
-                activeTab === tab ? "bg-[#1E2753] text-white border-[#1E2753]" : "bg-white text-gray-600 border-gray-200 hover:border-[#1E2753]"
-              }`}
+              onClick={() => {
+                setActiveTab(tab);
+                setVisibleCount(10);
+              }}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all duration-200 ${activeTab === tab ? "bg-[#1E2753] text-white border-[#1E2753]" : "bg-white text-gray-600 border-gray-200 hover:border-[#1E2753]"}`}
             >
               {tab}
             </button>
@@ -182,19 +181,20 @@ export default function DashboardUser() {
         {/* Grid */}
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {[...Array(10)].map((_, i) => <SkeletonProductCard key={i} />)}
+            {[...Array(10)].map((_, i) => (
+              <SkeletonProductCard key={i} />
+            ))}
           </div>
         ) : filtered.length > 0 ? (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {filtered.slice(0, visibleCount).map((p) => <ProductCard key={p.id} product={p} />)}
+              {filtered.slice(0, visibleCount).map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
             </div>
             {visibleCount < filtered.length && (
               <div className="flex justify-center mt-8">
-                <button
-                  onClick={() => setVisibleCount((v) => v + 10)}
-                  className="px-8 py-2.5 border-2 border-[#1E2753] text-[#1E2753] rounded-xl font-semibold text-sm hover:bg-[#1E2753] hover:text-white transition-all duration-200"
-                >
+                <button onClick={() => setVisibleCount((v) => v + 10)} className="px-8 py-2.5 border-2 border-[#1E2753] text-[#1E2753] rounded-xl font-semibold text-sm hover:bg-[#1E2753] hover:text-white transition-all duration-200">
                   Muat Lebih Banyak
                 </button>
               </div>

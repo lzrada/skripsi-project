@@ -1,8 +1,8 @@
+// src/service/order.service.ts
 import { db } from "@/config/firebase";
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, serverTimestamp, runTransaction, where } from "firebase/firestore";
 import { Order, OrderStatus } from "@/types/order";
 
-// Tambah di interface CreateOrderPayload:
 export interface CreateOrderPayload {
   uid: string;
   recipientName: string;
@@ -27,20 +27,26 @@ export const createOrderService = async (payload: CreateOrderPayload): Promise<s
     const productRefs = payload.items.map((item) => doc(db, "products", item.id));
     const productSnaps = await Promise.all(productRefs.map((ref) => transaction.get(ref)));
 
-    // 2. Validasi stok
+    // ==================== ALGORITMA INVENTORY FIRST ====================
+    // Validasi stok sebelum transaksi diproses (sesuai skripsi)
     for (let i = 0; i < payload.items.length; i++) {
       const snap = productSnaps[i];
       const item = payload.items[i];
+
       if (!snap.exists()) {
         throw new Error(`Produk "${item.name}" tidak ditemukan.`);
       }
+
       const currentStock: number = snap.data().stock ?? 0;
+
+      // Inventory First: Pastikan stok mencukupi (barang yang tersedia jadi prioritas)
       if (currentStock < item.qty) {
         throw new Error(`Stok "${item.name}" tidak mencukupi. Tersisa: ${currentStock}, diminta: ${item.qty}.`);
       }
     }
+    // ===================================================================
 
-    // 3. Buat dokumen order
+    // 2. Buat dokumen order
     const orderRef = doc(collection(db, "orders"));
     transaction.set(orderRef, {
       uid: payload.uid,
@@ -64,7 +70,7 @@ export const createOrderService = async (payload: CreateOrderPayload): Promise<s
       ...(payload.midtransResult ? { midtransResult: payload.midtransResult } : {}),
     });
 
-    // 4. Kurangi stok tiap produk
+    // 3. Kurangi stok tiap produk (setelah validasi Inventory First berhasil)
     for (let i = 0; i < payload.items.length; i++) {
       const snap = productSnaps[i];
       const item = payload.items[i];
@@ -78,7 +84,6 @@ export const createOrderService = async (payload: CreateOrderPayload): Promise<s
 
 /**
  * Subscribe realtime ke pesanan milik user tertentu.
- * Pakai where() agar hanya data milik uid yang dikirim — lebih aman & efisien.
  */
 export const subscribeToUserOrdersService = (uid: string, callback: (orders: Order[]) => void) => {
   const q = query(collection(db, "orders"), where("uid", "==", uid), orderBy("createdAt", "desc"));
@@ -163,7 +168,7 @@ export const subscribeToAllOrdersService = (callback: (orders: Order[]) => void)
 };
 
 /**
- * Update paymentStatus order — dipanggil dari onSuccess callback Midtrans.
+ * Update paymentStatus order.
  */
 export const updatePaymentStatusService = async (orderId: string, paymentStatus: "paid" | "pending" | "unpaid"): Promise<void> => {
   const orderRef = doc(db, "orders", orderId);
@@ -184,7 +189,7 @@ export const updateOrderStatusService = async (orderId: string, status: OrderSta
 };
 
 /**
- * Subscribe realtime ke satu order berdasarkan ID — untuk order detail user.
+ * Subscribe realtime ke satu order berdasarkan ID.
  */
 export const subscribeToOrderByIdService = (orderId: string, callback: (order: Order | null) => void) => {
   const orderRef = doc(db, "orders", orderId);

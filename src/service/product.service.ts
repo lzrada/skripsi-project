@@ -1,22 +1,9 @@
+// src/service/product.service.ts
 import { db } from "@/config/firebase";
 import { supabase } from "@/config/supabase";
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where, limit } from "firebase/firestore";
 
-export interface Product {
-  id: string;
-  name: string;
-  category: string;
-  condition?: string;
-  originalPrice?: number;
-  price: number;
-  stock: number;
-  // ── Reorder Point: batas minimum stok per produk ──
-  // Jika stock <= reorderPoint, admin akan dapat notifikasi di dashboard
-  reorderPoint: number;
-  description?: string;
-  images: string[];
-  createdAt?: any;
-}
+import { Product } from "@/types/product";
 
 export interface AddProductPayload {
   name: string;
@@ -25,7 +12,7 @@ export interface AddProductPayload {
   originalPrice?: number;
   price: number;
   stock: number;
-  reorderPoint: number;
+  reorderPoint: number; // sesuai skripsi - batas minimum stok
   description?: string;
   images: string[];
 }
@@ -37,22 +24,25 @@ export interface UpdateProductPayload {
   originalPrice?: number;
   price: number;
   stock: number;
-  reorderPoint: number;
+  reorderPoint: number; // sesuai skripsi
   description?: string;
   images: string[];
 }
 
+// Upload multiple images ke Supabase
 export const uploadMultipleImagesService = async (files: File[]): Promise<string[]> => {
   try {
     const uploadedUrls: string[] = [];
     for (const file of files) {
       const fileExtension = file.name.split(".").pop();
       const fileName = `product-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
+
       const { data, error } = await supabase.storage.from("products").upload(fileName, file, {
         cacheControl: "3600",
         upsert: false,
       });
       if (error) throw new Error(error.message);
+
       const {
         data: { publicUrl },
       } = supabase.storage.from("products").getPublicUrl(data.path);
@@ -87,8 +77,8 @@ export const addProductService = async (payload: AddProductPayload) => {
       originalPrice: payload.originalPrice ?? null,
       price: payload.price,
       stock: payload.stock,
-      // Simpan reorderPoint ke Firestore — default 2 jika tidak diisi
-      reorderPoint: payload.reorderPoint ?? 2,
+      // Reorder Point sesuai skripsi: batas minimum stok untuk monitoring
+      reorderPoint: payload.reorderPoint ?? 5,
       description: payload.description ?? "",
       images: payload.images,
       createdAt: serverTimestamp(),
@@ -109,7 +99,7 @@ export const updateProductService = async (id: string, payload: UpdateProductPay
       originalPrice: payload.originalPrice ?? null,
       price: payload.price,
       stock: payload.stock,
-      reorderPoint: payload.reorderPoint ?? 2,
+      reorderPoint: payload.reorderPoint ?? 5,
       description: payload.description ?? "",
       images: payload.images,
     });
@@ -128,6 +118,7 @@ export const deleteProductService = async (id: string) => {
   }
 };
 
+// Subscribe realtime semua produk
 export const subscribeToProductsService = (callback: (products: Product[]) => void) => {
   try {
     const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
@@ -142,10 +133,12 @@ export const subscribeToProductsService = (callback: (products: Product[]) => vo
           originalPrice: data.originalPrice ?? undefined,
           price: data.price || 0,
           stock: data.stock || 0,
-          // Ambil reorderPoint dari Firestore, default 2 untuk produk lama
-          reorderPoint: data.reorderPoint ?? 2,
+          // Reorder Point untuk monitoring stok sesuai skripsi
+          reorderPoint: data.reorderPoint ?? 5,
           description: data.description || "",
           images: data.images || [],
+          averageRating: data.averageRating ?? 0,
+          totalReviews: data.totalReviews ?? 0,
           createdAt: data.createdAt || null,
         };
       });
@@ -171,9 +164,11 @@ export const getProductByIdService = async (productId: string): Promise<Product 
       originalPrice: data.originalPrice ?? undefined,
       price: data.price ?? 0,
       stock: data.stock ?? 0,
-      reorderPoint: data.reorderPoint ?? 2,
+      reorderPoint: data.reorderPoint ?? 5,
       description: data.description ?? "",
       images: data.images ?? [],
+      averageRating: data.averageRating ?? 0,
+      totalReviews: data.totalReviews ?? 0,
       createdAt: data.createdAt ?? null,
     };
   } catch (error) {
@@ -185,6 +180,7 @@ export const getProductByIdService = async (productId: string): Promise<Product 
 export const getRelatedProductsService = async (category: string, excludeId: string, limitCount = 4): Promise<Product[]> => {
   try {
     const snap = await getDocs(query(collection(db, "products"), where("category", "==", category), limit(limitCount + 1)));
+
     return snap.docs
       .filter((d) => d.id !== excludeId)
       .slice(0, limitCount)
@@ -198,9 +194,11 @@ export const getRelatedProductsService = async (category: string, excludeId: str
           originalPrice: data.originalPrice ?? undefined,
           price: data.price ?? 0,
           stock: data.stock ?? 0,
-          reorderPoint: data.reorderPoint ?? 2,
+          reorderPoint: data.reorderPoint ?? 5,
           description: data.description ?? "",
           images: data.images ?? [],
+          averageRating: data.averageRating ?? 0,
+          totalReviews: data.totalReviews ?? 0,
         };
       });
   } catch (error) {
@@ -225,9 +223,11 @@ export const getProductsByIdsService = async (ids: string[]): Promise<Product[]>
           originalPrice: data.originalPrice ?? undefined,
           price: data.price ?? 0,
           stock: data.stock ?? 0,
-          reorderPoint: data.reorderPoint ?? 2,
+          reorderPoint: data.reorderPoint ?? 5,
           description: data.description ?? "",
           images: data.images ?? [],
+          averageRating: data.averageRating ?? 0,
+          totalReviews: data.totalReviews ?? 0,
         };
       });
   } catch (error) {

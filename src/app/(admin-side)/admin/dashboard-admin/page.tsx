@@ -8,6 +8,9 @@ import ChartLine from "@/components/(admin)/ui/ChartLine";
 import LowStockAlert from "@/components/(admin)/ui/LowStockAlert";
 import CategoryBreakdown from "@/components/(admin)/ui/CategoryBreakdown";
 import TopProductsChart from "@/components/(admin)/ui/TopProductChart";
+import { subscribeToLowStockProductsService } from "@/service/inventory.service";
+import { LowStockProduct } from "@/service/inventory.service";
+import { FaExclamationTriangle, FaBoxOpen } from "react-icons/fa";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -33,7 +36,9 @@ export default function Dashboard() {
   const [processOrders, setProcessOrders] = useState(0);
   const [doneOrders, setDoneOrders] = useState(0);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [lowStockProducts, setLowStockProducts] = useState<LowStockProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingInventory, setLoadingInventory] = useState(true);
 
   useEffect(() => {
     const unsubOrders = onSnapshot(query(collection(db, "orders"), orderBy("date", "desc")), (snap) => {
@@ -49,10 +54,18 @@ export default function Dashboard() {
     });
     const unsubProducts = onSnapshot(collection(db, "products"), (snap) => setTotalProducts(snap.size));
     const unsubUsers = onSnapshot(collection(db, "users"), (snap) => setTotalUsers(snap.size));
+
+    // Tambahan: Subscribe Reorder Point Inventory
+    const unsubInventory = subscribeToLowStockProductsService((products) => {
+      setLowStockProducts(products);
+      setLoadingInventory(false);
+    });
+
     return () => {
       unsubOrders();
       unsubProducts();
       unsubUsers();
+      unsubInventory();
     };
   }, []);
 
@@ -229,6 +242,42 @@ export default function Dashboard() {
         <LowStockAlert />
         <CategoryBreakdown />
         <TopProductsChart />
+      </div>
+
+      {/* ==================== TAMBAHAN: INVENTORY REORDER POINT ==================== */}
+      <div className="mt-8 bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+        <div className="flex items-center gap-3 mb-6">
+          <FaExclamationTriangle className="text-red-500 text-2xl" />
+          <div>
+            <h2 className="text-xl font-semibold">Produk Low Stock (Reorder Point)</h2>
+            <p className="text-sm text-slate-500">Produk yang stoknya mendekati atau di bawah batas minimum</p>
+          </div>
+        </div>
+
+        {loadingInventory ? (
+          <p className="text-center py-8 text-slate-400">Memuat data stok...</p>
+        ) : lowStockProducts.length === 0 ? (
+          <div className="text-center py-12 text-slate-400">
+            <FaBoxOpen className="mx-auto text-5xl mb-3 opacity-30" />
+            <p className="font-medium">Saat ini semua stok dalam kondisi aman</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {lowStockProducts.map((product) => (
+              <div key={product.id} className="flex items-center justify-between p-4 border border-red-100 bg-red-50 rounded-2xl">
+                <div>
+                  <p className="font-medium text-slate-800">{product.name}</p>
+                  <p className="text-sm text-red-600">Stok tersisa: {product.stock} unit</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-slate-500">Reorder Point</p>
+                  <p className="font-bold text-red-600">{product.reorderPoint}</p>
+                </div>
+                <button className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-2xl transition">Segera Restock</button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

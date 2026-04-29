@@ -8,7 +8,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCartShopping, faBagShopping, faShield, faTruck, faRotateLeft, faChevronLeft, faChevronRight, faStore } from "@fortawesome/free-solid-svg-icons";
 import { doc, getDoc, collection, query, limit, getDocs, where } from "firebase/firestore";
 import { db } from "@/config/firebase";
-import { Product } from "@/service/product.service";
+import { Product } from "@/types/product";
 import ProductCard from "@/components/ui/ProductCard";
 import { addToCartService } from "@/service/cart.service";
 import WishlistButton from "@/components/ui/WishlistButton";
@@ -34,6 +34,7 @@ function getUidFromCookie(): string | null {
 
 export default function ProductDetailPage({ params }: { params: Promise<{ product: string }> }) {
   const { product: productId } = use(params);
+
   const [product, setProduct] = useState<Product | null>(null);
   const [related, setRelated] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,24 +53,33 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
           return;
         }
         const data = snap.data();
+
         const p: Product = {
           id: snap.id,
           name: data.name,
           category: data.category,
-          condition: data.condition ?? "baru", // ✅ ambil dari Firestore
+          condition: data.condition ?? "baru",
           price: data.price,
           originalPrice: data.originalPrice,
           stock: data.stock,
+          reorderPoint: data.reorderPoint ?? 5, // tetap diambil (untuk internal)
           description: data.description ?? "",
           images: data.images ?? [],
+          averageRating: data.averageRating ?? 0,
+          totalReviews: data.totalReviews ?? 0,
         };
         setProduct(p);
 
+        // Produk terkait
         const relSnap = await getDocs(query(collection(db, "products"), where("category", "==", data.category), limit(6)));
+
         const rel: Product[] = relSnap.docs
           .filter((d) => d.id !== productId)
           .slice(0, 4)
-          .map((d) => ({ id: d.id, ...(d.data() as Omit<Product, "id">) }));
+          .map((d) => ({
+            id: d.id,
+            ...(d.data() as Omit<Product, "id">),
+          }));
         setRelated(rel);
       } catch (err) {
         console.error(err);
@@ -77,6 +87,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
         setLoading(false);
       }
     };
+
     fetchProduct();
   }, [productId]);
 
@@ -100,7 +111,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
         price: product.price,
         originalPrice: product.originalPrice,
         category: product.category,
-        condition: product.condition ?? "baru", // ✅ dari data produk
+        condition: product.condition ?? "baru",
         stock: product.stock,
         image: product.images?.[0] ?? "",
         qty,
@@ -134,7 +145,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
         price: product.price,
         originalPrice: product.originalPrice,
         category: product.category,
-        condition: product.condition ?? "baru", // ✅ dari data produk
+        condition: product.condition ?? "baru",
         stock: product.stock,
         image: product.images?.[0] ?? "",
         qty,
@@ -179,7 +190,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
       </nav>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Gambar */}
+        {/* Gambar Produk */}
         <div className="space-y-3">
           <div className="w-full aspect-square md:aspect-[4/3] rounded-2xl overflow-hidden relative bg-white border border-gray-100 shadow-sm">
             {product.images && product.images.length > 0 ? (
@@ -215,6 +226,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
               <div className="w-full h-full flex items-center justify-center text-gray-300 text-6xl">📦</div>
             )}
           </div>
+
           {product.images && product.images.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
               {product.images.map((img, i) => (
@@ -232,7 +244,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
           )}
         </div>
 
-        {/* Info */}
+        {/* Info Produk */}
         <div className="space-y-4">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-gray-800 leading-snug mb-2">{product.name}</h1>
@@ -318,7 +330,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
         </div>
       </div>
 
-      {/* Tab deskripsi */}
+      {/* Tab Deskripsi & Spesifikasi */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="flex border-b border-gray-100">
           {(["deskripsi", "spesifikasi"] as const).map((tab) => (
@@ -357,6 +369,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
         </div>
       </div>
 
+      {/* Produk Terkait */}
       {related.length > 0 && (
         <section>
           <h2 className="text-lg font-bold text-gray-800 mb-4">Produk Terkait</h2>

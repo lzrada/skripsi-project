@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { FaBox, FaBoxOpen, FaCloudUploadAlt, FaLayerGroup, FaTrash, FaSearch, FaPlus, FaEdit, FaTimes, FaCheck } from "react-icons/fa";
-import { Product, addProductService, deleteProductService, deleteImageFromSupabaseService, subscribeToProductsService, updateProductService, uploadMultipleImagesService } from "@/service/product.service";
+import { addProductService, deleteProductService, deleteImageFromSupabaseService, subscribeToProductsService, updateProductService, uploadMultipleImagesService } from "@/service/product.service";
+import { Product } from "@/types/product";
 
 const CATEGORIES = ["Televisi", "Kulkas", "AC", "Mesin Cuci", "Kipas Angin", "Audio", "Laptop", "HP", "Lainnya"];
 const CONDITIONS = ["Bekas", "Baru"];
@@ -24,7 +25,7 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
     price: initial?.price?.toString() ?? "",
     originalPrice: initial?.originalPrice?.toString() ?? "",
     stock: initial?.stock?.toString() ?? "",
-    reorderPoint: initial?.reorderPoint?.toString() ?? "2",
+    reorderPoint: initial?.reorderPoint?.toString() ?? "5", // default lebih masuk akal
     description: initial?.description ?? "",
   });
 
@@ -72,6 +73,7 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
       setError("Minimal satu gambar produk wajib diunggah.");
       return;
     }
+
     const priceNum = Number(formData.price);
     const originalPriceNum = formData.originalPrice ? Number(formData.originalPrice) : undefined;
     if (originalPriceNum && originalPriceNum <= priceNum) {
@@ -91,13 +93,15 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
         originalPrice: originalPriceNum,
         price: priceNum,
         stock: Number(formData.stock),
-        reorderPoint: Number(formData.reorderPoint) || 2,
+        reorderPoint: Number(formData.reorderPoint) || 5, // sesuai skripsi
         description: formData.description,
         images: finalImages,
       };
+
       if (mode === "add") {
         await addProductService(payload);
       } else if (mode === "edit" && initial) {
+        // Hapus gambar yang ditandai hapus
         await Promise.all(imagesToDelete.map((url) => deleteImageFromSupabaseService(url)));
         await updateProductService(initial.id, payload);
       }
@@ -129,6 +133,7 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
             <label className="block text-sm font-semibold text-slate-700 mb-2">
               Gambar Produk <span className="text-slate-400 font-normal">(bisa lebih dari satu)</span>
             </label>
+
             {totalImages > 0 && (
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mb-3">
                 {existingImages.map((url, i) => (
@@ -161,6 +166,7 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
                 </button>
               </div>
             )}
+
             {totalImages === 0 && (
               <div
                 onClick={() => fileInputRef.current?.click()}
@@ -178,7 +184,6 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
 
           {/* Form Fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Nama */}
             <div className="sm:col-span-2">
               <label className="block text-sm font-semibold text-slate-700 mb-1">
                 Nama Produk <span className="text-red-400">*</span>
@@ -190,15 +195,15 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
                 onChange={handleInput}
                 placeholder="Contoh: Smart TV Samsung 43 4K UHD"
                 className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 transition"
+                required
               />
             </div>
 
-            {/* Kategori */}
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">
                 Kategori <span className="text-red-400">*</span>
               </label>
-              <select name="category" value={formData.category} onChange={handleInput} className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 transition">
+              <select name="category" value={formData.category} onChange={handleInput} className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 transition" required>
                 <option value="">Pilih Kategori</option>
                 {CATEGORIES.map((c) => (
                   <option key={c} value={c}>
@@ -208,12 +213,11 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
               </select>
             </div>
 
-            {/* Kondisi */}
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">
                 Kondisi <span className="text-red-400">*</span>
               </label>
-              <select name="condition" value={formData.condition} onChange={handleInput} className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 transition">
+              <select name="condition" value={formData.condition} onChange={handleInput} className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 transition" required>
                 {CONDITIONS.map((c) => (
                   <option key={c} value={c}>
                     {c}
@@ -222,7 +226,6 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
               </select>
             </div>
 
-            {/* Stok */}
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">
                 Stok <span className="text-red-400">*</span>
@@ -235,10 +238,11 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
                 onChange={handleInput}
                 placeholder="0"
                 className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 transition"
+                required
               />
             </div>
 
-            {/* Reorder Point */}
+            {/* Reorder Point - sesuai skripsi */}
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">
                 Reorder Point
@@ -250,13 +254,13 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
                 min={1}
                 value={formData.reorderPoint}
                 onChange={handleInput}
-                placeholder="2"
+                placeholder="5"
                 className="w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-500 transition"
+                required
               />
-              <p className="text-xs text-slate-400 mt-1">Admin akan diberi notifikasi jika stok ≤ nilai ini</p>
+              <p className="text-xs text-slate-400 mt-1">Admin akan mendapat notifikasi jika stok ≤ nilai ini</p>
             </div>
 
-            {/* Harga Jual */}
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">
                 Harga Jual <span className="text-red-400">*</span>
@@ -271,11 +275,11 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
                   onChange={handleInput}
                   placeholder="0"
                   className="w-full rounded-2xl border border-slate-300 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 transition"
+                  required
                 />
               </div>
             </div>
 
-            {/* Harga Coret */}
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-1">
                 Harga Coret <span className="text-slate-400 font-normal text-xs">(opsional)</span>
@@ -292,10 +296,8 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
                   className="w-full rounded-2xl border border-slate-300 bg-slate-50 pl-10 pr-4 py-3 text-sm outline-none focus:border-blue-500 transition"
                 />
               </div>
-              <p className="text-xs text-slate-400 mt-1">Isi jika produk sedang promo/diskon</p>
             </div>
 
-            {/* Deskripsi */}
             <div className="sm:col-span-2">
               <label className="block text-sm font-semibold text-slate-700 mb-1">Deskripsi Produk</label>
               <textarea
@@ -368,7 +370,7 @@ export default function ProductManagementPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
-  // Subscribe realtime
+  // Subscribe realtime produk
   useEffect(() => {
     const unsubscribe = subscribeToProductsService((data) => {
       setProducts(data);
@@ -398,7 +400,6 @@ export default function ProductManagementPage() {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
-      // Hapus semua gambar dari Supabase terlebih dahulu
       await Promise.all(deleteTarget.images.map((url) => deleteImageFromSupabaseService(url)));
       await deleteProductService(deleteTarget.id);
       showToast("Produk berhasil dihapus.", "success");
@@ -416,7 +417,14 @@ export default function ProductManagementPage() {
   return (
     <div className="min-h-screen bg-slate-100 p-6">
       {/* Toast */}
-      {toast && <div className={`fixed top-5 right-5 z-[100] px-5 py-3 rounded-2xl shadow-xl text-sm font-semibold text-white transition-all ${toast.type === "success" ? "bg-green-500" : "bg-red-500"}`}>{toast.msg}</div>}
+      {toast && (
+        <div
+          className={`fixed top-5 right-5 z-[100] px-5 py-3 rounded-2xl shadow-xl text-sm font-semibold text-white transition-all 
+          ${toast.type === "success" ? "bg-green-500" : "bg-red-500"}`}
+        >
+          {toast.msg}
+        </div>
+      )}
 
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -425,8 +433,7 @@ export default function ProductManagementPage() {
           <p className="mt-1 text-slate-500 text-sm">Kelola produk, stok, kategori, dan gambar produk.</p>
         </div>
         <button onClick={() => setShowAddModal(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-3 rounded-2xl transition text-sm self-start sm:self-auto">
-          <FaPlus />
-          Tambah Produk
+          <FaPlus /> Tambah Produk
         </button>
       </div>
 
@@ -434,12 +441,7 @@ export default function ProductManagementPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
         {[
           { label: "Total Produk", value: products.length, icon: <FaBox />, color: "bg-blue-100 text-blue-600" },
-          {
-            label: "Total Kategori",
-            value: new Set(products.map((p) => p.category)).size,
-            icon: <FaLayerGroup />,
-            color: "bg-purple-100 text-purple-600",
-          },
+          { label: "Total Kategori", value: new Set(products.map((p) => p.category)).size, icon: <FaLayerGroup />, color: "bg-purple-100 text-purple-600" },
           { label: "Total Stok", value: totalStock, icon: <FaBoxOpen />, color: "bg-emerald-100 text-emerald-600" },
         ].map((s) => (
           <div key={s.label} className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm flex items-center justify-between">
@@ -469,7 +471,8 @@ export default function ProductManagementPage() {
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
-              className={`px-3 py-2 rounded-xl text-xs font-semibold border transition ${categoryFilter === cat ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-500 border-slate-200 hover:border-blue-400"}`}
+              className={`px-3 py-2 rounded-xl text-xs font-semibold border transition 
+                ${categoryFilter === cat ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-500 border-slate-200 hover:border-blue-400"}`}
             >
               {cat}
             </button>
@@ -477,7 +480,7 @@ export default function ProductManagementPage() {
         </div>
       </div>
 
-      {/* Tabel / Grid produk */}
+      {/* Grid Produk */}
       {filteredProducts.length === 0 ? (
         <div className="text-center py-20 text-slate-400">
           <FaBoxOpen className="text-5xl mx-auto mb-3 text-slate-200" />
@@ -487,7 +490,6 @@ export default function ProductManagementPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
           {filteredProducts.map((product) => (
             <div key={product.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col">
-              {/* Gambar — carousel sederhana (hanya tampil gambar pertama, badge jumlah gambar) */}
               <div className="relative h-48 bg-slate-100">
                 {product.images?.[0] ? (
                   <Image src={product.images[0]} alt={product.name} fill className="object-cover" />
@@ -499,22 +501,26 @@ export default function ProductManagementPage() {
                 {product.images.length > 1 && <span className="absolute bottom-2 right-2 bg-black/60 text-white text-[11px] font-semibold px-2 py-0.5 rounded-full">+{product.images.length - 1} foto</span>}
               </div>
 
-              {/* Info */}
-              {/* Info */}
               <div className="p-4 flex flex-col flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <p className="text-xs font-semibold text-blue-500">{product.category}</p>
                   <span className="text-xs bg-slate-100 text-slate-500 font-medium px-2 py-0.5 rounded-full">{product.condition ?? "Bekas"}</span>
                 </div>
                 <h3 className="font-bold text-slate-800 text-sm leading-snug line-clamp-2 mb-2">{product.name}</h3>
-                {product.description && <p className="text-xs text-slate-400 line-clamp-2 mb-2">{product.description}</p>}
+
                 <div className="mt-auto">
                   {product.originalPrice && product.originalPrice > product.price && <p className="text-xs text-slate-400 line-through">Rp {Number(product.originalPrice).toLocaleString("id-ID")}</p>}
                   <div className="flex items-center justify-between">
                     <span className="text-base font-bold text-blue-600">Rp {Number(product.price).toLocaleString("id-ID")}</span>
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${product.stock === 0 ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-700"}`}>{product.stock === 0 ? "Habis" : `Stok ${product.stock}`}</span>
+                    <span
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-full 
+                      ${product.stock === 0 ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-700"}`}
+                    >
+                      {product.stock === 0 ? "Habis" : `Stok ${product.stock}`}
+                    </span>
                   </div>
                 </div>
+
                 <div className="flex gap-2 mt-3">
                   <button
                     onClick={() => setEditTarget(product)}
@@ -532,13 +538,11 @@ export default function ProductManagementPage() {
         </div>
       )}
 
-      {/* Modal Tambah */}
+      {/* Modals */}
       {showAddModal && <ProductModal mode="add" onClose={() => setShowAddModal(false)} onSuccess={() => showToast("Produk berhasil ditambahkan!", "success")} />}
 
-      {/* Modal Edit */}
       {editTarget && <ProductModal mode="edit" initial={editTarget} onClose={() => setEditTarget(null)} onSuccess={() => showToast("Produk berhasil diperbarui!", "success")} />}
 
-      {/* Modal Hapus */}
       {deleteTarget && <DeleteModal product={deleteTarget} onConfirm={handleDelete} onClose={() => setDeleteTarget(null)} isLoading={isDeleting} />}
     </div>
   );

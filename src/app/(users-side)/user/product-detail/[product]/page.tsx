@@ -4,7 +4,7 @@ import { useState, use, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCartShopping, faBagShopping, faShield, faTruck, faRotateLeft, faChevronLeft, faChevronRight, faStore, faStar, faStarHalfAlt } from "@fortawesome/free-solid-svg-icons";
+import { faCartShopping, faBagShopping, faShield, faTruck, faRotateLeft, faChevronLeft, faChevronRight, faStore, faStar, faStarHalfAlt, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { faStar as faStarEmpty } from "@fortawesome/free-regular-svg-icons";
 import { doc, getDoc, collection, query, limit, getDocs, where } from "firebase/firestore";
 import { db } from "@/config/firebase";
@@ -456,65 +456,119 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
 
           {activeTab === "ulasan" && (
             <div className="space-y-6">
+              {/* ── Ringkasan Rating ── */}
               {(product.averageRating ?? 0) > 0 && (
-                <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
-                  <div className="text-center">
-                    <p className="text-4xl font-bold text-[#1E2753]">{product.averageRating?.toFixed(1)}</p>
+                <div className="flex items-center gap-6 p-5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border border-amber-100">
+                  <div className="text-center flex-shrink-0">
+                    <p className="text-5xl font-black text-amber-500">{product.averageRating?.toFixed(1)}</p>
                     <StarDisplay rating={product.averageRating ?? 0} size="md" />
-                    <p className="text-xs text-gray-400 mt-1">{product.totalReviews} ulasan</p>
+                    <p className="text-xs text-gray-400 mt-1">dari {product.totalReviews} ulasan</p>
+                  </div>
+                  <div className="flex-1 space-y-1.5">
+                    {[5, 4, 3, 2, 1].map((star) => {
+                      const count = reviews.filter((r) => r.rating === star).length;
+                      const pct = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
+                      return (
+                        <div key={star} className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 w-3 flex-shrink-0">{star}</span>
+                          <FontAwesomeIcon icon={faStar} className="w-2.5 h-2.5 text-amber-400 flex-shrink-0" />
+                          <div className="flex-1 bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                            <div className="h-1.5 bg-amber-400 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-[10px] text-gray-400 w-4 flex-shrink-0">{count}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
 
+              {/* ── Form Tulis Ulasan (hanya pembeli yang sudah selesai) ── */}
               {canReview && (
-                <div className="border border-gray-200 rounded-xl p-4 space-y-3">
-                  <p className="text-sm font-semibold text-gray-800">Tulis Ulasanmu</p>
-                  <StarInput value={reviewRating} onChange={setReviewRating} />
-                  <textarea
-                    value={reviewComment}
-                    onChange={(e) => setReviewComment(e.target.value)}
-                    placeholder="Bagikan pengalamanmu dengan produk ini..."
-                    rows={3}
-                    className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:border-[#1E2753]"
-                  />
+                <div className="border-2 border-[#1E2753]/10 bg-blue-50/30 rounded-2xl p-5 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-[#1E2753] rounded-full flex items-center justify-center">
+                      <FontAwesomeIcon icon={faStar} className="w-3.5 h-3.5 text-yellow-300" />
+                    </div>
+                    <p className="text-sm font-bold text-gray-800">Tulis Ulasanmu</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-600 mb-2">
+                      Rating <span className="text-red-400">*</span>
+                    </p>
+                    <StarInput value={reviewRating} onChange={setReviewRating} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-600 mb-2">
+                      Komentar <span className="text-red-400">*</span>
+                    </p>
+                    <textarea
+                      value={reviewComment}
+                      onChange={(e) => setReviewComment(e.target.value)}
+                      placeholder="Bagikan pengalamanmu — kondisi barang, kualitas, kesesuaian dengan deskripsi..."
+                      rows={4}
+                      className="w-full text-sm border-2 border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:border-[#1E2753] transition bg-white"
+                    />
+                    <p className="text-[10px] text-gray-400 mt-1">Minimal 5 karakter · {reviewComment.length} karakter</p>
+                  </div>
                   <button
                     onClick={handleSubmitReview}
-                    disabled={submittingReview || reviewRating === 0}
-                    className="px-5 py-2.5 bg-[#1E2753] text-white rounded-xl text-sm font-semibold hover:bg-[#2a3470] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={submittingReview || reviewRating === 0 || reviewComment.trim().length < 5}
+                    className="w-full py-3 bg-[#1E2753] text-white rounded-xl text-sm font-semibold hover:bg-[#2a3470] transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
+                    {submittingReview && <FontAwesomeIcon icon={faSpinner} className="w-3.5 h-3.5 animate-spin" />}
                     {submittingReview ? "Mengirim..." : "Kirim Ulasan"}
                   </button>
                 </div>
               )}
 
               {alreadyReviewed && (
-                <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-                  <p className="text-sm text-green-700 font-medium">Kamu sudah memberikan ulasan untuk produk ini.</p>
+                <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <FontAwesomeIcon icon={faStar} className="w-3.5 h-3.5 text-green-500" />
+                  </div>
+                  <p className="text-sm text-green-700 font-medium">Kamu sudah memberikan ulasan untuk produk ini. Terima kasih! 🙏</p>
                 </div>
               )}
 
               {!canReview && !alreadyReviewed && (
-                <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
-                  <p className="text-sm text-blue-700">Hanya pembeli yang telah menyelesaikan pesanan yang dapat memberikan ulasan.</p>
+                <div className="flex items-start gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <FontAwesomeIcon icon={faShield} className="w-3.5 h-3.5 text-gray-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-700 font-semibold">Ulasan Terverifikasi</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Hanya pembeli yang telah menyelesaikan pesanan yang dapat memberikan ulasan.</p>
+                  </div>
                 </div>
               )}
 
+              {/* ── Daftar Ulasan ── */}
               {reviews.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-6">Belum ada ulasan untuk produk ini.</p>
+                <div className="text-center py-10">
+                  <p className="text-4xl mb-3">💬</p>
+                  <p className="text-sm font-semibold text-gray-600">Belum ada ulasan</p>
+                  <p className="text-xs text-gray-400 mt-1">Jadilah yang pertama mengulas produk ini</p>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {reviews.map((r) => (
-                    <div key={r.id} className="flex gap-3 pb-4 border-b border-gray-100 last:border-0">
-                      <div className="w-9 h-9 rounded-full bg-[#1E2753] flex items-center justify-center text-white text-sm font-bold shrink-0 overflow-hidden">
-                        {r.userPhoto ? <Image src={r.userPhoto} alt={r.userName} width={36} height={36} className="object-cover w-full h-full" /> : (r.userName?.[0]?.toUpperCase() ?? "U")}
+                    <div key={r.id} className="flex gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                      <div className="w-10 h-10 rounded-full bg-[#1E2753] flex items-center justify-center text-white text-sm font-bold shrink-0 overflow-hidden ring-2 ring-white">
+                        {r.userPhoto ? <Image src={r.userPhoto} alt={r.userName} width={40} height={40} className="object-cover w-full h-full" /> : (r.userName?.[0]?.toUpperCase() ?? "U")}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <p className="text-sm font-semibold text-gray-800">{r.userName}</p>
-                          <p className="text-xs text-gray-400 shrink-0">{formatDate(r.createdAt)}</p>
+                        <div className="flex items-start justify-between gap-2 mb-1.5">
+                          <div>
+                            <p className="text-sm font-bold text-gray-800">{r.userName}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <StarDisplay rating={r.rating} />
+                              <span className="text-[10px] bg-green-100 text-green-600 font-semibold px-1.5 py-0.5 rounded-full">Pembelian Terverifikasi</span>
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-gray-400 shrink-0 mt-0.5">{formatDate(r.createdAt)}</p>
                         </div>
-                        <StarDisplay rating={r.rating} />
-                        <p className="text-sm text-gray-600 mt-1.5 leading-relaxed">{r.comment}</p>
+                        <p className="text-sm text-gray-600 leading-relaxed">{r.comment}</p>
                       </div>
                     </div>
                   ))}

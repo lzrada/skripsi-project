@@ -42,7 +42,7 @@ export default function FooterUser() {
             <ul className="space-y-2 text-xs text-gray-400">
               {["Televisi", "Kulkas", "AC", "Mesin Cuci", "Kipas Angin", "Audio"].map((cat) => (
                 <li key={cat}>
-                  <Link href={`/user/product-detail/${cat.toLowerCase()}`} className="hover:text-white transition-colors">
+                  <Link href={`/user/products?category=${encodeURIComponent(cat)}`} className="hover:text-white transition-colors">
                     {cat}
                   </Link>
                 </li>

@@ -150,8 +150,7 @@ export default function NavbarUser() {
   const initials = userName?.charAt(0)?.toUpperCase() || "U";
 
   return (
-    <header className={`sticky top-0 z-50 w-full transition-shadow duration-300 ${scrolled ? "shadow-[0_2px_20px_rgba(30,39,83,0.12)]" : ""}`}>
-      {/* ── Top bar (hanya tampil kalau belum login) ── */}
+    <header id="navbar-user" className={`fixed top-0 left-0 w-full z-[9999] bg-white transition-shadow duration-300 ${scrolled ? "shadow-[0_2px_20px_rgba(30,39,83,0.12)]" : ""}`}>
       {!isLoggedIn && (
         <div className="bg-[#1E2753] text-white text-xs py-1.5 px-4 flex justify-between items-center">
           <span className="hidden sm:inline">🚚 Gratis ongkir untuk wilayah Blitar dan sekitarnya!</span>
@@ -169,7 +168,7 @@ export default function NavbarUser() {
       )}
 
       {/* ── Main navbar ── */}
-      <nav className="bg-white border-b border-gray-100">
+      <nav className="relative z-999 bg-white border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3 h-16">
             {/* Logo */}
@@ -349,7 +348,7 @@ export default function NavbarUser() {
         </div>
 
         {/* ── Category bar (desktop) ── */}
-        <div className="hidden md:block border-t border-gray-100">
+        <div className="hidden md:block border-t border-gray-100 bg-white relative z-[998]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {CATEGORIES.map((cat) => {

@@ -60,7 +60,7 @@ export default function HeroBanner() {
   const slide = slides[current];
 
   return (
-    <div className={`relative w-full h-64 md:h-80 rounded-2xl overflow-hidden bg-gradient-to-r ${slide.bg} transition-all duration-700`}>
+    <div className={`relative w-full h-64 mt-24 md:h-80 rounded-2xl overflow-hidden bg-gradient-to-r ${slide.bg} transition-all duration-700`}>
       <div className="absolute -right-10 -top-10 w-48 h-48 rounded-full bg-white/5" />
       <div className="absolute -right-5 -bottom-10 w-32 h-32 rounded-full bg-white/5" />
 

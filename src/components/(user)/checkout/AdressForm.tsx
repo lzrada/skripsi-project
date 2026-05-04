@@ -24,7 +24,7 @@ const fields = [
   { name: "telepon", label: "No. Telepon", placeholder: "08xx-xxxx-xxxx", required: true, type: "tel", span: false },
   { name: "alamat", label: "Alamat Lengkap", placeholder: "Nama jalan, No. rumah, RT/RW, Kelurahan", required: true, type: "text", span: true },
   { name: "kota", label: "Kota / Kabupaten", placeholder: "Contoh: Blitar", required: false, type: "text", span: false },
-  { name: "kodePos", label: "Kode Pos", placeholder: "66181", required: false, type: "text", span: false },
+  { name: "kodePos", label: "Kode Pos", placeholder: "21425", required: false, type: "text", span: false },
 ] as const;
 
 export default function AddressForm({ form, formError, onChange }: Props) {

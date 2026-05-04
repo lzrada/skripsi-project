@@ -27,21 +27,19 @@ export default function UserLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-gray-50 flex flex-col`}>
+    <div className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-gray-50 flex flex-col relative`}>
       {/* Navbar */}
       <NavbarUser />
 
       {/* Konten halaman */}
-      <main className="flex-1">{children}</main>
+      <main id="main-content" className="flex-1 mt-24 md:mt-28 px-4 sm:px-6 lg:px-8 py-6">
+        {children}
+      </main>
 
-      {/* Footer */}
       <FooterUser />
 
-      {/* ─── Global UI ──────────────────────────── */}
-      {/* Toast notifications (muncul kanan bawah) */}
       <ToastContainer />
 
-      {/* WhatsApp floating button (kiri bawah) */}
       <WhatsAppButton />
     </div>
   );

@@ -25,7 +25,7 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
     price: initial?.price?.toString() ?? "",
     originalPrice: initial?.originalPrice?.toString() ?? "",
     stock: initial?.stock?.toString() ?? "",
-    reorderPoint: initial?.reorderPoint?.toString() ?? "5", // default lebih masuk akal
+    reorderPoint: initial?.reorderPoint?.toString() ?? "5",
     description: initial?.description ?? "",
   });
 
@@ -93,7 +93,7 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
         originalPrice: originalPriceNum,
         price: priceNum,
         stock: Number(formData.stock),
-        reorderPoint: Number(formData.reorderPoint) || 5, // sesuai skripsi
+        reorderPoint: Number(formData.reorderPoint) || 5,
         description: formData.description,
         images: finalImages,
       };
@@ -101,7 +101,6 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
       if (mode === "add") {
         await addProductService(payload);
       } else if (mode === "edit" && initial) {
-        // Hapus gambar yang ditandai hapus
         await Promise.all(imagesToDelete.map((url) => deleteImageFromSupabaseService(url)));
         await updateProductService(initial.id, payload);
       }
@@ -118,7 +117,7 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl shadow-2xl">
-        <div className="sticky top-0 bg-white flex items-center justify-between px-6 py-4 border-b border-slate-100 rounded-t-3xl">
+        <div className="sticky top-0 z-50 bg-white flex items-center justify-between px-6 py-4 border-b border-slate-100 rounded-t-3xl">
           <h2 className="text-xl font-bold text-slate-800">{mode === "add" ? "Tambah Produk Baru" : "Edit Produk"}</h2>
           <button type="button" onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition">
             <FaTimes />
@@ -146,7 +145,7 @@ function ProductModal({ mode, initial, onClose, onSuccess }: ProductModalProps) 
                   </div>
                 ))}
                 {newImagePreviews.map((url, i) => (
-                  <div key={`new-${i}`} className="group relative h-28 rounded-2xl overflow-hidden bg-slate-100">
+                  <div key={`new-${i}`} className="group relative h-28 z-0 rounded-2xl overflow-hidden bg-slate-100">
                     <img src={url} alt={`Preview ${i + 1}`} className="w-full h-full object-cover" />
                     <button type="button" onClick={() => removeNewImage(i)} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                       <FaTimes className="text-white text-xl" />
@@ -492,7 +491,7 @@ export default function ProductManagementPage() {
             <div key={product.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition overflow-hidden flex flex-col">
               <div className="relative h-48 bg-slate-100">
                 {product.images?.[0] ? (
-                  <Image src={product.images[0]} alt={product.name} fill className="object-cover" />
+                  <Image src={product.images[0]} alt={product.name} fill sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 25vw" className="object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-slate-300">
                     <FaBox className="text-4xl" />

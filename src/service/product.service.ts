@@ -77,7 +77,6 @@ export const addProductService = async (payload: AddProductPayload) => {
       originalPrice: payload.originalPrice ?? null,
       price: payload.price,
       stock: payload.stock,
-      // Reorder Point sesuai skripsi: batas minimum stok untuk monitoring
       reorderPoint: payload.reorderPoint ?? 5,
       description: payload.description ?? "",
       images: payload.images,

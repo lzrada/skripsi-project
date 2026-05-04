@@ -133,7 +133,7 @@ function SuccessContent() {
 
         {/* Tombol Aksi */}
         <div className="grid grid-cols-2 gap-3">
-          <Link href="/user/shop" className="flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition">
+          <Link href="/user/products" className="flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition">
             <FontAwesomeIcon icon={faShoppingBag} className="w-4 h-4" />
             Lanjut Belanja
           </Link>

@@ -2,15 +2,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
+import Link from "next/link";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "@/config/firebase";
 import ChartLine from "@/components/(admin)/ui/ChartLine";
 import LowStockAlert from "@/components/(admin)/ui/LowStockAlert";
 import CategoryBreakdown from "@/components/(admin)/ui/CategoryBreakdown";
 import TopProductsChart from "@/components/(admin)/ui/TopProductChart";
 import { subscribeToLowStockProductsService } from "@/service/inventory.service";
-import { LowStockProduct } from "@/service/inventory.service";
-import { FaExclamationTriangle, FaBoxOpen } from "react-icons/fa";
+import type { LowStockProduct } from "@/service/inventory.service";
+import { DEFAULT_REORDER_POINT } from "@/constants/inventory";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -38,10 +39,9 @@ export default function Dashboard() {
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [lowStockProducts, setLowStockProducts] = useState<LowStockProduct[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingInventory, setLoadingInventory] = useState(true);
 
   useEffect(() => {
-    const unsubOrders = onSnapshot(query(collection(db, "orders"), orderBy("date", "desc")), (snap) => {
+    const unsubOrders = onSnapshot(query(collection(db, "orders"), orderBy("createdAt", "desc")), (snap) => {
       const orders = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as any[];
       const revenue = orders.filter((o) => o.status === "Selesai").reduce((acc, o) => acc + (o.total ?? 0), 0);
       setTotalOrders(snap.size);
@@ -52,13 +52,14 @@ export default function Dashboard() {
       setRecentOrders(orders.slice(0, 5));
       setLoading(false);
     });
+
     const unsubProducts = onSnapshot(collection(db, "products"), (snap) => setTotalProducts(snap.size));
+
     const unsubUsers = onSnapshot(collection(db, "users"), (snap) => setTotalUsers(snap.size));
 
-    // Tambahan: Subscribe Reorder Point Inventory
-    const unsubInventory = subscribeToLowStockProductsService((products) => {
+    // Reorder Point monitoring — sesuai skripsi (2 argumen: threshold + callback)
+    const unsubInventory = subscribeToLowStockProductsService(DEFAULT_REORDER_POINT, (products) => {
       setLowStockProducts(products);
-      setLoadingInventory(false);
     });
 
     return () => {
@@ -83,13 +84,33 @@ export default function Dashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-7">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Dashboard</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Selamat datang kembali — berikut ringkasan toko Anda.</p>
+          <p className="text-sm text-slate-500 mt-0.5">Selamat datang kembali — berikut ringkasan toko hari ini.</p>
         </div>
         <div className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-sm text-sm text-slate-600">
           <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
           <span className="font-medium">Live Update</span>
         </div>
       </div>
+
+      {/* ── Banner Notifikasi Reorder Point (sesuai skripsi) ── */}
+      {lowStockProducts.length > 0 && (
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl px-5 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-red-700">{lowStockProducts.length} produk stoknya di bawah Reorder Point!</p>
+              <p className="text-xs text-red-500 mt-0.5">Segera lakukan restock untuk menghindari kehabisan stok.</p>
+            </div>
+          </div>
+          <Link href="/admin/inventory-monitoring" className="flex-shrink-0 text-xs font-semibold text-red-600 bg-red-100 hover:bg-red-200 px-4 py-2 rounded-xl transition">
+            Lihat Detail →
+          </Link>
+        </div>
+      )}
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
@@ -118,18 +139,19 @@ export default function Dashboard() {
           <p className="text-sm text-slate-500 mt-1">Total Pesanan</p>
           <div className="flex items-center gap-1.5 mt-2">
             <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-            <span className="text-xs text-slate-400">{processOrders} sedang diproses</span>
+            <span className="text-xs text-slate-400">{doneOrders} selesai</span>
           </div>
         </div>
 
         {/* Products */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-start justify-between mb-4">
-            <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
-              <svg className="w-5 h-5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+              <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
               </svg>
             </div>
+            {lowStockProducts.length > 0 && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-semibold">{lowStockProducts.length} low stock</span>}
           </div>
           <p className="text-3xl font-bold text-slate-800 tracking-tight">{loading ? <span className="text-slate-300">—</span> : totalProducts}</p>
           <p className="text-sm text-slate-500 mt-1">Total Produk</p>
@@ -139,8 +161,8 @@ export default function Dashboard() {
         {/* Users */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-start justify-between mb-4">
-            <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-              <svg className="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="w-10 h-10 bg-sky-100 rounded-xl flex items-center justify-center">
+              <svg className="w-5 h-5 text-sky-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -157,12 +179,10 @@ export default function Dashboard() {
 
       {/* ── Chart + Status Summary ── */}
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-5 mb-5">
-        {/* Chart */}
         <div className="xl:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <ChartLine />
         </div>
 
-        {/* Status Breakdown */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
           <h3 className="font-bold text-slate-700 text-sm mb-4">Status Pesanan</h3>
           <div className="space-y-3">
@@ -178,12 +198,16 @@ export default function Dashboard() {
                   <span className="font-bold text-slate-800">{loading ? "—" : item.count}</span>
                 </div>
                 <div className={`w-full h-1.5 rounded-full ${item.track}`}>
-                  <div className={`h-1.5 rounded-full ${item.color} transition-all duration-700`} style={{ width: totalOrders > 0 && !loading ? `${Math.min((item.count / totalOrders) * 100, 100)}%` : "0%" }} />
+                  <div
+                    className={`h-1.5 rounded-full ${item.color} transition-all duration-700`}
+                    style={{
+                      width: totalOrders > 0 && !loading ? `${Math.min((item.count / totalOrders) * 100, 100)}%` : "0%",
+                    }}
+                  />
                 </div>
               </div>
             ))}
           </div>
-
           <div className="mt-5 pt-4 border-t border-slate-100">
             <p className="text-xs text-slate-500 mb-1">Total Pendapatan</p>
             <p className="text-xl font-bold text-[#1E2753]">{loading ? "—" : formatPrice(totalRevenue)}</p>
@@ -192,13 +216,14 @@ export default function Dashboard() {
       </div>
 
       {/* ── Recent Orders ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-5">
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
           <h3 className="font-bold text-slate-800">Pesanan Terbaru</h3>
-          <a href="/admin/orders-management" className="text-xs font-semibold text-[#1E2753] hover:underline">
+          <Link href="/admin/orders-management" className="text-xs font-semibold text-[#1E2753] hover:underline">
             Lihat Semua →
-          </a>
+          </Link>
         </div>
+
         {loading ? (
           <div className="p-6 space-y-3">
             {[...Array(4)].map((_, i) => (
@@ -217,67 +242,36 @@ export default function Dashboard() {
             {recentOrders.map((order) => {
               const s = statusBadge[order.status] ?? statusBadge["Menunggu Konfirmasi"];
               return (
-                <div key={order.id} className="flex items-center justify-between gap-4 px-5 py-3 hover:bg-slate-50 transition-colors">
+                <Link key={order.id} href="/admin/orders-management" className="flex items-center justify-between gap-4 px-5 py-3 hover:bg-slate-50 transition-colors">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-slate-700">#{order.id.slice(0, 8).toUpperCase()}</p>
                     <p className="text-xs text-slate-400 truncate">{order.recipientName}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-sm font-bold text-slate-800">{formatPrice(order.total ?? 0)}</p>
-                    <p className="text-xs text-slate-400">{new Date(order.date).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}</p>
+                    <p className="text-xs text-slate-400">
+                      {new Date(order.date).toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </p>
                   </div>
                   <span className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${s.bg} ${s.text} flex-shrink-0`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
                     {order.status === "Menunggu Konfirmasi" ? "Menunggu" : order.status}
                   </span>
-                </div>
+                </Link>
               );
             })}
           </div>
         )}
       </div>
 
-      {/* ── Inventory & Analytics ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 mt-5">
+      {/* ── Inventory & Analytics (LowStockAlert sudah include Reorder Point) ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
         <LowStockAlert />
         <CategoryBreakdown />
         <TopProductsChart />
-      </div>
-
-      {/* ==================== TAMBAHAN: INVENTORY REORDER POINT ==================== */}
-      <div className="mt-8 bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <FaExclamationTriangle className="text-red-500 text-2xl" />
-          <div>
-            <h2 className="text-xl font-semibold">Produk Low Stock (Reorder Point)</h2>
-            <p className="text-sm text-slate-500">Produk yang stoknya mendekati atau di bawah batas minimum</p>
-          </div>
-        </div>
-
-        {loadingInventory ? (
-          <p className="text-center py-8 text-slate-400">Memuat data stok...</p>
-        ) : lowStockProducts.length === 0 ? (
-          <div className="text-center py-12 text-slate-400">
-            <FaBoxOpen className="mx-auto text-5xl mb-3 opacity-30" />
-            <p className="font-medium">Saat ini semua stok dalam kondisi aman</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {lowStockProducts.map((product) => (
-              <div key={product.id} className="flex items-center justify-between p-4 border border-red-100 bg-red-50 rounded-2xl">
-                <div>
-                  <p className="font-medium text-slate-800">{product.name}</p>
-                  <p className="text-sm text-red-600">Stok tersisa: {product.stock} unit</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-slate-500">Reorder Point</p>
-                  <p className="font-bold text-red-600">{product.reorderPoint}</p>
-                </div>
-                <button className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-sm rounded-2xl transition">Segera Restock</button>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );

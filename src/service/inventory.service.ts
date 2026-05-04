@@ -1,6 +1,17 @@
+// src/service/inventory.service.ts
 import { db } from "@/config/firebase";
-import { collection, onSnapshot, query, doc, updateDoc } from "firebase/firestore";
-import { isLowStock, isCriticalStock, DEFAULT_REORDER_POINT } from "@/constants/inventory";
+import {
+  collection,
+  onSnapshot,
+  query,
+  doc,
+  updateDoc,
+} from "firebase/firestore";
+import {
+  isLowStock,
+  DEFAULT_REORDER_POINT,
+  calculateReorderPoint,
+} from "@/constants/inventory";
 
 export interface LowStockProduct {
   id: string;
@@ -8,32 +19,54 @@ export interface LowStockProduct {
   stock: number;
   reorderPoint: number;
   suggestedReorder?: number;
+  averageDailySales?: number;
+  leadTimeDays?: number;
 }
 
-export function calculateReorderPoint(averageDailySales: number, leadTime: number): number {
-  return Math.ceil(averageDailySales * leadTime);
-}
-
-export const subscribeToLowStockProductsService = (callback: (products: LowStockProduct[]) => void) => {
+/**
+ * Subscribe realtime ke produk yang stoknya <= reorderPoint.
+ * Implementasi monitoring Reorder Point (sesuai Gambar 3.7 skripsi).
+ *
+ * @param ropThreshold - nilai ROP global fallback (default 5)
+ * @param callback     - dipanggil tiap ada perubahan data
+ */
+export const subscribeToLowStockProductsService = (
+  ropThreshold: number = DEFAULT_REORDER_POINT,
+  callback: (products: LowStockProduct[]) => void
+) => {
   try {
     const q = query(collection(db, "products"));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allProducts: LowStockProduct[] = snapshot.docs.map((docItem) => {
         const data = docItem.data();
-        const stock = data.stock ?? 0;
-        const reorderPoint = data.reorderPoint ?? DEFAULT_REORDER_POINT;
+        const stock: number = data.stock ?? 0;
+        const avgSales: number = data.averageDailySales ?? 0;
+        const leadTime: number = data.leadTimeDays ?? 3;
+
+        // Hitung ROP: pakai rumus jika ada data, fallback ke nilai tersimpan / threshold
+        const reorderPoint: number =
+          avgSales > 0
+            ? calculateReorderPoint(avgSales, leadTime)
+            : (data.reorderPoint ?? ropThreshold);
 
         return {
           id: docItem.id,
           name: data.name ?? "",
           stock,
           reorderPoint,
-          suggestedReorder: isLowStock(stock, reorderPoint) ? reorderPoint * 2 : undefined,
+          averageDailySales: avgSales,
+          leadTimeDays: leadTime,
+          suggestedReorder: isLowStock(stock, reorderPoint)
+            ? reorderPoint * 2
+            : undefined,
         };
       });
 
-      const lowStockProducts = allProducts.filter((p) => isLowStock(p.stock, p.reorderPoint));
+      // Filter hanya produk stok <= ROP (kondisi "Stok <= ROP?" di flowchart)
+      const lowStockProducts = allProducts.filter((p) =>
+        isLowStock(p.stock, p.reorderPoint)
+      );
 
       if (typeof callback === "function") {
         callback(lowStockProducts);
@@ -47,18 +80,33 @@ export const subscribeToLowStockProductsService = (callback: (products: LowStock
   }
 };
 
-export const subscribeToInventoryAlertsService = (callback: (products: LowStockProduct[]) => void) => {
+/**
+ * Subscribe ke SEMUA produk beserta status inventorinya.
+ * Dipakai halaman monitoring stok admin.
+ */
+export const subscribeToInventoryAlertsService = (
+  callback: (products: LowStockProduct[]) => void
+) => {
   try {
     const q = query(collection(db, "products"));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const products: LowStockProduct[] = snapshot.docs.map((docItem) => {
         const data = docItem.data();
+        const avgSales: number = data.averageDailySales ?? 0;
+        const leadTime: number = data.leadTimeDays ?? 3;
+        const reorderPoint: number =
+          avgSales > 0
+            ? calculateReorderPoint(avgSales, leadTime)
+            : (data.reorderPoint ?? DEFAULT_REORDER_POINT);
+
         return {
           id: docItem.id,
           name: data.name ?? "",
           stock: data.stock ?? 0,
-          reorderPoint: data.reorderPoint ?? DEFAULT_REORDER_POINT,
+          reorderPoint,
+          averageDailySales: avgSales,
+          leadTimeDays: leadTime,
         };
       });
 
@@ -74,19 +122,49 @@ export const subscribeToInventoryAlertsService = (callback: (products: LowStockP
   }
 };
 
-export const updateReorderPointService = async (productId: string, newReorderPoint: number): Promise<void> => {
+/** Update reorderPoint manual per-produk di Firestore */
+export const updateReorderPointService = async (
+  productId: string,
+  newReorderPoint: number
+): Promise<void> => {
   try {
     const productRef = doc(db, "products", productId);
-    await updateDoc(productRef, {
-      reorderPoint: newReorderPoint,
-    });
+    await updateDoc(productRef, { reorderPoint: newReorderPoint });
   } catch (error) {
     console.error("updateReorderPointService Error:", error);
     throw error;
   }
 };
 
-export const markAsRestockedService = async (productId: string): Promise<void> => {
+/**
+ * Update rata-rata penjualan harian & lead time, lalu hitung + simpan ROP otomatis.
+ * Admin bisa set ini dari halaman monitoring.
+ */
+export const updateStockParamsService = async (
+  productId: string,
+  params: { averageDailySales: number; leadTimeDays: number }
+): Promise<void> => {
+  try {
+    const productRef = doc(db, "products", productId);
+    const computedROP = calculateReorderPoint(
+      params.averageDailySales,
+      params.leadTimeDays
+    );
+    await updateDoc(productRef, {
+      averageDailySales: params.averageDailySales,
+      leadTimeDays: params.leadTimeDays,
+      reorderPoint: computedROP,
+    });
+  } catch (error) {
+    console.error("updateStockParamsService Error:", error);
+    throw error;
+  }
+};
+
+/** Tandai produk sudah di-restock */
+export const markAsRestockedService = async (
+  productId: string
+): Promise<void> => {
   try {
     const productRef = doc(db, "products", productId);
     await updateDoc(productRef, {

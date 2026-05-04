@@ -11,11 +11,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
 import { logout } from "@/service/auth.service";
 import { RiCoupon3Line } from "react-icons/ri";
+import { MdInventory } from "react-icons/md";
 
 const NAV_ITEMS = [
   { href: "/admin/dashboard-admin", label: "Dashboard", icon: <IoHome className="text-xl flex-shrink-0" /> },
   { href: "/admin/product-management", label: "Manajemen Produk", icon: <IoMdPricetag className="text-xl flex-shrink-0" /> },
   { href: "/admin/orders-management", label: "Manajemen Pesanan", icon: <FiList className="text-xl flex-shrink-0" /> },
+  { href: "/admin/inventory-monitoring", label: "Monitoring Stok", icon: <MdInventory className="text-xl flex-shrink-0" /> },
   { href: "/admin/coupon-management", label: "Manajemen Kupon", icon: <RiCoupon3Line className="text-xl flex-shrink-0" /> },
 ];
 

@@ -27,19 +27,22 @@ export default function UserLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-gray-50 flex flex-col relative`}>
-      {/* Navbar */}
+    <div className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-gray-50 flex flex-col`}>
+      {/* Navbar fixed — tinggi ~104px (topbar 32px + main 64px + category 40px) */}
       <NavbarUser />
 
-      {/* Konten halaman */}
-      <main id="main-content" className="flex-1 mt-24 md:mt-28 px-4 sm:px-6 lg:px-8 py-6">
+      {/*
+        Spacer untuk konten agar tidak tertutup navbar fixed.
+        - Mobile (tidak ada topbar login): 64px navbar + 40px category = 104px
+        - Desktop dengan topbar login: 32px + 64px + 40px = 136px
+        Pakai pt yang cukup aman untuk semua kondisi.
+      */}
+      <main id="main-content" className="flex-1 pt-[140px] px-4 sm:px-6 lg:px-8">
         {children}
       </main>
 
       <FooterUser />
-
       <ToastContainer />
-
       <WhatsAppButton />
     </div>
   );

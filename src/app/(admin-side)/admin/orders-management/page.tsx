@@ -6,7 +6,7 @@ import { faBoxOpen, faChevronDown, faChevronUp, faLocationDot, faMoneyBill, faWa
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { type Order, type OrderStatus, statusConfig, statusSteps } from "@/types/order";
 import { categoryIcon, categoryGradient, defaultCategoryIcon, defaultGradient } from "@/constants/category";
-import { cancelOrderService, subscribeToAllOrdersService, updateOrderStatusService } from "@/service/order.service";
+import { cancelOrderService, subscribeToAllOrdersService, updateOrderStatusService, deductStockOnPaymentService } from "@/service/order.service";
 
 const ALL_STATUSES: (OrderStatus | "Semua")[] = ["Semua", "Menunggu Konfirmasi", "Diproses", "Dikirim", "Selesai", "Dibatalkan"];
 
@@ -212,6 +212,15 @@ export default function OrdersManagementPage() {
   const handleStatusChange = async (id: string, status: OrderStatus) => {
     try {
       await updateOrderStatusService(id, status);
+      // FIX: Kurangi stok saat admin konfirmasi order COD (Diproses = admin mulai proses)
+      // Ini sesuai alur flowchart skripsi: stok dikurangi saat transaksi dikonfirmasi
+      if (status === "Diproses") {
+        try {
+          await deductStockOnPaymentService(id);
+        } catch {
+          // Stok mungkin sudah dikurangi sebelumnya (Midtrans paid), tidak perlu error
+        }
+      }
       showToast(`Status diperbarui: ${status}`, "success");
     } catch {
       showToast("Gagal memperbarui status.", "error");

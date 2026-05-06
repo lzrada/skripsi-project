@@ -1,7 +1,7 @@
 // src/components/(admin)/Navbar-admin.tsx
 "use client";
 
-import { JSX } from "react";
+import { JSX, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { IoHome } from "react-icons/io5";
@@ -24,51 +24,64 @@ const NAV_ITEMS = [
 const NavbarAdmin = (): JSX.Element => {
   const pathname = usePathname();
   const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
     try {
       await logout();
       router.replace("/login");
     } catch (err) {
       console.error(err);
+      setLoggingOut(false);
     }
   };
 
   return (
-    <div className="w-16 sm:w-60 bg-gray-800 min-h-screen flex flex-col p-3 sm:p-5 flex-shrink-0">
-      {/* Logo / Brand */}
-      <div className="my-4 text-white font-bold text-base sm:text-lg leading-tight hidden sm:block">
-        Rizky Elektronik
-        <span className="block text-xs text-gray-400 font-normal mt-0.5">Admin Panel</span>
-      </div>
-      {/* Icon only saat mobile */}
-      <div className="my-4 flex justify-center sm:hidden">
-        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">R</div>
+    <div className="w-16 sm:w-60 bg-[#1a2035] min-h-screen flex flex-col p-3 sm:p-5 flex-shrink-0 shadow-xl">
+      {/* Brand — desktop */}
+      <div className="my-4 hidden sm:block">
+        <p className="text-white font-bold text-base leading-tight">Rizky Elektronik</p>
+        <span className="text-xs text-slate-400 font-normal mt-0.5 block">Admin Panel</span>
       </div>
 
-      <hr className="border-gray-600 mb-5" />
+      {/* Brand — mobile (icon only) */}
+      <div className="my-4 flex justify-center sm:hidden">
+        <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg">R</div>
+      </div>
+
+      <hr className="border-slate-600/50 mb-4" />
 
       {/* Nav Items */}
       <nav className="flex flex-col gap-1 flex-1">
         {NAV_ITEMS.map((item) => {
-          const isActive = pathname.startsWith(item.href);
+          // Exact match untuk dashboard, startsWith untuk yang lain (ada sub-route)
+          const isActive = item.href === "/admin/dashboard-admin" ? pathname === item.href : pathname.startsWith(item.href);
+
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 p-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${isActive ? "bg-white text-gray-900" : "text-gray-300 hover:bg-gray-700 hover:text-white"}`}
+              title={item.label}
+              className={`flex items-center gap-3 p-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${isActive ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:bg-white/10 hover:text-white"}`}
             >
-              {item.icon}
-              <span className="hidden sm:block">{item.label}</span>
+              <span className={isActive ? "text-slate-800" : "text-slate-400 group-hover:text-white"}>{item.icon}</span>
+              <span className="hidden sm:block truncate">{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
       {/* Logout */}
-      <button onClick={handleLogout} className="flex items-center gap-3 p-2.5 rounded-xl text-sm font-medium text-gray-300 hover:bg-red-600 hover:text-white transition-all duration-200 mt-2">
-        <FontAwesomeIcon icon={faRightFromBracket} className="text-lg flex-shrink-0 w-5 h-5" />
-        <span className="hidden sm:block">Keluar</span>
+      <button
+        onClick={handleLogout}
+        disabled={loggingOut}
+        title="Keluar"
+        className="flex items-center gap-3 p-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-red-500/20 hover:text-red-400 transition-all duration-200 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <FontAwesomeIcon icon={faRightFromBracket} className={`text-lg flex-shrink-0 w-5 h-5 ${loggingOut ? "animate-pulse" : ""}`} />
+        <span className="hidden sm:block">{loggingOut ? "Keluar..." : "Keluar"}</span>
       </button>
     </div>
   );

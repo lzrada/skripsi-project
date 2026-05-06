@@ -79,8 +79,7 @@ export default function DashboardUser() {
   const bestSeller = inStockProducts.slice(0, 4);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-10">
-      {/* Hero Banner — tampil langsung, tidak perlu data */}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 -mt-10 space-y-10">
       <HeroBanner />
 
       {/* Promo cards */}
@@ -143,17 +142,6 @@ export default function DashboardUser() {
           </div>
         </section>
       ) : null}
-
-      {/* CTA banner
-      <div className="bg-gradient-to-r from-[#1E2753] to-[#E85D04] rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div>
-          <p className="text-white font-bold text-lg">Mau jual barang elektronik bekas?</p>
-          <p className="text-white/70 text-sm mt-1">Kami terima barang dengan harga terbaik!</p>
-        </div>
-        <a href="https://wa.me/62" target="_blank" rel="noopener noreferrer" className="bg-white text-[#1E2753] font-bold text-sm px-6 py-2.5 rounded-xl hover:bg-yellow-300 transition-colors whitespace-nowrap">
-          Hubungi Kami
-        </a>
-      </div> */}
 
       {/* Semua Produk */}
       <section id="produk">

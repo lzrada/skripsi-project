@@ -1,20 +1,14 @@
+// src/components/ui/ProductCard.tsx
 "use client";
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "@/config/firebase";
-import { FiShoppingCart, FiCheck } from "react-icons/fi";
+import { FiShoppingCart, FiCheck, FiEye } from "react-icons/fi";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSpinner, faStar } from "@fortawesome/free-solid-svg-icons";
-import {
-  categoryIcon,
-  categoryGradient,
-  defaultCategoryIcon,
-  defaultGradient,
-} from "@/constants/category";
+import { faSpinner, faStar, faFire, faTag } from "@fortawesome/free-solid-svg-icons";
+import { categoryIcon, categoryGradient, defaultCategoryIcon, defaultGradient } from "@/constants/category";
 import { addToCartService } from "@/service/cart.service";
 import { toast } from "@/components/ui/Toast";
 import WishlistButton from "@/components/ui/WishlistButton";
@@ -56,39 +50,59 @@ function getUid(): string | null {
   );
 }
 
+// ── Stock badge: tampil seperti e-commerce modern ─────────────────────────
+function StockBadge({ stock }: { stock: number }) {
+  if (stock === 0) {
+    return (
+      <div className="flex items-center gap-1 mt-1">
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-500 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block" />
+          Habis
+        </span>
+      </div>
+    );
+  }
+  if (stock <= 3) {
+    return (
+      <div className="flex items-center gap-1 mt-1">
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
+          <FontAwesomeIcon icon={faFire} className="w-2.5 h-2.5" />
+          Hampir Habis! Sisa {stock}
+        </span>
+      </div>
+    );
+  }
+  if (stock <= 10) {
+    return (
+      <div className="flex items-center gap-1 mt-1">
+        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+          Stok terbatas ({stock})
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1 mt-1">
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
+        Tersedia
+      </span>
+    </div>
+  );
+}
+
 export default function ProductCard({ product }: ProductCardProps) {
   const router = useRouter();
-
-  // ── Real-time stok dari Firestore (FIX KRUSIAL) ─────────────────────────
-  // Ini mengatasi bug stok tidak terupdate setelah transaksi.
-  const [liveStock, setLiveStock] = useState<number>(product.stock);
-
-  useEffect(() => {
-    // Subscribe ke perubahan stok produk ini secara real-time
-    const unsub = onSnapshot(doc(db, "products", product.id), (snap) => {
-      if (snap.exists()) {
-        const s = snap.data().stock;
-        if (typeof s === "number") setLiveStock(s);
-      }
-    });
-    return () => unsub();
-  }, [product.id]);
-
-  // Sync ke prop jika list di-refresh dari atas (misal filter)
-  useEffect(() => {
-    setLiveStock(product.stock);
-  }, [product.stock]);
+  const liveStock = product.stock; // real-time dari parent listener, bukan onSnapshot per card
 
   const gradient = categoryGradient[product.category] ?? defaultGradient;
   const icon = categoryIcon[product.category] ?? defaultCategoryIcon;
 
-  const discountPct = product.originalPrice
-    ? Math.round((1 - product.price / product.originalPrice) * 100)
-    : null;
+  const discountPct = product.originalPrice && product.originalPrice > product.price ? Math.round((1 - product.price / product.originalPrice) * 100) : null;
 
   const isBekas = product.condition?.toLowerCase() === "bekas";
   const isOutOfStock = liveStock === 0;
-  const isLowStock = liveStock > 0 && liveStock <= 3;
 
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
@@ -103,7 +117,6 @@ export default function ProductCard({ product }: ProductCardProps) {
       window.location.href = "/login";
       return;
     }
-
     if (isOutOfStock) return;
 
     setAdding(true);
@@ -115,11 +128,10 @@ export default function ProductCard({ product }: ProductCardProps) {
         originalPrice: product.originalPrice,
         category: product.category,
         condition: product.condition ?? "Baru",
-        stock: liveStock, // pakai liveStock bukan product.stock
+        stock: liveStock,
         image: product.images?.[0] ?? "",
         qty: 1,
       });
-
       setAdded(true);
       toast.success(`${product.name} ditambahkan ke keranjang! 🛒`);
       setTimeout(() => setAdded(false), 2000);
@@ -134,150 +146,112 @@ export default function ProductCard({ product }: ProductCardProps) {
   return (
     <div
       onClick={() => router.push(`/user/product-detail/${product.id}`)}
-      className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-[#1E2753]/20 hover:shadow-lg transition-all duration-200 flex flex-col cursor-pointer"
+      className="group relative bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-[#1E2753]/30 hover:shadow-xl shadow-sm transition-all duration-300 flex flex-col cursor-pointer"
     >
       {/* ── Gambar ── */}
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden bg-gray-50">
         {product.images?.[0] ? (
-          <div className="relative w-full aspect-square bg-gray-50">
-            <Image
-              src={product.images[0]}
-              alt={product.name}
-              fill
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-              className="object-contain p-3 group-hover:scale-105 transition-transform duration-300"
-            />
+          <div className="relative w-full aspect-square">
+            <Image src={product.images[0]} alt={product.name} fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-contain p-3 group-hover:scale-105 transition-transform duration-500" loading="lazy" />
           </div>
         ) : (
-          <div
-            className={`w-full aspect-square bg-gradient-to-br ${gradient} flex items-center justify-center`}
-          >
-            <FontAwesomeIcon icon={icon} className="w-10 h-10 text-white/60" />
+          <div className={`w-full aspect-square bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+            <FontAwesomeIcon icon={icon} className="w-12 h-12 text-white/50" />
           </div>
         )}
 
-        {/* Badge diskon */}
+        {/* ── Overlay tombol Quick View (muncul saat hover) ── */}
+        <div className="absolute inset-0 bg-[#1E2753]/0 group-hover:bg-[#1E2753]/5 transition-colors duration-300 flex items-end justify-center pb-3 opacity-0 group-hover:opacity-100">
+          <Link
+            href={`/user/product-detail/${product.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1.5 bg-white/95 backdrop-blur-sm text-[#1E2753] text-[11px] font-bold px-3 py-1.5 rounded-full shadow-lg border border-white hover:bg-[#1E2753] hover:text-white transition-all duration-200 translate-y-2 group-hover:translate-y-0"
+          >
+            <FiEye className="w-3 h-3" />
+            Lihat Detail
+          </Link>
+        </div>
+
+        {/* ── Badge Diskon ── */}
         {discountPct && discountPct > 0 && (
-          <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10">
-            -{discountPct}%
-          </span>
-        )}
-
-        {/* Badge kondisi */}
-        {isBekas && (
-          <span className="absolute top-2 right-8 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10">
-            2nd
-          </span>
-        )}
-
-        {/* Stok habis overlay — pakai liveStock */}
-        {isOutOfStock && (
-          <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10">
-            <span className="bg-gray-800 text-white text-xs font-bold px-3 py-1.5 rounded-full">
-              Stok Habis
+          <div className="absolute top-2 left-2 z-10">
+            <span className="flex items-center gap-0.5 bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-sm">
+              <FontAwesomeIcon icon={faTag} className="w-2.5 h-2.5" />-{discountPct}%
             </span>
           </div>
         )}
 
-        {/* Wishlist */}
-        <div
-          className="absolute top-1.5 right-1.5 z-10"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <WishlistButton
-            productId={product.id}
-            productName={product.name}
-            size="sm"
-          />
+        {/* ── Badge Kondisi Bekas ── */}
+        {isBekas && (
+          <div className="absolute top-2 left-2 z-10" style={{ top: discountPct ? "2.2rem" : undefined }}>
+            <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-lg shadow-sm">2nd</span>
+          </div>
+        )}
+
+        {/* ── Stok Habis Overlay ── */}
+        {isOutOfStock && (
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-[1px] flex items-center justify-center z-10">
+            <div className="bg-gray-800 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg">Stok Habis</div>
+          </div>
+        )}
+
+        {/* ── Wishlist ── */}
+        <div className="absolute top-2 right-2 z-10" onClick={(e) => e.stopPropagation()}>
+          <WishlistButton productId={product.id} productName={product.name} size="sm" />
         </div>
       </div>
 
       {/* ── Info ── */}
-      <div className="p-3 flex flex-col flex-1 gap-1">
-        <p className="text-[10px] font-semibold text-[#1E2753]/60 uppercase tracking-wide">
-          {product.category}
-        </p>
+      <div className="p-3 flex flex-col flex-1">
+        {/* Kategori */}
+        <p className="text-[10px] font-semibold text-[#1E2753]/50 uppercase tracking-widest mb-1">{product.category}</p>
 
-        <h3 className="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug flex-1">
-          {product.name}
-        </h3>
+        {/* Nama */}
+        <h3 className="text-xs font-semibold text-gray-800 line-clamp-2 leading-snug flex-1 mb-2">{product.name}</h3>
 
         {/* Rating */}
         {(product.averageRating ?? 0) > 0 && (
-          <div className="flex items-center gap-1">
-            <FontAwesomeIcon
-              icon={faStar}
-              className="w-2.5 h-2.5 text-amber-400"
-            />
-            <span className="text-[10px] text-gray-500 font-medium">
-              {product.averageRating?.toFixed(1)}
-            </span>
-            {(product.totalReviews ?? 0) > 0 && (
-              <span className="text-[10px] text-gray-400">
-                ({product.totalReviews})
-              </span>
-            )}
+          <div className="flex items-center gap-1 mb-1.5">
+            <div className="flex items-center">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <FontAwesomeIcon key={i} icon={faStar} className={`w-2.5 h-2.5 ${i <= Math.round(product.averageRating ?? 0) ? "text-amber-400" : "text-gray-200"}`} />
+              ))}
+            </div>
+            <span className="text-[10px] text-gray-500 font-medium">{product.averageRating?.toFixed(1)}</span>
+            {(product.totalReviews ?? 0) > 0 && <span className="text-[10px] text-gray-400">({product.totalReviews})</span>}
           </div>
         )}
 
         {/* Harga */}
-        <div className="mt-1">
-          {product.originalPrice && product.originalPrice > product.price && (
-            <p className="text-[10px] text-gray-400 line-through">
-              {formatPrice(product.originalPrice)}
-            </p>
+        <div className="mb-1">
+          {product.originalPrice && product.originalPrice > product.price && <p className="text-[10px] text-gray-400 line-through leading-none mb-0.5">{formatPrice(product.originalPrice)}</p>}
+          <p className="text-sm font-black text-[#1E2753] leading-none">{formatPrice(product.price)}</p>
+        </div>
+
+        {/* Stock Badge — modern & informatif */}
+        <StockBadge stock={liveStock} />
+
+        {/* Tombol Keranjang */}
+        <button
+          onClick={handleAddToCart}
+          disabled={adding || isOutOfStock}
+          className={`mt-3 w-full py-2 text-xs font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 ${
+            added ? "bg-emerald-500 text-white scale-95" : isOutOfStock ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-[#1E2753] text-white hover:bg-[#2a3470] active:scale-95"
+          } disabled:opacity-60`}
+        >
+          {adding ? (
+            <FontAwesomeIcon icon={faSpinner} className="w-3 h-3 animate-spin" />
+          ) : added ? (
+            <>
+              <FiCheck className="w-3.5 h-3.5" />
+              Ditambahkan!
+            </>
+          ) : (
+            <>
+              <FiShoppingCart className="w-3.5 h-3.5" />+ Keranjang
+            </>
           )}
-          <p className="text-sm font-bold text-[#1E2753]">
-            {formatPrice(product.price)}
-          </p>
-        </div>
-
-        {/* Indikator stok — real-time dari liveStock */}
-        {isLowStock && (
-          <p className="text-[10px] text-orange-500 font-semibold">
-            Sisa {liveStock} lagi!
-          </p>
-        )}
-        {!isOutOfStock && !isLowStock && (
-          <p className="text-[10px] text-green-600 font-medium">
-            Stok: {liveStock}
-          </p>
-        )}
-
-        {/* Tombol */}
-        <div className="flex gap-1.5 mt-2">
-          <Link
-            href={`/user/product-detail/${product.id}`}
-            onClick={(e) => e.stopPropagation()}
-            className="flex-1 py-2 text-xs font-semibold text-center text-[#1E2753] border-2 border-[#1E2753] rounded-xl hover:bg-[#1E2753] hover:text-white transition-colors"
-          >
-            Detail
-          </Link>
-
-          <button
-            onClick={handleAddToCart}
-            disabled={adding || isOutOfStock}
-            className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all flex items-center justify-center gap-1 ${
-              added
-                ? "bg-green-500 text-white"
-                : isOutOfStock
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : "bg-[#1E2753] text-white hover:bg-[#2a3470]"
-            } disabled:opacity-60`}
-          >
-            {adding ? (
-              <FontAwesomeIcon
-                icon={faSpinner}
-                className="w-3 h-3 animate-spin"
-              />
-            ) : added ? (
-              <FiCheck className="w-3 h-3" />
-            ) : (
-              <FiShoppingCart className="w-3 h-3" />
-            )}
-            {adding ? "" : added ? "Ditambah!" : "Keranjang"}
-          </button>
-        </div>
+        </button>
       </div>
     </div>
   );

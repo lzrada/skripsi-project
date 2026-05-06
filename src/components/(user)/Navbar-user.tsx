@@ -4,19 +4,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faBars,
-  faXmark,
-  faMagnifyingGlass,
-  faCartShopping,
-  faUser,
-  faRightFromBracket,
-  faBoxOpen,
-  faGear,
-  faChevronDown,
-  faHeart,
-  faBolt,
-} from "@fortawesome/free-solid-svg-icons";
+import { faBars, faXmark, faMagnifyingGlass, faCartShopping, faUser, faRightFromBracket, faBoxOpen, faGear, faChevronDown, faHeart, faBolt } from "@fortawesome/free-solid-svg-icons";
 import { FiHeart } from "react-icons/fi";
 import { logout } from "@/service/auth.service";
 import { subscribeToCartService, CartItem } from "@/service/cart.service";
@@ -47,13 +35,7 @@ function getCookieValue(name: string): string | null {
 }
 
 // Badge angka untuk cart/wishlist
-function CountBadge({
-  count,
-  color = "bg-[#E85D04]",
-}: {
-  count: number;
-  color?: string;
-}) {
+function CountBadge({ count, color = "bg-[#E85D04]" }: { count: number; color?: string }) {
   if (count <= 0) return null;
   return (
     <span
@@ -69,14 +51,10 @@ function CountBadge({
 // ─── Search Bar (pakai useSearchParams di dalam Suspense) ────────────────────
 
 function SearchBarInner() {
-  // Dinamis import useSearchParams hanya di sini agar tidak merusak static render
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { useSearchParams } = require("next/navigation");
   const searchParams = useSearchParams();
   return searchParams.get("search") ?? "";
 }
-
-// ─── Komponen Utama ───────────────────────────────────────────────────────────
 
 export default function NavbarUser() {
   const router = useRouter();
@@ -95,7 +73,6 @@ export default function NavbarUser() {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // ── Ambil category dari URL (tanpa useSearchParams langsung) ────────────
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -103,7 +80,6 @@ export default function NavbarUser() {
     }
   }, [pathname]);
 
-  // ── Scroll shadow ──────────────────────────────────────────────────────
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -145,26 +121,18 @@ export default function NavbarUser() {
       const uid = getCookieValue("uid");
       if (uid) setWishlistCount(getWishlistIds(uid).length);
     };
-    // Sync segera
     sync();
     window.addEventListener("wishlistUpdated", sync);
     window.addEventListener("storage", sync);
-    // Polling ringan setiap 3 detik untuk catch edge case
-    const interval = setInterval(sync, 3000);
     return () => {
       window.removeEventListener("wishlistUpdated", sync);
       window.removeEventListener("storage", sync);
-      clearInterval(interval);
     };
   }, []);
 
-  // ── Klik di luar dropdown → tutup ─────────────────────────────────────
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
       }
     };
@@ -172,7 +140,6 @@ export default function NavbarUser() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // ── Lock scroll saat mobile menu terbuka ────────────────────────────
   useEffect(() => {
     if (menuOpen) {
       document.body.style.overflow = "hidden";
@@ -184,7 +151,6 @@ export default function NavbarUser() {
     };
   }, [menuOpen]);
 
-  // ── Handlers ──────────────────────────────────────────────────────────
   const handleLogout = async () => {
     try {
       await logout();
@@ -208,38 +174,20 @@ export default function NavbarUser() {
   return (
     <>
       {/* Overlay backdrop untuk mobile menu */}
-      {menuOpen && (
-        <div
-          className="fixed inset-0 bg-black/30 z-[9998] md:hidden"
-          onClick={() => setMenuOpen(false)}
-        />
-      )}
+      {menuOpen && <div className="fixed inset-0 bg-black/30 z-[9998] md:hidden" onClick={() => setMenuOpen(false)} />}
 
-      <header
-        id="navbar-user"
-        className={`fixed top-0 left-0 w-full z-[9999] bg-white transition-shadow duration-300 ${
-          scrolled ? "shadow-[0_2px_20px_rgba(30,39,83,0.12)]" : ""
-        }`}
-      >
+      <header id="navbar-user" className={`fixed top-0 left-0 w-full z-[9999] bg-white transition-shadow duration-300 ${scrolled ? "shadow-[0_2px_20px_rgba(30,39,83,0.12)]" : ""}`}>
         {/* ── Top bar promo (hanya saat belum login) ── */}
         {!isLoggedIn && (
           <div className="bg-[#1E2753] text-white text-xs py-1.5 px-4 flex justify-between items-center">
-            <span className="hidden sm:inline">
-              🚚 Gratis ongkir untuk wilayah Blitar dan sekitarnya!
-            </span>
+            <span className="hidden sm:inline">🚚 Gratis ongkir untuk wilayah Blitar dan sekitarnya!</span>
             <span className="sm:hidden">🚚 Gratis ongkir wilayah Blitar</span>
             <div className="flex gap-4 items-center">
-              <Link
-                href="/login"
-                className="hover:text-yellow-300 transition-colors"
-              >
+              <Link href="/login" className="hover:text-yellow-300 transition-colors">
                 Masuk
               </Link>
               <span className="text-white/30">|</span>
-              <Link
-                href="/register"
-                className="hover:text-yellow-300 transition-colors"
-              >
+              <Link href="/register" className="hover:text-yellow-300 transition-colors">
                 Daftar
               </Link>
             </div>
@@ -251,24 +199,16 @@ export default function NavbarUser() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3 h-16">
               {/* Logo */}
-              <Link
-                href="/user/dashboard-user"
-                className="flex-shrink-0 flex items-center gap-2 group"
-              >
+              <Link href="/user/dashboard-user" className="flex-shrink-0 flex items-center gap-2 group">
                 <div
                   className="w-9 h-9 bg-[#1E2753] rounded-xl flex items-center justify-center
                   group-hover:bg-[#2d3a8c] transition-colors duration-200"
                 >
-                  <FontAwesomeIcon
-                    icon={faBolt}
-                    className="w-4 h-4 text-yellow-400"
-                  />
+                  <FontAwesomeIcon icon={faBolt} className="w-4 h-4 text-yellow-400" />
                 </div>
                 <div className="hidden sm:block leading-none">
                   <p className="text-[#1E2753] font-black text-base">Rizky</p>
-                  <p className="text-[#E85D04] text-[10px] font-bold tracking-widest uppercase">
-                    Elektronik
-                  </p>
+                  <p className="text-[#E85D04] text-[10px] font-bold tracking-widest uppercase">Elektronik</p>
                 </div>
               </Link>
 
@@ -276,16 +216,9 @@ export default function NavbarUser() {
               <form onSubmit={handleSearch} className="flex-1 min-w-0">
                 <div
                   className={`flex items-center rounded-full border-2 transition-all duration-200 overflow-hidden
-                    bg-gray-50 ${
-                      searchFocused
-                        ? "border-[#1E2753] bg-white shadow-[0_0_0_3px_rgba(30,39,83,0.08)]"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
+                    bg-gray-50 ${searchFocused ? "border-[#1E2753] bg-white shadow-[0_0_0_3px_rgba(30,39,83,0.08)]" : "border-gray-200 hover:border-gray-300"}`}
                 >
-                  <FontAwesomeIcon
-                    icon={faMagnifyingGlass}
-                    className="ml-4 text-gray-400 w-3.5 h-3.5 flex-shrink-0"
-                  />
+                  <FontAwesomeIcon icon={faMagnifyingGlass} className="ml-4 text-gray-400 w-3.5 h-3.5 flex-shrink-0" />
                   <input
                     type="text"
                     value={searchQuery}
@@ -326,10 +259,7 @@ export default function NavbarUser() {
                     text-gray-500 hover:text-[#1E2753] transition-colors"
                   title="Keranjang"
                 >
-                  <FontAwesomeIcon
-                    icon={faCartShopping}
-                    className="w-5 h-5"
-                  />
+                  <FontAwesomeIcon icon={faCartShopping} className="w-5 h-5" />
                   <CountBadge count={cartCount} />
                 </Link>
 
@@ -348,9 +278,7 @@ export default function NavbarUser() {
                         >
                           {initials}
                         </div>
-                        <span className="text-sm font-medium text-gray-700 max-w-[80px] truncate">
-                          {userName || "Akun"}
-                        </span>
+                        <span className="text-sm font-medium text-gray-700 max-w-[80px] truncate">{userName || "Akun"}</span>
                         <FontAwesomeIcon
                           icon={faChevronDown}
                           className={`w-3 h-3 text-gray-400 transition-transform duration-200
@@ -367,12 +295,8 @@ export default function NavbarUser() {
                         >
                           {/* Header */}
                           <div className="px-4 py-3 bg-gradient-to-br from-[#1E2753] to-[#2d3a8c]">
-                            <p className="text-white/60 text-[10px] uppercase tracking-wider">
-                              Login sebagai
-                            </p>
-                            <p className="text-white text-sm font-semibold truncate mt-0.5">
-                              {userName || "User"}
-                            </p>
+                            <p className="text-white/60 text-[10px] uppercase tracking-wider">Login sebagai</p>
+                            <p className="text-white text-sm font-semibold truncate mt-0.5">{userName || "User"}</p>
                           </div>
 
                           <div className="py-1">
@@ -400,10 +324,7 @@ export default function NavbarUser() {
                                 className="flex items-center gap-3 px-4 py-2.5 text-sm
                                   text-gray-700 hover:bg-gray-50 transition-colors"
                               >
-                                <FontAwesomeIcon
-                                  icon={icon}
-                                  className="w-3.5 h-3.5 text-gray-400"
-                                />
+                                <FontAwesomeIcon icon={icon} className="w-3.5 h-3.5 text-gray-400" />
                                 {label}
                               </Link>
                             ))}
@@ -413,10 +334,7 @@ export default function NavbarUser() {
                               className="flex items-center gap-3 px-4 py-2.5 text-sm
                                 text-gray-700 hover:bg-red-50 transition-colors"
                             >
-                              <FontAwesomeIcon
-                                icon={faHeart}
-                                className="w-3.5 h-3.5 text-red-400"
-                              />
+                              <FontAwesomeIcon icon={faHeart} className="w-3.5 h-3.5 text-red-400" />
                               Wishlist Saya
                               {wishlistCount > 0 && (
                                 <span
@@ -435,10 +353,7 @@ export default function NavbarUser() {
                               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm
                                 text-red-500 hover:bg-red-50 transition-colors"
                             >
-                              <FontAwesomeIcon
-                                icon={faRightFromBracket}
-                                className="w-3.5 h-3.5"
-                              />
+                              <FontAwesomeIcon icon={faRightFromBracket} className="w-3.5 h-3.5" />
                               Keluar
                             </button>
                           </div>
@@ -464,10 +379,7 @@ export default function NavbarUser() {
                     text-gray-500 transition-colors ml-0.5"
                   aria-label={menuOpen ? "Tutup menu" : "Buka menu"}
                 >
-                  <FontAwesomeIcon
-                    icon={menuOpen ? faXmark : faBars}
-                    className="w-5 h-5"
-                  />
+                  <FontAwesomeIcon icon={menuOpen ? faXmark : faBars} className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -486,11 +398,7 @@ export default function NavbarUser() {
                       onClick={() => setSelectedCategory(cat.slug)}
                       className={`relative whitespace-nowrap px-4 py-3 text-sm font-medium
                         transition-colors duration-150 border-b-2 flex-shrink-0
-                        ${
-                          active
-                            ? "text-[#E85D04] border-[#E85D04]"
-                            : "text-gray-500 border-transparent hover:text-[#1E2753] hover:border-[#1E2753]/40"
-                        }`}
+                        ${active ? "text-[#E85D04] border-[#E85D04]" : "text-gray-500 border-transparent hover:text-[#1E2753] hover:border-[#1E2753]/40"}`}
                     >
                       {cat.name}
                     </Link>
@@ -531,28 +439,19 @@ export default function NavbarUser() {
                     className="px-4 py-2.5 bg-[#1E2753] text-white rounded-xl text-sm font-medium
                       hover:bg-[#2d3a8c] transition-colors"
                   >
-                    <FontAwesomeIcon
-                      icon={faMagnifyingGlass}
-                      className="w-4 h-4"
-                    />
+                    <FontAwesomeIcon icon={faMagnifyingGlass} className="w-4 h-4" />
                   </button>
                 </form>
 
                 {/* Kategori */}
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1 mb-1">
-                  Kategori
-                </p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1 mb-1">Kategori</p>
                 <div className="grid grid-cols-3 gap-1 mb-2">
                   {CATEGORIES.map((cat) => (
                     <Link
                       key={cat.slug}
                       href={`/user/products?category=${encodeURIComponent(cat.slug)}`}
                       className={`px-2 py-2 text-xs rounded-lg font-medium text-center transition-colors
-                        ${
-                          selectedCategory === cat.slug
-                            ? "bg-orange-50 text-[#E85D04] font-semibold"
-                            : "text-gray-600 hover:bg-gray-50"
-                        }`}
+                        ${selectedCategory === cat.slug ? "bg-orange-50 text-[#E85D04] font-semibold" : "text-gray-600 hover:bg-gray-50"}`}
                       onClick={() => setMenuOpen(false)}
                     >
                       {cat.name}
@@ -579,12 +478,8 @@ export default function NavbarUser() {
                           {initials}
                         </div>
                         <div>
-                          <p className="text-xs font-semibold text-gray-700">
-                            {userName || "User"}
-                          </p>
-                          <p className="text-[10px] text-gray-400">
-                            Login sebagai user
-                          </p>
+                          <p className="text-xs font-semibold text-gray-700">{userName || "User"}</p>
+                          <p className="text-[10px] text-gray-400">Login sebagai user</p>
                         </div>
                       </div>
                       {[
@@ -614,10 +509,7 @@ export default function NavbarUser() {
                           className="flex items-center gap-3 px-3 py-2.5 text-sm
                             text-gray-700 hover:bg-gray-50 rounded-xl transition-colors"
                         >
-                          <FontAwesomeIcon
-                            icon={icon}
-                            className="w-4 h-4 text-gray-400"
-                          />
+                          <FontAwesomeIcon icon={icon} className="w-4 h-4 text-gray-400" />
                           {label}
                           {count > 0 && (
                             <span
@@ -634,10 +526,7 @@ export default function NavbarUser() {
                         className="w-full flex items-center gap-3 px-3 py-2.5 text-sm
                           text-red-500 hover:bg-red-50 rounded-xl transition-colors font-medium"
                       >
-                        <FontAwesomeIcon
-                          icon={faRightFromBracket}
-                          className="w-4 h-4"
-                        />
+                        <FontAwesomeIcon icon={faRightFromBracket} className="w-4 h-4" />
                         Keluar
                       </button>
                     </>
@@ -648,10 +537,7 @@ export default function NavbarUser() {
                       className="flex items-center gap-3 px-3 py-2.5 text-sm
                         text-gray-700 hover:bg-gray-50 rounded-xl font-medium"
                     >
-                      <FontAwesomeIcon
-                        icon={faUser}
-                        className="w-4 h-4 text-gray-400"
-                      />
+                      <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-gray-400" />
                       Masuk / Daftar
                     </Link>
                   )}

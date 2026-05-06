@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { subscribeToProductsService, Product } from "@/service/product.service";
+import { subscribeToProductsService } from "@/service/product.service";
+import { Product } from "@/types/product";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass, faArrowDownWideShort, faSliders, faXmark } from "@fortawesome/free-solid-svg-icons";
 import ProductCard from "@/components/ui/ProductCard";

@@ -1,3 +1,4 @@
+// src/app/(users-side)/user/cart/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -5,13 +6,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash, faCartShopping, faChevronLeft, faTag, faTruck, faShield, faTicket } from "@fortawesome/free-solid-svg-icons";
-import { subscribeToCartService, updateCartQtyService, removeFromCartService, CartItem } from "@/service/cart.service";
+import { subscribeToCartService, updateCartQtyService, removeFromCartService, type CartItem } from "@/service/cart.service";
 import { validateCouponService } from "@/service/coupon.service";
 import { categoryGradient, defaultGradient } from "@/constants/category";
 import { toast } from "@/components/ui/Toast";
 
 function formatPrice(price: number) {
-  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(price);
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(price);
 }
 
 function getUid(): string | null {
@@ -24,32 +29,26 @@ function getUid(): string | null {
   );
 }
 
-// ─── Delete Confirmation Modal ───────────────────────────────────────────────
-interface DeleteConfirmModalProps {
-  itemName: string;
-  isBulk?: boolean;
-  bulkCount?: number;
-  onConfirm: () => void;
-  onCancel: () => void;
-}
-
-function DeleteConfirmModal({ itemName, isBulk, bulkCount, onConfirm, onCancel }: DeleteConfirmModalProps) {
+// ── Delete Confirm Modal ───────────────────────────────────────────────────
+function DeleteConfirmModal({ itemName, isBulk, bulkCount, onConfirm, onCancel }: { itemName: string; isBulk?: boolean; bulkCount?: number; onConfirm: () => void; onCancel: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onCancel}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4" onClick={onCancel}>
       <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center" onClick={(e) => e.stopPropagation()}>
-        <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
           <FontAwesomeIcon icon={faTrash} className="text-red-500 w-6 h-6" />
         </div>
         <h3 className="text-lg font-bold text-gray-800 mb-2">Hapus dari Keranjang?</h3>
-        {isBulk ? (
-          <p className="text-sm text-gray-500 mb-6">
-            <span className="font-semibold text-gray-700">{bulkCount} produk</span> yang dipilih akan dihapus dari keranjangmu.
-          </p>
-        ) : (
-          <p className="text-sm text-gray-500 mb-6">
-            <span className="font-semibold text-gray-700">{itemName}</span> akan dihapus dari keranjangmu.
-          </p>
-        )}
+        <p className="text-sm text-gray-500 mb-6">
+          {isBulk ? (
+            <>
+              <span className="font-bold text-gray-700">{bulkCount} produk</span> yang dipilih akan dihapus.
+            </>
+          ) : (
+            <>
+              <span className="font-bold text-gray-700">{itemName}</span> akan dihapus dari keranjang.
+            </>
+          )}
+        </p>
         <div className="flex gap-3">
           <button onClick={onCancel} className="flex-1 py-3 rounded-2xl border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition">
             Batal
@@ -63,18 +62,97 @@ function DeleteConfirmModal({ itemName, isBulk, bulkCount, onConfirm, onCancel }
   );
 }
 
+// ── Cart Item Row ──────────────────────────────────────────────────────────
+function CartItemRow({ item, isSelected, onToggle, onDeleteClick, onQtyChange }: { item: CartItem; isSelected: boolean; onToggle: () => void; onDeleteClick: () => void; onQtyChange: (type: "inc" | "dec") => Promise<void> }) {
+  const [qtyLoading, setQtyLoading] = useState(false);
+  const gradient = categoryGradient[item.category] ?? defaultGradient;
+  const atMaxStock = item.qty >= item.stock;
+  const atMinQty = item.qty <= 1;
+
+  const handleQty = async (type: "inc" | "dec") => {
+    if (qtyLoading) return;
+    if (type === "inc" && atMaxStock) return;
+    if (type === "dec" && atMinQty) return;
+    setQtyLoading(true);
+    await onQtyChange(type);
+    setQtyLoading(false);
+  };
+
+  return (
+    <div className={`bg-white rounded-2xl border-2 shadow-sm p-4 transition-all duration-200 ${isSelected ? "border-[#1E2753]" : "border-gray-100"}`}>
+      <div className="flex gap-3">
+        {/* Checkbox */}
+        <div className="flex items-start pt-1 flex-shrink-0">
+          <input type="checkbox" checked={isSelected} onChange={onToggle} className="w-4 h-4 accent-[#1E2753] cursor-pointer" />
+        </div>
+
+        {/* Gambar — FIX: object-contain, tidak terpotong */}
+        <div className={`w-20 h-20 rounded-xl flex-shrink-0 overflow-hidden relative border border-gray-100 ${item.image ? "bg-gray-50" : `bg-gradient-to-br ${gradient}`}`}>
+          {item.image ? (
+            <Image src={item.image} alt={item.name} fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-contain p-1.5" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug">{item.name}</p>
+            <button onClick={onDeleteClick} className="text-gray-300 hover:text-red-500 transition flex-shrink-0 p-1" title="Hapus dari keranjang">
+              <FontAwesomeIcon icon={faTrash} className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between mt-3 gap-2 flex-wrap">
+            {/* Harga */}
+            <div>
+              {item.originalPrice && <p className="text-[10px] text-gray-400 line-through">{formatPrice(item.originalPrice)}</p>}
+              <p className="text-sm font-black text-[#1E2753]">{formatPrice(item.price)}</p>
+            </div>
+
+            {/* Qty control */}
+            <div className="flex flex-col items-end gap-1">
+              <div className={`flex items-center rounded-xl overflow-hidden border-2 ${qtyLoading ? "opacity-60" : ""} ${isSelected ? "border-[#1E2753]/30" : "border-gray-100"}`}>
+                <button
+                  onClick={() => handleQty("dec")}
+                  disabled={qtyLoading || atMinQty}
+                  className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-50 font-bold text-lg disabled:opacity-30 disabled:cursor-not-allowed transition"
+                >
+                  −
+                </button>
+                <span className="w-10 text-center text-sm font-bold text-gray-800">{item.qty}</span>
+                <button
+                  onClick={() => handleQty("inc")}
+                  disabled={qtyLoading || atMaxStock}
+                  className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-50 font-bold text-lg disabled:opacity-30 disabled:cursor-not-allowed transition"
+                >
+                  +
+                </button>
+              </div>
+              {/* Max stock info */}
+              {atMaxStock && <p className="text-[9px] text-orange-500 font-semibold">Maks. stok tercapai</p>}
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-400 mt-1.5 text-right">
+            Subtotal: <span className="font-bold text-gray-700">{formatPrice(item.price * item.qty)}</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Halaman Utama ──────────────────────────────────────────────────────────
 export default function CartPage() {
   const [uid, setUid] = useState<string | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Kupon state
   const [couponInput, setCouponInput] = useState("");
   const [couponLoading, setCouponLoading] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<{ id: string; code: string; discount: number } | null>(null);
-
-  // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteBulk, setDeleteBulk] = useState(false);
 
@@ -96,14 +174,10 @@ export default function CartPage() {
     return () => unsub();
   }, []);
 
-  // Reset kupon jika subtotal berubah dan kupon punya minOrder
   const selectedItems = cartItems.filter((i) => selectedIds.includes(i.id));
   const subtotal = selectedItems.reduce((acc, i) => acc + i.price * i.qty, 0);
-
-  useEffect(() => {
-    // Jika subtotal turun di bawah minOrder kupon, hapus kupon otomatis
-    // (minOrder tidak disimpan di appliedCoupon, cukup re-validate saat checkout)
-  }, [subtotal]);
+  const diskonKupon = appliedCoupon?.discount ?? 0;
+  const total = Math.max(subtotal - diskonKupon, 0);
 
   const updateQty = async (id: string, type: "inc" | "dec") => {
     if (!uid) return;
@@ -114,23 +188,13 @@ export default function CartPage() {
     await updateCartQtyService(uid, id, newQty);
   };
 
-  const handleDeleteClick = (id: string, name: string) => {
-    setDeleteBulk(false);
-    setDeleteTarget({ id, name });
-  };
-
-  const handleDeleteBulkClick = () => {
-    setDeleteBulk(true);
-    setDeleteTarget({ id: "", name: "" });
-  };
-
   const confirmDelete = async () => {
     if (!uid) return;
     if (deleteBulk) {
       await Promise.all(selectedIds.map((id) => removeFromCartService(uid, id)));
-      toast.success(`${selectedIds.length} produk berhasil dihapus dari keranjang.`);
+      toast.success(`${selectedIds.length} produk dihapus dari keranjang.`);
       setSelectedIds([]);
-    } else if (deleteTarget) {
+    } else if (deleteTarget?.id) {
       await removeFromCartService(uid, deleteTarget.id);
       setSelectedIds((prev) => prev.filter((i) => i !== deleteTarget.id));
       toast.success("Produk dihapus dari keranjang.");
@@ -142,13 +206,10 @@ export default function CartPage() {
   const toggleSelect = (id: string) => setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
   const toggleSelectAll = () => setSelectedIds(selectedIds.length === cartItems.length ? [] : cartItems.map((i) => i.id));
 
-  const diskonKupon = appliedCoupon?.discount ?? 0;
-  const total = subtotal - diskonKupon;
-
   const handleApplyCoupon = async () => {
     if (!couponInput.trim()) return;
     if (selectedItems.length === 0) {
-      toast.error("Pilih produk terlebih dahulu sebelum memakai kupon.");
+      toast.error("Pilih produk terlebih dahulu.");
       return;
     }
     setCouponLoading(true);
@@ -157,16 +218,10 @@ export default function CartPage() {
     if (result.valid) {
       setAppliedCoupon({ id: result.coupon.id, code: result.coupon.code, discount: result.coupon.discount });
       setCouponInput("");
-      toast.success(`Kupon ${result.coupon.code} berhasil dipakai! Hemat ${formatPrice(result.coupon.discount)} 🎉`);
+      toast.success(`Kupon ${result.coupon.code} berhasil! Hemat ${formatPrice(result.coupon.discount)} 🎉`);
     } else {
       toast.error(result.message);
     }
-  };
-
-  const handleRemoveCoupon = () => {
-    setAppliedCoupon(null);
-    setCouponInput("");
-    toast.info("Kode kupon dihapus.");
   };
 
   const checkoutHref = () => {
@@ -178,19 +233,39 @@ export default function CartPage() {
     return url;
   };
 
+  // ── Loading ──
   if (loading)
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-gray-400">Memuat keranjang...</p>
+      <div className="max-w-7xl mx-auto px-4 py-8 space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 animate-pulse">
+            <div className="flex gap-4">
+              <div className="w-4 h-4 bg-slate-200 rounded mt-1" />
+              <div className="w-20 h-20 bg-slate-100 rounded-xl flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="w-3/4 h-4 bg-slate-200 rounded" />
+                <div className="w-1/2 h-3 bg-slate-100 rounded" />
+                <div className="flex justify-between mt-3">
+                  <div className="w-24 h-5 bg-slate-200 rounded" />
+                  <div className="w-24 h-8 bg-slate-100 rounded-xl" />
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     );
 
   if (!uid)
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 flex flex-col items-center gap-4">
-        <p className="text-gray-600 font-semibold">Silakan login untuk melihat keranjang</p>
-        <Link href="/login" className="px-6 py-3 bg-[#1E2753] text-white rounded-xl font-semibold text-sm">
-          Login
+        <div className="w-20 h-20 bg-[#1E2753]/10 rounded-2xl flex items-center justify-center">
+          <FontAwesomeIcon icon={faCartShopping} className="w-8 h-8 text-[#1E2753]" />
+        </div>
+        <p className="text-gray-700 font-bold text-lg">Kamu belum login</p>
+        <p className="text-sm text-gray-400">Login untuk melihat keranjang belanjamu</p>
+        <Link href="/login" className="px-6 py-3 bg-[#1E2753] text-white rounded-xl font-bold text-sm hover:bg-[#2a3470] transition">
+          Login Sekarang
         </Link>
       </div>
     );
@@ -198,12 +273,12 @@ export default function CartPage() {
   if (cartItems.length === 0)
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 flex flex-col items-center gap-4">
-        <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center">
-          <FontAwesomeIcon icon={faCartShopping} className="w-10 h-10 text-gray-300" />
+        <div className="w-24 h-24 bg-[#1E2753]/10 rounded-2xl flex items-center justify-center">
+          <FontAwesomeIcon icon={faCartShopping} className="w-10 h-10 text-[#1E2753]" />
         </div>
-        <p className="text-xl font-bold text-gray-700">Keranjang kamu kosong</p>
+        <p className="text-xl font-black text-gray-800">Keranjang kamu kosong</p>
         <p className="text-sm text-gray-400">Yuk mulai belanja produk elektronik favoritmu!</p>
-        <Link href="/user/dashboard-user" className="mt-2 px-6 py-3 bg-[#1E2753] text-white rounded-xl font-semibold text-sm">
+        <Link href="/user/products" className="mt-2 px-6 py-3 bg-[#1E2753] text-white rounded-xl font-bold text-sm hover:bg-[#2a3470] transition">
           Mulai Belanja
         </Link>
       </div>
@@ -211,7 +286,6 @@ export default function CartPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* Delete Confirmation Modal */}
       {deleteTarget !== null && (
         <DeleteConfirmModal
           itemName={deleteTarget.name}
@@ -225,86 +299,65 @@ export default function CartPage() {
         />
       )}
 
+      {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/user/dashboard-user" className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 hover:bg-gray-50 transition text-gray-500">
+        <Link href="/user/products" className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 hover:bg-gray-50 transition text-gray-500">
           <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
         </Link>
         <div>
-          <h1 className="text-xl font-bold text-gray-800">Keranjang Belanja</h1>
+          <h1 className="text-xl font-black text-gray-800">Keranjang Belanja</h1>
           <p className="text-xs text-gray-400">{cartItems.length} produk</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ── Kiri: list produk ── */}
+        {/* Kiri: list */}
         <div className="lg:col-span-2 space-y-3">
           {/* Select all bar */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3 flex items-center justify-between">
             <label className="flex items-center gap-3 cursor-pointer">
-              <input type="checkbox" checked={selectedIds.length === cartItems.length && cartItems.length > 0} onChange={toggleSelectAll} className="w-4 h-4 accent-[#1E2753]" />
-              <span className="text-sm font-semibold text-gray-700">Pilih Semua ({cartItems.length})</span>
+              <input type="checkbox" checked={selectedIds.length === cartItems.length && cartItems.length > 0} onChange={toggleSelectAll} className="w-4 h-4 accent-[#1E2753] cursor-pointer" />
+              <span className="text-sm font-bold text-gray-700">
+                Pilih Semua <span className="text-gray-400 font-normal">({cartItems.length})</span>
+              </span>
             </label>
             {selectedIds.length > 0 && (
-              <button onClick={handleDeleteBulkClick} className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-600 font-medium transition">
+              <button
+                onClick={() => {
+                  setDeleteBulk(true);
+                  setDeleteTarget({ id: "", name: "" });
+                }}
+                className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-600 font-semibold transition"
+              >
                 <FontAwesomeIcon icon={faTrash} className="w-3 h-3" />
-                Hapus Dipilih ({selectedIds.length})
+                Hapus ({selectedIds.length})
               </button>
             )}
           </div>
 
-          {/* Cart items */}
-          {cartItems.map((item) => {
-            const gradient = categoryGradient[item.category] ?? defaultGradient;
-            const isSelected = selectedIds.includes(item.id);
-            return (
-              <div key={item.id} className={`bg-white rounded-2xl border shadow-sm p-4 transition-all duration-200 ${isSelected ? "border-[#1E2753]" : "border-gray-100"}`}>
-                <div className="flex gap-4">
-                  <div className="flex items-start pt-1">
-                    <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(item.id)} className="w-4 h-4 accent-[#1E2753]" />
-                  </div>
-                  <div className={`w-20 h-20 rounded-xl flex-shrink-0 overflow-hidden relative ${item.image ? "bg-gray-100" : `bg-gradient-to-br ${gradient}`}`}>
-                    {item.image ? <Image src={item.image} alt={item.name} fill className="object-cover" /> : <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug">{item.name}</p>
-                      <button onClick={() => handleDeleteClick(item.id, item.name)} className="text-gray-300 hover:text-red-500 transition flex-shrink-0" title="Hapus dari keranjang">
-                        <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between mt-3">
-                      <div>
-                        {item.originalPrice && <p className="text-xs text-gray-400 line-through">{formatPrice(item.originalPrice)}</p>}
-                        <p className="text-base font-bold text-[#1E2753]">{formatPrice(item.price)}</p>
-                      </div>
-                      <div className="flex items-center border-2 border-gray-100 rounded-xl overflow-hidden">
-                        <button onClick={() => updateQty(item.id, "dec")} className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-50 font-bold">
-                          −
-                        </button>
-                        <span className="w-10 text-center text-sm font-semibold text-gray-800">{item.qty}</span>
-                        <button onClick={() => updateQty(item.id, "inc")} className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-50 font-bold">
-                          +
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1 text-right">
-                      Subtotal: <span className="font-semibold text-gray-600">{formatPrice(item.price * item.qty)}</span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {cartItems.map((item) => (
+            <CartItemRow
+              key={item.id}
+              item={item}
+              isSelected={selectedIds.includes(item.id)}
+              onToggle={() => toggleSelect(item.id)}
+              onDeleteClick={() => {
+                setDeleteBulk(false);
+                setDeleteTarget({ id: item.id, name: item.name });
+              }}
+              onQtyChange={(type) => updateQty(item.id, type)}
+            />
+          ))}
 
-          <div className="bg-green-50 border border-green-100 rounded-2xl px-4 py-3 flex items-center gap-3">
-            <FontAwesomeIcon icon={faTruck} className="w-4 h-4 text-green-500 flex-shrink-0" />
-            <p className="text-xs text-green-700 font-medium">
+          <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3 flex items-center gap-3">
+            <FontAwesomeIcon icon={faTruck} className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+            <p className="text-xs text-emerald-700 font-medium">
               Selamat! Kamu mendapat <span className="font-bold">gratis ongkir</span> untuk wilayah Blitar & sekitarnya.
             </p>
           </div>
         </div>
 
-        {/* ── Kanan: ringkasan ── */}
+        {/* Kanan: ringkasan */}
         <div className="space-y-4">
           {/* Kupon */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
@@ -312,14 +365,20 @@ export default function CartPage() {
               <FontAwesomeIcon icon={faTicket} className="w-4 h-4 text-[#E85D04]" />
               <p className="text-sm font-bold text-gray-800">Kode Kupon</p>
             </div>
-
             {appliedCoupon ? (
-              <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
+              <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
                 <div>
-                  <p className="text-xs font-bold text-green-700">{appliedCoupon.code} berhasil dipakai!</p>
-                  <p className="text-xs text-green-600 mt-0.5">Hemat {formatPrice(appliedCoupon.discount)}</p>
+                  <p className="text-xs font-bold text-emerald-700">✓ {appliedCoupon.code}</p>
+                  <p className="text-xs text-emerald-600 mt-0.5">Hemat {formatPrice(appliedCoupon.discount)}</p>
                 </div>
-                <button onClick={handleRemoveCoupon} className="text-xs text-red-500 hover:underline ml-2 flex-shrink-0">
+                <button
+                  onClick={() => {
+                    setAppliedCoupon(null);
+                    setCouponInput("");
+                    toast.info("Kupon dihapus.");
+                  }}
+                  className="text-xs text-red-500 hover:underline ml-2 flex-shrink-0 font-semibold"
+                >
                   Hapus
                 </button>
               </div>
@@ -331,9 +390,9 @@ export default function CartPage() {
                   onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
                   onKeyDown={(e) => e.key === "Enter" && handleApplyCoupon()}
                   placeholder="Masukkan kode kupon"
-                  className="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#1E2753] uppercase tracking-wider"
+                  className="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#1E2753] uppercase tracking-wider font-mono"
                 />
-                <button onClick={handleApplyCoupon} disabled={couponLoading || !couponInput.trim()} className="px-3 py-2 bg-[#1E2753] text-white rounded-xl text-xs font-semibold hover:bg-[#2a3470] disabled:opacity-50 transition">
+                <button onClick={handleApplyCoupon} disabled={couponLoading || !couponInput.trim()} className="px-3 py-2 bg-[#1E2753] text-white rounded-xl text-xs font-bold hover:bg-[#2a3470] disabled:opacity-50 transition">
                   {couponLoading ? "..." : "Pakai"}
                 </button>
               </div>
@@ -346,38 +405,42 @@ export default function CartPage() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between text-gray-500">
                 <span>Total Harga ({selectedItems.length} produk)</span>
-                <span className="font-medium text-gray-700">{formatPrice(subtotal)}</span>
+                <span className="font-semibold text-gray-700">{formatPrice(subtotal)}</span>
               </div>
               <div className="flex justify-between text-gray-500">
                 <span>Ongkos Kirim</span>
-                <span className="font-medium text-green-600">Gratis</span>
+                <span className="font-semibold text-emerald-600">Gratis</span>
               </div>
               {appliedCoupon && (
                 <div className="flex justify-between text-gray-500">
                   <span>
-                    Diskon Kupon <span className="text-green-600 font-semibold">({appliedCoupon.code})</span>
+                    Diskon <span className="text-emerald-600 font-bold">({appliedCoupon.code})</span>
                   </span>
-                  <span className="font-medium text-red-500">-{formatPrice(diskonKupon)}</span>
+                  <span className="font-semibold text-red-500">-{formatPrice(diskonKupon)}</span>
                 </div>
               )}
             </div>
-            <div className="border-t border-gray-100 pt-3 flex justify-between items-center">
-              <span className="text-sm font-bold text-gray-800">Total Pembayaran</span>
-              <span className="text-lg font-bold text-[#1E2753]">{formatPrice(total)}</span>
+            <div className="border-t border-gray-100 pt-3">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-sm font-bold text-gray-800">Total Pembayaran</span>
+                <span className="text-lg font-black text-[#1E2753]">{formatPrice(total)}</span>
+              </div>
+              <Link
+                href={checkoutHref()}
+                className={`block w-full py-3.5 rounded-xl text-center font-black text-sm transition-all duration-200 ${
+                  selectedIds.length > 0 ? "bg-[#1E2753] text-white hover:bg-[#2a3470] active:scale-95 shadow-sm" : "bg-gray-100 text-gray-400 pointer-events-none"
+                }`}
+              >
+                Checkout ({selectedIds.length} produk)
+              </Link>
             </div>
-            <Link
-              href={checkoutHref()}
-              className={`block w-full py-3 rounded-xl text-center font-bold text-sm transition-all duration-200 ${selectedIds.length > 0 ? "bg-[#1E2753] text-white hover:bg-[#2a3470]" : "bg-gray-100 text-gray-400 pointer-events-none"}`}
-            >
-              Checkout ({selectedIds.length} produk)
-            </Link>
           </div>
 
           {/* Trust badges */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-2">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-2.5">
             {[
               { icon: faShield, text: "Transaksi aman & terpercaya", color: "text-blue-500" },
-              { icon: faTruck, text: "Gratis ongkir wilayah Blitar", color: "text-green-500" },
+              { icon: faTruck, text: "Gratis ongkir wilayah Blitar", color: "text-emerald-500" },
               { icon: faTag, text: "Harga terbaik dijamin", color: "text-orange-500" },
             ].map((item) => (
               <div key={item.text} className="flex items-center gap-3">

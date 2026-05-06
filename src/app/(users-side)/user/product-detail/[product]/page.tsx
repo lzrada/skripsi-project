@@ -275,7 +275,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
           <div className="w-full aspect-square md:aspect-[4/3] rounded-2xl overflow-hidden relative bg-white border border-gray-100 shadow-sm">
             {product.images && product.images.length > 0 ? (
               <>
-                <Image src={product.images[activeImage]} alt={product.name} fill className="object-contain p-3" />
+                <Image src={product.images[activeImage]} alt={product.name} fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-contain p-3" />
                 {product.images.length > 1 && (
                   <>
                     <button
@@ -317,7 +317,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ produc
                     i === activeImage ? "border-[#1E2753] shadow-sm" : "border-gray-100 opacity-60 hover:opacity-100 hover:border-gray-300"
                   }`}
                 >
-                  <Image src={img} alt={`Foto ${i + 1}`} width={80} height={80} className="object-contain w-full h-full p-1" />
+                  <Image src={img} alt={`Foto ${i + 1}`} width={80} height={80} sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-contain w-full h-full p-1" />
                 </button>
               ))}
             </div>

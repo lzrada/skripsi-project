@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faFire, faTag, faTableCells, faTruckFast, faRecycle, faShield } from "@fortawesome/free-solid-svg-icons";
+import { faFire, faTag, faTableCells, faTruckFast, faRecycle, faShield, faMagnifyingGlass, faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import HeroBanner from "@/components/ui/HeroBanner";
 import CategoryGrid from "@/components/ui/CategoryGrid";
 import ProductCard from "@/components/ui/ProductCard";
 import { subscribeToProductsService } from "@/service/product.service";
 import { Product } from "@/types/product";
+
 const tabs = ["Semua", "Promo"];
 
 // ─── Skeleton Components ────────────────────────────────────────────────────
@@ -56,6 +58,30 @@ function SkeletonPromoCards() {
   );
 }
 
+// ─── Search Bar ──────────────────────────────────────────────────────────────
+
+function SearchBar() {
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (query.trim()) {
+      router.push(`/user/products?search=${encodeURIComponent(query.trim())}`);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSearch} className="flex items-center gap-2 bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
+      <FontAwesomeIcon icon={faMagnifyingGlass} className="text-gray-400 w-4 h-4 shrink-0" />
+      <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari produk elektronik... (TV, AC, Kulkas, dll)" className="flex-1 outline-none text-sm text-gray-700 placeholder-gray-400 bg-transparent" />
+      <button type="submit" className="bg-[#1E2753] text-white text-xs font-semibold px-4 py-1.5 rounded-xl hover:bg-[#2d3a8c] transition-colors shrink-0">
+        Cari
+      </button>
+    </form>
+  );
+}
+
 // ─── Dashboard ──────────────────────────────────────────────────────────────
 
 export default function DashboardUser() {
@@ -80,20 +106,39 @@ export default function DashboardUser() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 -mt-10 space-y-10">
+      {/* Hero Banner */}
       <HeroBanner />
 
-      {/* Promo cards */}
+      {/* Search Bar — fitur pencarian produk (sesuai skripsi BAB I & BAB III) */}
+      <SearchBar />
+
+      {/* Promo cards — keunggulan toko Rizky Elektronik */}
       {loading ? (
         <SkeletonPromoCards />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { title: "Barang Second Berkualitas", desc: "Harga bersahabat, kondisi terawat", icon: faRecycle, color: "from-amber-500 to-orange-600" },
-            { title: "Gratis Ongkir Blitar", desc: "Pembelian apapun, ongkir GRATIS", icon: faTruckFast, color: "from-emerald-500 to-teal-600" },
-            { title: "Garansi Toko", desc: "Setiap produk bergaransi resmi", icon: faShield, color: "from-[#1E2753] to-[#2d3a8c]" },
+            {
+              title: "Barang Elektronik Berkualitas",
+              desc: "Produk original & second terawat dengan harga bersahabat",
+              icon: faRecycle,
+              color: "from-amber-500 to-orange-600",
+            },
+            {
+              title: "Gratis Ongkir Blitar & Sekitarnya",
+              desc: "Pengiriman gratis untuk area Blitar, Tulungagung & Kediri",
+              icon: faTruckFast,
+              color: "from-emerald-500 to-teal-600",
+            },
+            {
+              title: "Garansi Toko Rizky",
+              desc: "Setiap produk dilengkapi garansi resmi dari toko",
+              icon: faShield,
+              color: "from-[#1E2753] to-[#2d3a8c]",
+            },
           ].map((p) => (
             <div key={p.title} className={`bg-gradient-to-br ${p.color} rounded-2xl p-5 flex items-center gap-4`}>
-              <FontAwesomeIcon icon={p.icon} className="text-4xl text-black/30" />
+              <FontAwesomeIcon icon={p.icon} className="text-4xl text-black/30 shrink-0" />
               <div>
                 <p className="text-white font-bold text-sm">{p.title}</p>
                 <p className="text-white/70 text-xs mt-0.5">{p.desc}</p>
@@ -117,6 +162,9 @@ export default function DashboardUser() {
               <h2 className="text-lg font-bold text-gray-800">Flash Sale</h2>
               <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">DISKON</span>
             </div>
+            <Link href="/user/products" className="text-xs text-[#1E2753] font-semibold flex items-center gap-1 hover:underline">
+              Lihat Semua <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3" />
+            </Link>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {flashSale.map((p) => (
@@ -131,9 +179,14 @@ export default function DashboardUser() {
         <SkeletonSection title="Produk Terbaru" count={4} />
       ) : bestSeller.length > 0 ? (
         <section>
-          <div className="flex items-center gap-2 mb-4">
-            <FontAwesomeIcon icon={faTag} className="w-5 h-5 text-amber-500" />
-            <h2 className="text-lg font-bold text-gray-800">Produk Terbaru</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FontAwesomeIcon icon={faTag} className="w-5 h-5 text-amber-500" />
+              <h2 className="text-lg font-bold text-gray-800">Produk Terbaru</h2>
+            </div>
+            <Link href="/user/products" className="text-xs text-[#1E2753] font-semibold flex items-center gap-1 hover:underline">
+              Lihat Semua <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3" />
+            </Link>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {bestSeller.map((p) => (
@@ -166,7 +219,7 @@ export default function DashboardUser() {
           ))}
         </div>
 
-        {/* Grid */}
+        {/* Grid produk */}
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {[...Array(10)].map((_, i) => (
@@ -192,6 +245,7 @@ export default function DashboardUser() {
           <div className="text-center py-16 text-gray-400">
             <p className="text-4xl mb-3">📦</p>
             <p className="font-medium">Tidak ada produk ditemukan</p>
+            <p className="text-sm mt-1">Coba tab lain atau cari produk berbeda</p>
           </div>
         )}
       </section>

@@ -39,7 +39,7 @@ function CountBadge({ count, color = "bg-[#E85D04]" }: { count: number; color?: 
   if (count <= 0) return null;
   return (
     <span
-      className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 ${color}
+      className={`absolute -top-1 -right-1 min-w-4.5 h-4.5 px-1 ${color}
         text-white text-[10px] font-bold rounded-full flex items-center justify-center
         animate-bounceIn`}
     >
@@ -174,9 +174,9 @@ export default function NavbarUser() {
   return (
     <>
       {/* Overlay backdrop untuk mobile menu */}
-      {menuOpen && <div className="fixed inset-0 bg-black/30 z-[9998] md:hidden" onClick={() => setMenuOpen(false)} />}
+      {menuOpen && <div className="fixed inset-0 bg-black/30 z-40 md:hidden" onClick={() => setMenuOpen(false)} />}
 
-      <header id="navbar-user" className={`fixed top-0 left-0 w-full z-[9999] bg-white transition-shadow duration-300 ${scrolled ? "shadow-[0_2px_20px_rgba(30,39,83,0.12)]" : ""}`}>
+      <header id="navbar-user" className={`fixed top-0 left-0 w-full z-50 bg-white transition-shadow duration-300 ${scrolled ? "shadow-[0_2px_20px_rgba(30,39,83,0.12)]" : ""}`}>
         {/* ── Top bar promo (hanya saat belum login) ── */}
         {!isLoggedIn && (
           <div className="bg-[#1E2753] text-white text-xs py-1.5 px-4 flex justify-between items-center">
@@ -199,7 +199,7 @@ export default function NavbarUser() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3 h-16">
               {/* Logo */}
-              <Link href="/user/dashboard-user" className="flex-shrink-0 flex items-center gap-2 group">
+              <Link href="/user/dashboard-user" className="shrink-0 flex items-center gap-2 group">
                 <div
                   className="w-9 h-9 bg-[#1E2753] rounded-xl flex items-center justify-center
                   group-hover:bg-[#2d3a8c] transition-colors duration-200"
@@ -218,7 +218,7 @@ export default function NavbarUser() {
                   className={`flex items-center rounded-full border-2 transition-all duration-200 overflow-hidden
                     bg-gray-50 ${searchFocused ? "border-[#1E2753] bg-white shadow-[0_0_0_3px_rgba(30,39,83,0.08)]" : "border-gray-200 hover:border-gray-300"}`}
                 >
-                  <FontAwesomeIcon icon={faMagnifyingGlass} className="ml-4 text-gray-400 w-3.5 h-3.5 flex-shrink-0" />
+                  <FontAwesomeIcon icon={faMagnifyingGlass} className="ml-4 text-gray-400 w-3.5 h-3.5 shrink-0" />
                   <input
                     type="text"
                     value={searchQuery}
@@ -232,7 +232,7 @@ export default function NavbarUser() {
                   <button
                     type="submit"
                     className="bg-[#1E2753] hover:bg-[#2d3a8c] text-white text-sm font-semibold
-                      px-5 py-2.5 flex-shrink-0 transition-colors duration-150"
+                      px-5 py-2.5 shrink-0 transition-colors duration-150"
                   >
                     Cari
                   </button>
@@ -240,7 +240,7 @@ export default function NavbarUser() {
               </form>
 
               {/* Icon actions */}
-              <div className="flex items-center gap-0.5 flex-shrink-0">
+              <div className="flex items-center gap-0.5 shrink-0">
                 {/* Wishlist */}
                 <Link
                   href="/user/wishlist"
@@ -274,11 +274,11 @@ export default function NavbarUser() {
                       >
                         <div
                           className="w-8 h-8 rounded-full bg-[#1E2753] flex items-center
-                          justify-center text-white text-xs font-bold flex-shrink-0 ring-2 ring-white ring-offset-1"
+                          justify-center text-white text-xs font-bold shrink-0 ring-2 ring-white ring-offset-1"
                         >
                           {initials}
                         </div>
-                        <span className="text-sm font-medium text-gray-700 max-w-[80px] truncate">{userName || "Akun"}</span>
+                        <span className="text-sm font-medium text-gray-700 max-w-20 truncate">{userName || "Akun"}</span>
                         <FontAwesomeIcon
                           icon={faChevronDown}
                           className={`w-3 h-3 text-gray-400 transition-transform duration-200
@@ -291,10 +291,10 @@ export default function NavbarUser() {
                         <div
                           className="absolute right-0 top-[calc(100%+8px)] w-52 bg-white rounded-2xl
                             shadow-xl shadow-black/10 border border-gray-100 overflow-hidden
-                            animate-fadeIn z-[10000]"
+                            animate-fadeIn z-60"
                         >
                           {/* Header */}
-                          <div className="px-4 py-3 bg-gradient-to-br from-[#1E2753] to-[#2d3a8c]">
+                          <div className="px-4 py-3 bg-linear-to-br from-[#1E2753] to-[#2d3a8c]">
                             <p className="text-white/60 text-[10px] uppercase tracking-wider">Login sebagai</p>
                             <p className="text-white text-sm font-semibold truncate mt-0.5">{userName || "User"}</p>
                           </div>
@@ -397,7 +397,7 @@ export default function NavbarUser() {
                       href={`/user/products?category=${encodeURIComponent(cat.slug)}`}
                       onClick={() => setSelectedCategory(cat.slug)}
                       className={`relative whitespace-nowrap px-4 py-3 text-sm font-medium
-                        transition-colors duration-150 border-b-2 flex-shrink-0
+                        transition-colors duration-150 border-b-2 shrink-0
                         ${active ? "text-[#E85D04] border-[#E85D04]" : "text-gray-500 border-transparent hover:text-[#1E2753] hover:border-[#1E2753]/40"}`}
                     >
                       {cat.name}
@@ -409,7 +409,7 @@ export default function NavbarUser() {
                   onClick={() => setSelectedCategory("")}
                   className="whitespace-nowrap px-4 py-3 text-sm font-semibold
                     text-[#E85D04] border-b-2 border-transparent hover:border-[#E85D04]/40
-                    transition-colors flex-shrink-0"
+                    transition-colors shrink-0"
                 >
                   Lihat Semua →
                 </Link>
@@ -473,7 +473,7 @@ export default function NavbarUser() {
                       <div className="flex items-center gap-2.5 px-3 py-2">
                         <div
                           className="w-8 h-8 rounded-full bg-[#1E2753] flex items-center
-                          justify-center text-white text-xs font-bold flex-shrink-0"
+                          justify-center text-white text-xs font-bold shrink-0"
                         >
                           {initials}
                         </div>

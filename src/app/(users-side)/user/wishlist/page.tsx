@@ -1,4 +1,3 @@
-// src/app/(users-side)/user/wishlist/page.tsx
 "use client";
 
 import { useEffect, useState, useCallback } from "react";

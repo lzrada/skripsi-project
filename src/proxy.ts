@@ -1,44 +1,59 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];
+
+const PROTECTED_USER_ROUTES = ["/user/cart", "/user/wishlist", "/user/checkout", "/user/orders", "/user/account", "/user/dashboard-user"];
+
+const ADMIN_ROUTES = ["/admin"];
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const token = request.cookies.get("firebaseToken")?.value;
   const role = request.cookies.get("userRole")?.value;
+  const uid = request.cookies.get("uid")?.value;
 
-  const authRoutes = ["/login", "/register", "/forgot-password"];
+  const isLoggedIn = !!(token && uid);
 
-  const protectedRoutes = ["/user/cart", "/user/wishlist", "/user/checkout", "/user/orders", "/user/profile", "/user/account", "/user/dashboard-user", "/admin"];
+  const isAuthRoute = AUTH_ROUTES.includes(pathname);
+  const isProtectedUserRoute = PROTECTED_USER_ROUTES.some((r) => pathname.startsWith(r));
+  const isAdminRoute = ADMIN_ROUTES.some((r) => pathname.startsWith(r));
 
-  const isAuthRoute = authRoutes.includes(pathname);
-
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
-
-  const isAdminRoute = pathname.startsWith("/admin");
-
-  // Belum login tapi akses halaman protected
-  if (isProtectedRoute && !token) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  if (!isLoggedIn && (isProtectedUserRoute || isAdminRoute)) {
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // Sudah login tapi buka halaman login/register
-  if (isAuthRoute && token) {
-    if (role === "admin") {
-      return NextResponse.redirect(new URL("/admin/dashboard-admin", request.url));
-    }
+  if (isLoggedIn && isAuthRoute) {
+    const destination = role === "admin" ? "/admin/dashboard-admin" : "/user/dashboard-user";
+    return NextResponse.redirect(new URL(destination, request.url));
+  }
 
+  if (isAdminRoute && role !== "admin") {
     return NextResponse.redirect(new URL("/user/dashboard-user", request.url));
   }
 
-  // Bukan admin tapi coba akses halaman admin
-  if (isAdminRoute && role !== "admin") {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
+  const response = NextResponse.next();
 
-  return NextResponse.next();
+  response.headers.set("X-Request-ID", crypto.randomUUID ? crypto.randomUUID() : `req-${Date.now()}`);
+
+  return response;
 }
 
 export const config = {
-  matcher: ["/login", "/register", "/forgot-password", "/user/cart/:path*", "/user/wishlist/:path*", "/user/checkout/:path*", "/user/orders/:path*", "/user/profile/:path*", "/user/account/:path*", "/admin/:path*"],
+  matcher: [
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/user/cart/:path*",
+    "/user/wishlist/:path*",
+    "/user/checkout/:path*",
+    "/user/orders/:path*",
+    "/user/profile/:path*",
+    "/user/account/:path*",
+    "/admin/:path*",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$).*)",
+  ],
 };

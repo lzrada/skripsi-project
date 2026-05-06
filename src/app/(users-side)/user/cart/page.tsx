@@ -1,15 +1,15 @@
-// src/app/(users-side)/user/cart/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrash, faCartShopping, faChevronLeft, faTag, faTruck, faShield, faTicket } from "@fortawesome/free-solid-svg-icons";
+import { faTrash, faCartShopping, faChevronLeft, faTag, faTruck, faShield, faTicket, faCircleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { subscribeToCartService, updateCartQtyService, removeFromCartService, type CartItem } from "@/service/cart.service";
 import { validateCouponService } from "@/service/coupon.service";
 import { categoryGradient, defaultGradient } from "@/constants/category";
 import { toast } from "@/components/ui/Toast";
+import { inventoryFirstCheck } from "@/constants/inventory";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -29,11 +29,43 @@ function getUid(): string | null {
   );
 }
 
-// ── Delete Confirm Modal ───────────────────────────────────────────────────
+interface StockWarningBannerProps {
+  items: CartItem[];
+}
+
+function StockWarningBanner({ items }: StockWarningBannerProps) {
+  const invalidItems = items.filter((item) => !inventoryFirstCheck(item.qty, item.stock));
+
+  if (invalidItems.length === 0) return null;
+
+  return (
+    <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-2 animate-fadeIn">
+      <div className="flex items-start gap-3">
+        <FontAwesomeIcon icon={faCircleExclamation} className="text-red-500 w-4 h-4 mt-0.5 shrink-0" />
+        <div className="flex-1">
+          <p className="text-red-700 font-bold text-sm">Validasi Stok Gagal</p>
+          <p className="text-red-600 text-xs mt-0.5 leading-relaxed">
+            Beberapa item melebihi stok tersedia. Sistem <span className="font-semibold">Algoritma Inventory First</span> hanya mengizinkan pemesanan sesuai stok aktual.
+          </p>
+          <ul className="mt-2 space-y-1">
+            {invalidItems.map((item) => (
+              <li key={item.id} className="text-xs text-red-600 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                <strong>{item.name}</strong>: diminta <strong>{item.qty}</strong>, stok tersisa <strong>{item.stock}</strong>
+              </li>
+            ))}
+          </ul>
+          <p className="text-red-500 text-xs mt-2 font-medium">↳ Kurangi jumlah item di atas untuk melanjutkan checkout.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DeleteConfirmModal({ itemName, isBulk, bulkCount, onConfirm, onCancel }: { itemName: string; isBulk?: boolean; bulkCount?: number; onConfirm: () => void; onCancel: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4" onClick={onCancel}>
-      <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center animate-fadeIn" onClick={(e) => e.stopPropagation()}>
         <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
           <FontAwesomeIcon icon={faTrash} className="text-red-500 w-6 h-6" />
         </div>
@@ -41,7 +73,7 @@ function DeleteConfirmModal({ itemName, isBulk, bulkCount, onConfirm, onCancel }
         <p className="text-sm text-gray-500 mb-6">
           {isBulk ? (
             <>
-              <span className="font-bold text-gray-700">{bulkCount} produk</span> yang dipilih akan dihapus.
+              <span className="font-bold text-gray-700">{bulkCount} produk</span> yang dipilih akan dihapus dari keranjang.
             </>
           ) : (
             <>
@@ -62,12 +94,13 @@ function DeleteConfirmModal({ itemName, isBulk, bulkCount, onConfirm, onCancel }
   );
 }
 
-// ── Cart Item Row ──────────────────────────────────────────────────────────
 function CartItemRow({ item, isSelected, onToggle, onDeleteClick, onQtyChange }: { item: CartItem; isSelected: boolean; onToggle: () => void; onDeleteClick: () => void; onQtyChange: (type: "inc" | "dec") => Promise<void> }) {
   const [qtyLoading, setQtyLoading] = useState(false);
   const gradient = categoryGradient[item.category] ?? defaultGradient;
   const atMaxStock = item.qty >= item.stock;
   const atMinQty = item.qty <= 1;
+
+  const stockInvalid = !inventoryFirstCheck(item.qty, item.stock);
 
   const handleQty = async (type: "inc" | "dec") => {
     if (qtyLoading) return;
@@ -79,23 +112,16 @@ function CartItemRow({ item, isSelected, onToggle, onDeleteClick, onQtyChange }:
   };
 
   return (
-    <div className={`bg-white rounded-2xl border-2 shadow-sm p-4 transition-all duration-200 ${isSelected ? "border-[#1E2753]" : "border-gray-100"}`}>
+    <div className={`bg-white rounded-2xl border-2 shadow-sm p-4 transition-all duration-200 ${stockInvalid ? "border-red-300 bg-red-50/30" : isSelected ? "border-[#1E2753]" : "border-gray-100"}`}>
       <div className="flex gap-3">
-        {/* Checkbox */}
         <div className="flex items-start pt-1 flex-shrink-0">
           <input type="checkbox" checked={isSelected} onChange={onToggle} className="w-4 h-4 accent-[#1E2753] cursor-pointer" />
         </div>
 
-        {/* Gambar — FIX: object-contain, tidak terpotong */}
         <div className={`w-20 h-20 rounded-xl flex-shrink-0 overflow-hidden relative border border-gray-100 ${item.image ? "bg-gray-50" : `bg-gradient-to-br ${gradient}`}`}>
-          {item.image ? (
-            <Image src={item.image} alt={item.name} fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-contain p-1.5" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>
-          )}
+          {item.image ? <Image src={item.image} alt={item.name} fill sizes="80px" className="object-contain p-1.5" /> : <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>}
         </div>
 
-        {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug">{item.name}</p>
@@ -105,15 +131,13 @@ function CartItemRow({ item, isSelected, onToggle, onDeleteClick, onQtyChange }:
           </div>
 
           <div className="flex items-center justify-between mt-3 gap-2 flex-wrap">
-            {/* Harga */}
             <div>
               {item.originalPrice && <p className="text-[10px] text-gray-400 line-through">{formatPrice(item.originalPrice)}</p>}
               <p className="text-sm font-black text-[#1E2753]">{formatPrice(item.price)}</p>
             </div>
 
-            {/* Qty control */}
             <div className="flex flex-col items-end gap-1">
-              <div className={`flex items-center rounded-xl overflow-hidden border-2 ${qtyLoading ? "opacity-60" : ""} ${isSelected ? "border-[#1E2753]/30" : "border-gray-100"}`}>
+              <div className={`flex items-center rounded-xl overflow-hidden border-2 transition-all ${qtyLoading ? "opacity-60" : ""} ${stockInvalid ? "border-red-300" : isSelected ? "border-[#1E2753]/30" : "border-gray-100"}`}>
                 <button
                   onClick={() => handleQty("dec")}
                   disabled={qtyLoading || atMinQty}
@@ -130,8 +154,8 @@ function CartItemRow({ item, isSelected, onToggle, onDeleteClick, onQtyChange }:
                   +
                 </button>
               </div>
-              {/* Max stock info */}
-              {atMaxStock && <p className="text-[9px] text-orange-500 font-semibold">Maks. stok tercapai</p>}
+
+              {stockInvalid ? <p className="text-[9px] text-red-500 font-bold">⚠ Melebihi stok ({item.stock} tersisa)</p> : atMaxStock ? <p className="text-[9px] text-orange-500 font-semibold">Maks. stok tercapai</p> : null}
             </div>
           </div>
 
@@ -144,7 +168,6 @@ function CartItemRow({ item, isSelected, onToggle, onDeleteClick, onQtyChange }:
   );
 }
 
-// ── Halaman Utama ──────────────────────────────────────────────────────────
 export default function CartPage() {
   const [uid, setUid] = useState<string | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -152,8 +175,15 @@ export default function CartPage() {
   const [loading, setLoading] = useState(true);
   const [couponInput, setCouponInput] = useState("");
   const [couponLoading, setCouponLoading] = useState(false);
-  const [appliedCoupon, setAppliedCoupon] = useState<{ id: string; code: string; discount: number } | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    id: string;
+    code: string;
+    discount: number;
+  } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [deleteBulk, setDeleteBulk] = useState(false);
 
   useEffect(() => {
@@ -178,6 +208,8 @@ export default function CartPage() {
   const subtotal = selectedItems.reduce((acc, i) => acc + i.price * i.qty, 0);
   const diskonKupon = appliedCoupon?.discount ?? 0;
   const total = Math.max(subtotal - diskonKupon, 0);
+
+  const hasStockViolation = selectedItems.some((item) => !inventoryFirstCheck(item.qty, item.stock));
 
   const updateQty = async (id: string, type: "inc" | "dec") => {
     if (!uid) return;
@@ -204,6 +236,7 @@ export default function CartPage() {
   };
 
   const toggleSelect = (id: string) => setSelectedIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
+
   const toggleSelectAll = () => setSelectedIds(selectedIds.length === cartItems.length ? [] : cartItems.map((i) => i.id));
 
   const handleApplyCoupon = async () => {
@@ -216,7 +249,11 @@ export default function CartPage() {
     const result = await validateCouponService(couponInput, subtotal);
     setCouponLoading(false);
     if (result.valid) {
-      setAppliedCoupon({ id: result.coupon.id, code: result.coupon.code, discount: result.coupon.discount });
+      setAppliedCoupon({
+        id: result.coupon.id,
+        code: result.coupon.code,
+        discount: result.coupon.discount,
+      });
       setCouponInput("");
       toast.success(`Kupon ${result.coupon.code} berhasil! Hemat ${formatPrice(result.coupon.discount)} 🎉`);
     } else {
@@ -225,7 +262,7 @@ export default function CartPage() {
   };
 
   const checkoutHref = () => {
-    if (selectedIds.length === 0) return "#";
+    if (selectedIds.length === 0 || hasStockViolation) return "#";
     let url = `/user/checkout?ids=${selectedIds.join(",")}`;
     if (appliedCoupon) {
       url += `&coupon=${encodeURIComponent(appliedCoupon.code)}&discount=${appliedCoupon.discount}&couponId=${appliedCoupon.id}`;
@@ -233,7 +270,6 @@ export default function CartPage() {
     return url;
   };
 
-  // ── Loading ──
   if (loading)
     return (
       <div className="max-w-7xl mx-auto px-4 py-8 space-y-4">
@@ -286,6 +322,7 @@ export default function CartPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      {/* Delete Modal */}
       {deleteTarget !== null && (
         <DeleteConfirmModal
           itemName={deleteTarget.name}
@@ -299,7 +336,6 @@ export default function CartPage() {
         />
       )}
 
-      {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/user/products" className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 hover:bg-gray-50 transition text-gray-500">
           <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
@@ -311,9 +347,7 @@ export default function CartPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Kiri: list */}
         <div className="lg:col-span-2 space-y-3">
-          {/* Select all bar */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3 flex items-center justify-between">
             <label className="flex items-center gap-3 cursor-pointer">
               <input type="checkbox" checked={selectedIds.length === cartItems.length && cartItems.length > 0} onChange={toggleSelectAll} className="w-4 h-4 accent-[#1E2753] cursor-pointer" />
@@ -335,6 +369,9 @@ export default function CartPage() {
             )}
           </div>
 
+          <StockWarningBanner items={selectedItems} />
+
+          {/* Cart item list */}
           {cartItems.map((item) => (
             <CartItemRow
               key={item.id}
@@ -357,7 +394,6 @@ export default function CartPage() {
           </div>
         </div>
 
-        {/* Kanan: ringkasan */}
         <div className="space-y-4">
           {/* Kupon */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
@@ -420,18 +456,28 @@ export default function CartPage() {
                 </div>
               )}
             </div>
+
             <div className="border-t border-gray-100 pt-3">
               <div className="flex justify-between items-center mb-3">
                 <span className="text-sm font-bold text-gray-800">Total Pembayaran</span>
                 <span className="text-lg font-black text-[#1E2753]">{formatPrice(total)}</span>
               </div>
+
+              {/* Inventory First: pesan & tombol dinonaktifkan jika ada pelanggaran stok */}
+              {hasStockViolation && selectedIds.length > 0 && <p className="text-xs text-red-500 font-semibold text-center mb-2">⚠ Perbaiki stok item di atas sebelum checkout</p>}
+
               <Link
                 href={checkoutHref()}
+                onClick={(e) => {
+                  if (hasStockViolation || selectedIds.length === 0) {
+                    e.preventDefault();
+                  }
+                }}
                 className={`block w-full py-3.5 rounded-xl text-center font-black text-sm transition-all duration-200 ${
-                  selectedIds.length > 0 ? "bg-[#1E2753] text-white hover:bg-[#2a3470] active:scale-95 shadow-sm" : "bg-gray-100 text-gray-400 pointer-events-none"
+                  selectedIds.length > 0 && !hasStockViolation ? "bg-[#1E2753] text-white hover:bg-[#2a3470] active:scale-95 shadow-sm" : "bg-gray-100 text-gray-400 cursor-not-allowed pointer-events-none"
                 }`}
               >
-                Checkout ({selectedIds.length} produk)
+                {hasStockViolation ? "Stok Tidak Valid" : `Checkout (${selectedIds.length} produk)`}
               </Link>
             </div>
           </div>
@@ -439,9 +485,21 @@ export default function CartPage() {
           {/* Trust badges */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-2.5">
             {[
-              { icon: faShield, text: "Transaksi aman & terpercaya", color: "text-blue-500" },
-              { icon: faTruck, text: "Gratis ongkir wilayah Blitar", color: "text-emerald-500" },
-              { icon: faTag, text: "Harga terbaik dijamin", color: "text-orange-500" },
+              {
+                icon: faShield,
+                text: "Transaksi aman & terpercaya",
+                color: "text-blue-500",
+              },
+              {
+                icon: faTruck,
+                text: "Gratis ongkir wilayah Blitar",
+                color: "text-emerald-500",
+              },
+              {
+                icon: faTag,
+                text: "Harga terbaik dijamin",
+                color: "text-orange-500",
+              },
             ].map((item) => (
               <div key={item.text} className="flex items-center gap-3">
                 <FontAwesomeIcon icon={item.icon} className={`w-4 h-4 ${item.color} flex-shrink-0`} />

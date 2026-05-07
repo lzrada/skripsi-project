@@ -6,10 +6,6 @@ export default async function Home() {
   const role = cookieStore.get("userRole")?.value;
   const token = cookieStore.get("firebaseToken")?.value;
 
-  if (!token) {
-    redirect("/login");
-  }
-
   if (role === "admin") {
     redirect("/admin/dashboard-admin");
   }

@@ -23,6 +23,8 @@ export interface Order {
   phone: string;
   recipientName: string;
   note?: string;
+  paymentStatus: "pending" | "paid" | "failed";
+  midtransResult?: Record<string, unknown>;
 }
 
 export const statusConfig: Record<OrderStatus, { label: string; color: string; bg: string; icon: IconDefinition }> = {

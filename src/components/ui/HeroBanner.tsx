@@ -60,21 +60,28 @@ const slides: Slide[] = [
 
 export default function HeroBanner() {
   const [current, setCurrent] = useState(0);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     const timer = setInterval(() => {
       setCurrent((prev) => (prev + 1) % slides.length);
     }, 4000);
     return () => clearInterval(timer);
-  }, []);
+  }, [mounted]);
 
   const prev = () => setCurrent((c) => (c - 1 + slides.length) % slides.length);
   const next = () => setCurrent((c) => (c + 1) % slides.length);
-  const slide = slides[current];
+
+  // Render slide pertama dulu di server, baru hydrate di client
+  const slide = slides[mounted ? current : 0];
 
   return (
     <div className={`relative w-full h-64 md:h-80 rounded-2xl overflow-hidden bg-gradient-to-r ${slide.bg} transition-all duration-700`}>
-      {/* Dekorasi lingkaran latar */}
       <div className="absolute -right-10 -top-10 w-48 h-48 rounded-full bg-white/5" />
       <div className="absolute -right-5 -bottom-10 w-32 h-32 rounded-full bg-white/5" />
 
@@ -87,25 +94,28 @@ export default function HeroBanner() {
             {slide.cta}
           </Link>
         </div>
+
         <div className="hidden md:flex items-center justify-center w-52 h-52 opacity-10">
           <FontAwesomeIcon icon={slide.icon} className="text-white w-32 h-32" />
         </div>
       </div>
 
-      {/* Tombol navigasi */}
-      <button onClick={prev} aria-label="Sebelumnya" className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors">
-        <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
-      </button>
-      <button onClick={next} aria-label="Selanjutnya" className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors">
-        <FontAwesomeIcon icon={faChevronRight} className="w-3 h-3" />
-      </button>
+      {mounted && (
+        <>
+          <button onClick={prev} aria-label="Sebelumnya" className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors">
+            <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
+          </button>
+          <button onClick={next} aria-label="Selanjutnya" className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition-colors">
+            <FontAwesomeIcon icon={faChevronRight} className="w-3 h-3" />
+          </button>
 
-      {/* Indikator slide */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-        {slides.map((_, i) => (
-          <button key={i} onClick={() => setCurrent(i)} aria-label={`Slide ${i + 1}`} className={`h-1.5 rounded-full transition-all duration-300 ${i === current ? "w-6 bg-white" : "w-1.5 bg-white/40"}`} />
-        ))}
-      </div>
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+            {slides.map((_, i) => (
+              <button key={i} onClick={() => setCurrent(i)} aria-label={`Slide ${i + 1}`} className={`h-1.5 rounded-full transition-all duration-300 ${i === current ? "w-6 bg-white" : "w-1.5 bg-white/40"}`} />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

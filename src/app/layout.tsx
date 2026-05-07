@@ -4,17 +4,13 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Script from "next/script";
 
-// ── Font: Pakai Inter — lebih ringan & cocok untuk e-commerce Indonesia ──────
-// Geist Mono tidak diperlukan untuk UI toko, hapus untuk mengurangi beban font
 const inter = Inter({
   subsets: ["latin"],
-  display: "swap", // Teks langsung muncul pakai font fallback, ganti saat Inter ready
+  display: "swap",
   variable: "--font-inter",
   preload: true,
 });
 
-// ── SEO Metadata Lengkap ─────────────────────────────────────────────────────
-// Sesuai skripsi: nama toko Rizky Elektronik, lokasi Blitar, produk elektronik
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"),
   title: {
@@ -51,6 +47,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY ?? "";
   return (
     <html lang="id" className={inter.variable}>
       <head>
@@ -64,7 +61,7 @@ export default function RootLayout({
           <div className="flex-1 overflow-x-hidden">{children}</div>
         </div>
 
-        <Script src={process.env.NODE_ENV === "production" ? "https://app.midtrans.com/snap/snap.js" : "https://app.sandbox.midtrans.com/snap/snap.js"} data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY} strategy="lazyOnload" />
+        <Script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key={clientKey} strategy="afterInteractive" />
       </body>
     </html>
   );

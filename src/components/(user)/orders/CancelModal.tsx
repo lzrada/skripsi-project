@@ -1,17 +1,18 @@
 "use client";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCircleXmark } from "@fortawesome/free-solid-svg-icons";
+import { faCircleXmark, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 
-interface CancelModalProps {
+interface Props {
   orderId: string;
+  isPaid?: boolean;
   loading?: boolean;
   error?: string | null;
   onConfirm: () => void;
   onClose: () => void;
 }
 
-export default function CancelModal({ orderId, loading = false, error = null, onConfirm, onClose }: CancelModalProps) {
+export default function CancelModal({ orderId, isPaid = false, loading = false, error = null, onConfirm, onClose }: Props) {
   return (
     <>
       <div onClick={!loading ? onClose : undefined} className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" />
@@ -23,10 +24,19 @@ export default function CancelModal({ orderId, loading = false, error = null, on
             </div>
             <p className="text-gray-800 font-bold text-lg">Batalkan Pesanan?</p>
             <p className="text-sm text-gray-500">
-              Pesanan <span className="font-semibold text-gray-700">#{orderId.slice(0, 8).toUpperCase()}</span> akan dibatalkan dan stok produk akan dikembalikan. Tindakan ini tidak bisa diurungkan.
+              Pesanan <span className="font-semibold text-gray-700">#{orderId.slice(0, 8).toUpperCase()}</span> akan dibatalkan dan stok produk dikembalikan.
             </p>
 
-            {/* Tampilkan error jika ada */}
+            {isPaid && (
+              <div className="w-full bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-start gap-2 text-left">
+                <FontAwesomeIcon icon={faRotateLeft} className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-blue-700">Refund Otomatis</p>
+                  <p className="text-xs text-blue-600 mt-0.5">Karena pembayaran sudah diproses, dana akan dikembalikan ke metode pembayaran asalmu dalam 3–14 hari kerja.</p>
+                </div>
+              </div>
+            )}
+
             {error && (
               <div className="w-full bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
                 <p className="text-xs text-red-600 font-medium">{error}</p>
@@ -45,8 +55,10 @@ export default function CancelModal({ orderId, loading = false, error = null, on
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                   </svg>
-                  Membatalkan...
+                  {isPaid ? "Memproses Refund..." : "Membatalkan..."}
                 </>
+              ) : isPaid ? (
+                "Ya, Batalkan & Refund"
               ) : (
                 "Ya, Batalkan"
               )}

@@ -7,15 +7,26 @@ const ENABLED_PAYMENTS: Record<string, string[]> = {
   ewallet: ["gopay", "shopeepay", "dana", "ovo"],
 };
 
+function createSnapClient() {
+  return new midtransClient.Snap({
+    isProduction: false,
+    serverKey: process.env.MIDTRANS_SERVER_KEY!,
+  });
+}
+
+function createCoreClient() {
+  return new midtransClient.CoreApi({
+    isProduction: false,
+    serverKey: process.env.MIDTRANS_SERVER_KEY!,
+  });
+}
+
+// ── POST /api/midtrans → buat transaksi baru ──────────────────────────────────
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { items, user, totalPrice, paymentType } = body;
+    const { items, user, totalPrice, paymentType } = await req.json();
 
-    const snap = new midtransClient.Snap({
-      isProduction: false,
-      serverKey: process.env.MIDTRANS_SERVER_KEY!,
-    });
+    const snap = createSnapClient();
 
     const parameter: any = {
       transaction_details: {
@@ -42,7 +53,39 @@ export async function POST(req: Request) {
     const transaction = await snap.createTransaction(parameter);
     return NextResponse.json({ token: transaction.token });
   } catch (error) {
-    console.error("Midtrans Error:", error);
-    return NextResponse.json({ error: "Failed to create transaction" }, { status: 500 });
+    console.error("Midtrans POST Error:", error);
+    return NextResponse.json({ error: "Gagal membuat transaksi" }, { status: 500 });
+  }
+}
+
+// ── DELETE /api/midtrans → refund / batalkan transaksi ────────────────────────
+export async function DELETE(req: Request) {
+  try {
+    const { orderId, amount, reason } = await req.json();
+
+    if (!orderId) {
+      return NextResponse.json({ error: "orderId wajib diisi" }, { status: 400 });
+    }
+
+    const core = createCoreClient();
+
+    // Coba refund dulu (jika sudah settlement/capture)
+    // Jika gagal karena belum settlement, lakukan cancel
+    let result;
+    try {
+      result = await (core as any).refund(orderId, {
+        refund_key: `REFUND-${orderId}-${Date.now()}`,
+        amount: amount,
+        reason: reason ?? "Pesanan dibatalkan oleh pelanggan",
+      });
+    } catch {
+      // Fallback: cancel transaksi yang belum settlement
+      result = await (core as any).transaction.cancel(orderId);
+    }
+
+    return NextResponse.json({ success: true, result });
+  } catch (error: any) {
+    console.error("Midtrans DELETE Error:", error);
+    return NextResponse.json({ error: error?.message ?? "Gagal memproses refund" }, { status: 500 });
   }
 }

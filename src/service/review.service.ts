@@ -1,35 +1,54 @@
 import { db } from "@/config/firebase";
-import { collection, addDoc, onSnapshot, query, where, orderBy, serverTimestamp, doc, getDocs, runTransaction } from "firebase/firestore";
+import { collection, onSnapshot, query, where, orderBy, serverTimestamp, doc, getDocs, runTransaction, limit } from "firebase/firestore";
 import { Review } from "@/types/product";
 
 export const subscribeToProductReviews = (productId: string, callback: (reviews: Review[]) => void) => {
-  const q = query(collection(db, "reviews"), where("productId", "==", productId), orderBy("createdAt", "desc"));
+  const q = query(collection(db, "reviews"), where("productId", "==", productId), orderBy("createdAt", "desc"), limit(50));
 
-  return onSnapshot(q, (snapshot) => {
-    const reviews: Review[] = snapshot.docs.map((d) => ({
-      id: d.id,
-      ...(d.data() as Omit<Review, "id">),
-    }));
-    callback(reviews);
-  });
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const reviews: Review[] = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<Review, "id">),
+      }));
+      callback(reviews);
+    },
+    (error) => {
+      // Fallback kalau composite index Firestore belum dibuat
+      console.warn("Fallback reviews query (index belum ada):", error.message);
+      const fallbackQ = query(collection(db, "reviews"), where("productId", "==", productId), limit(50));
+      onSnapshot(fallbackQ, (snapshot) => {
+        const reviews: Review[] = snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Review, "id">) })).sort((a: any, b: any) => (b.createdAt?.seconds ?? 0) - (a.createdAt?.seconds ?? 0));
+        callback(reviews);
+      });
+    },
+  );
 };
 
 export const checkUserCanReviewService = async (uid: string, productId: string): Promise<{ canReview: boolean; reason?: string }> => {
-  const ordersSnap = await getDocs(query(collection(db, "orders"), where("uid", "==", uid), where("status", "==", "Selesai")));
+  const ordersSnap = await getDocs(query(collection(db, "orders"), where("uid", "==", uid)));
 
-  const hasBought = ordersSnap.docs.some((d) => {
-    const items: { id: string }[] = d.data().items ?? [];
-    return items.some((item) => item.id === productId);
+  const eligible = ordersSnap.docs.find((d) => {
+    const data = d.data();
+    const items: { id: string }[] = data.items ?? [];
+    const hasProduct = items.some((item) => item.id === productId);
+    if (!hasProduct) return false;
+    // Bisa review kalau order Selesai (dari admin) ATAU paymentStatus paid (dari Midtrans)
+    return data.status === "Selesai" || data.paymentStatus === "paid";
   });
 
-  if (!hasBought) {
-    return { canReview: false, reason: "Kamu harus membeli dan menyelesaikan pesanan produk ini terlebih dahulu sebelum dapat memberikan ulasan." };
+  if (!eligible) {
+    return {
+      canReview: false,
+      reason: "Kamu harus membeli dan menyelesaikan pesanan produk ini terlebih dahulu.",
+    };
   }
 
-  const existingReview = await getDocs(query(collection(db, "reviews"), where("productId", "==", productId), where("uid", "==", uid)));
+  const existingSnap = await getDocs(query(collection(db, "reviews"), where("productId", "==", productId), where("uid", "==", uid), limit(1)));
 
-  if (!existingReview.empty) {
-    return { canReview: false, reason: "Kamu sudah memberikan ulasan untuk produk ini." };
+  if (!existingSnap.empty) {
+    return { canReview: false, reason: "sudah memberikan ulasan" };
   }
 
   return { canReview: true };
@@ -38,11 +57,24 @@ export const checkUserCanReviewService = async (uid: string, productId: string):
 export const addReviewService = async (productId: string, uid: string, userName: string, userPhoto: string | undefined, rating: number, comment: string): Promise<void> => {
   const check = await checkUserCanReviewService(uid, productId);
   if (!check.canReview) {
-    throw new Error(check.reason);
+    throw new Error(check.reason?.includes("sudah memberikan ulasan") ? "Kamu sudah memberikan ulasan untuk produk ini." : check.reason);
   }
 
+  const productRef = doc(db, "products", productId);
+  const reviewRef = doc(collection(db, "reviews"));
+
   await runTransaction(db, async (transaction) => {
-    const reviewRef = doc(collection(db, "reviews"));
+    // ✅ SEMUA READ DULU sebelum write apapun
+    const productSnap = await transaction.get(productRef);
+    if (!productSnap.exists()) throw new Error("Produk tidak ditemukan");
+
+    const data = productSnap.data();
+    const currentTotal = data.totalReviews || 0;
+    const currentSum = (data.averageRating || 0) * currentTotal;
+    const newTotal = currentTotal + 1;
+    const newAvg = Number(((currentSum + rating) / newTotal).toFixed(1));
+
+    // ✅ BARU WRITE setelah semua read selesai
     transaction.set(reviewRef, {
       productId,
       uid,
@@ -53,21 +85,9 @@ export const addReviewService = async (productId: string, uid: string, userName:
       createdAt: serverTimestamp(),
     });
 
-    const productRef = doc(db, "products", productId);
-    const productSnap = await transaction.get(productRef);
-
-    if (!productSnap.exists()) throw new Error("Produk tidak ditemukan");
-
-    const productData = productSnap.data();
-    const currentTotalReviews = productData.totalReviews || 0;
-    const currentSumRating = (productData.averageRating || 0) * currentTotalReviews;
-
-    const newTotalReviews = currentTotalReviews + 1;
-    const newAverageRating = (currentSumRating + rating) / newTotalReviews;
-
     transaction.update(productRef, {
-      averageRating: Number(newAverageRating.toFixed(1)),
-      totalReviews: newTotalReviews,
+      averageRating: newAvg,
+      totalReviews: newTotal,
     });
   });
 };

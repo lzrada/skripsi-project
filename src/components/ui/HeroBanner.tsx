@@ -4,8 +4,22 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBoltLightning, faChevronLeft, faChevronRight, faStore, faTv } from "@fortawesome/free-solid-svg-icons";
+import { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 
-const slides = [
+interface Slide {
+  id: number;
+  title: string;
+  subtitle: string;
+  cta: string;
+  href: string;
+  bg: string;
+  accentBg: string;
+  accentText: string;
+  icon: IconDefinition;
+  tag: string;
+}
+
+const slides: Slide[] = [
   {
     id: 1,
     title: "Selamat Datang di Rizky Elektronik",
@@ -15,19 +29,19 @@ const slides = [
     bg: "from-[#1E2753] to-[#2d3a8c]",
     accentBg: "bg-yellow-400",
     accentText: "text-yellow-400",
-    emoji: <FontAwesomeIcon icon={faStore} className="text-gray-400" />,
+    icon: faStore,
     tag: "RESMI ONLINE",
   },
   {
     id: 2,
     title: "Promo Elektronik Pilihan",
-    subtitle: "Diskon spesial untuk TV,Kipas Angin, Kulkas, dan Mesin Cuci berkualitas",
+    subtitle: "Diskon spesial untuk TV, Kipas Angin, Kulkas, dan Mesin Cuci berkualitas",
     cta: "Lihat Promo",
     href: "/user/products",
     bg: "from-[#0f4c75] to-[#1b6ca8]",
     accentBg: "bg-sky-300",
     accentText: "text-sky-300",
-    emoji: <FontAwesomeIcon icon={faTv} className="text-gray-400" />,
+    icon: faTv,
     tag: "DISKON SPESIAL",
   },
   {
@@ -39,7 +53,7 @@ const slides = [
     bg: "from-[#1a1a2e] to-[#16213e]",
     accentBg: "bg-emerald-400",
     accentText: "text-emerald-400",
-    emoji: <FontAwesomeIcon icon={faBoltLightning} className="text-gray-400" />,
+    icon: faBoltLightning,
     tag: "STOK REAL-TIME",
   },
 ];
@@ -59,7 +73,7 @@ export default function HeroBanner() {
   const slide = slides[current];
 
   return (
-    <div className={`relative w-full h-64 mt-24 md:h-80 rounded-2xl overflow-hidden bg-gradient-to-r ${slide.bg} transition-all duration-700`}>
+    <div className={`relative w-full h-64 md:h-80 rounded-2xl overflow-hidden bg-gradient-to-r ${slide.bg} transition-all duration-700`}>
       {/* Dekorasi lingkaran latar */}
       <div className="absolute -right-10 -top-10 w-48 h-48 rounded-full bg-white/5" />
       <div className="absolute -right-5 -bottom-10 w-32 h-32 rounded-full bg-white/5" />
@@ -73,8 +87,8 @@ export default function HeroBanner() {
             {slide.cta}
           </Link>
         </div>
-        <div className="hidden md:flex items-center justify-center w-52 h-52 opacity-20">
-          <span className="text-9xl">{slide.emoji}</span>
+        <div className="hidden md:flex items-center justify-center w-52 h-52 opacity-10">
+          <FontAwesomeIcon icon={slide.icon} className="text-white w-32 h-32" />
         </div>
       </div>
 

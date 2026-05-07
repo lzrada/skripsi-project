@@ -48,14 +48,6 @@ function CountBadge({ count, color = "bg-[#E85D04]" }: { count: number; color?: 
   );
 }
 
-// ─── Search Bar (pakai useSearchParams di dalam Suspense) ────────────────────
-
-function SearchBarInner() {
-  const { useSearchParams } = require("next/navigation");
-  const searchParams = useSearchParams();
-  return searchParams.get("search") ?? "";
-}
-
 export default function NavbarUser() {
   const router = useRouter();
   const pathname = usePathname();

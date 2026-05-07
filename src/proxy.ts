@@ -43,5 +43,17 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [PROTECTED_USER_ROUTES, "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$).*)"],
+  matcher: [
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/user/cart/:path*",
+    "/user/wishlist/:path*",
+    "/user/checkout/:path*",
+    "/user/orders/:path*",
+    "/user/profile/:path*",
+    "/user/account/:path*",
+    "/admin/:path*",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$).*)",
+  ],
 };

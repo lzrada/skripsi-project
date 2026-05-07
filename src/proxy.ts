@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 const AUTH_ROUTES = ["/login", "/register", "/forgot-password"];
 
-const PROTECTED_USER_ROUTES = ["/user/cart", "/user/wishlist", "/user/checkout", "/user/orders", "/user/account", "/user/dashboard-user"];
+const PROTECTED_USER_ROUTES = ["/user/cart", "/user/wishlist", "/user/checkout", "/user/orders", "/user/account"];
 
 const ADMIN_ROUTES = ["/admin"];
 
@@ -43,17 +43,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/login",
-    "/register",
-    "/forgot-password",
-    "/user/cart/:path*",
-    "/user/wishlist/:path*",
-    "/user/checkout/:path*",
-    "/user/orders/:path*",
-    "/user/profile/:path*",
-    "/user/account/:path*",
-    "/admin/:path*",
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$).*)",
-  ],
+  matcher: [PROTECTED_USER_ROUTES, "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$).*)"],
 };

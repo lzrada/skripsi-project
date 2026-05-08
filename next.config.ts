@@ -35,6 +35,16 @@ const nextConfig: NextConfig = {
   },
 
   async headers() {
+    const isProd = process.env.NODE_ENV === "production";
+
+    const scriptSrc = isProd
+      ? ["script-src 'self' 'unsafe-inline'", "https://app.sandbox.midtrans.com", "https://api.midtrans.com"].join(" ")
+      : [
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+          "https://app.sandbox.midtrans.com",
+          "https://api.midtrans.com",
+        ].join(" ");
+
     return [
       {
         source: "/(.*)",
@@ -43,54 +53,33 @@ const nextConfig: NextConfig = {
             key: "X-Frame-Options",
             value: "SAMEORIGIN",
           },
-
           {
             key: "X-Content-Type-Options",
             value: "nosniff",
           },
-
           {
             key: "Referrer-Policy",
             value: "strict-origin-when-cross-origin",
           },
-
           {
             key: "Strict-Transport-Security",
             value: "max-age=31536000; includeSubDomains",
           },
-
           {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
           },
-
           {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.sandbox.midtrans.com https://api.midtrans.com",
-
+              scriptSrc,
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-
               "font-src 'self' https://fonts.gstatic.com data:",
-
               "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://ui-avatars.com https://www.gravatar.com",
-
               "connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.supabase.co https://api.midtrans.com https://app.sandbox.midtrans.com wss://*.firebaseio.com",
-
               "frame-src https://app.sandbox.midtrans.com https://api.midtrans.com",
             ].join("; "),
-          },
-        ],
-      },
-
-      {
-        source: "/_next/static/(.*)",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
           },
         ],
       },

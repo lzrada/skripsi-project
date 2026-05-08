@@ -1,33 +1,13 @@
+// src/lib/checkout.helpers.ts
+// ✅ Tidak lagi mendefinisikan formatPrice / getCookieValue sendiri
+// Semua diimpor dari @/lib/format
+
 import { CartItem } from "@/service/cart.service";
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import { formatPrice, getCookieValue, getUidFromCookie } from "@/lib/format";
 
-export function formatPrice(price: number): string {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
-  }).format(price);
-}
-
-export function getUidFromCookie(): string | null {
-  if (typeof document === "undefined") return null;
-  return (
-    document.cookie
-      .split("; ")
-      .find((r) => r.startsWith("uid="))
-      ?.split("=")[1] ?? null
-  );
-}
-
-export function getCookieValue(name: string): string | null {
-  if (typeof document === "undefined") return null;
-  return (
-    document.cookie
-      .split("; ")
-      .find((r) => r.startsWith(`${name}=`))
-      ?.split("=")[1] ?? null
-  );
-}
+// Re-export agar komponen lama yang import dari sini tetap bekerja tanpa ubah import
+export { formatPrice, getCookieValue, getUidFromCookie };
 
 export interface RedirectSuccessParams {
   router: AppRouterInstance;

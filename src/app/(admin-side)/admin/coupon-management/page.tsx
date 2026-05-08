@@ -1,4 +1,3 @@
-// src/app/(admin-side)/admin/coupon-management/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -14,7 +13,6 @@ function formatPrice(n: number) {
   }).format(n);
 }
 
-// BUG FIX: safe date parse agar tidak crash dengan invalid date string
 function safeFormatDate(dateStr: string | null): string {
   if (!dateStr) return "";
   const d = new Date(dateStr);

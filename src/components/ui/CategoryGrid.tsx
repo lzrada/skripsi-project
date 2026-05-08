@@ -1,7 +1,6 @@
 // src/components/ui/CategoryGrid.tsx
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTv } from "@fortawesome/free-solid-svg-icons";
@@ -10,7 +9,6 @@ import { GiWashingMachine } from "react-icons/gi";
 import { PiFan } from "react-icons/pi";
 import { RiFridgeFill } from "react-icons/ri";
 import { TbAirConditioning } from "react-icons/tb";
-import { subscribeToProductsService } from "@/service/product.service";
 
 const CATEGORIES = [
   { name: "Televisi", icon: <FontAwesomeIcon icon={faTv} className="text-2xl" /> },
@@ -21,22 +19,11 @@ const CATEGORIES = [
   { name: "Audio", icon: <BsFillSpeakerFill className="text-2xl" /> },
 ];
 
-export default function CategoryGrid() {
-  const [counts, setCounts] = useState<Record<string, number>>({});
+export interface CategoryGridProps {
+  counts?: Record<string, number>;
+}
 
-  useEffect(() => {
-    // Pakai subscribe yang sama dengan dashboard — tidak ada double-fetch
-    const unsub = subscribeToProductsService((products) => {
-      const map: Record<string, number> = {};
-      for (const p of products) {
-        if (p.stock > 0) {
-          map[p.category] = (map[p.category] ?? 0) + 1;
-        }
-      }
-      setCounts(map);
-    });
-    return () => unsub();
-  }, []);
+export default function CategoryGrid({ counts = {} }: CategoryGridProps) {
 
   return (
     <div>

@@ -23,3 +23,7 @@ export function getCookieValue(name: string): string | null {
       ?.split("=")[1] ?? null
   );
 }
+
+export function getUidFromCookie(): string | null {
+  return getCookieValue("uid");
+}

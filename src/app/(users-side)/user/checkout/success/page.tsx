@@ -1,4 +1,3 @@
-// src/app/(users-side)/user/checkout/success/page.tsx
 "use client";
 
 import { Suspense } from "react";

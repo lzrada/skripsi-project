@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { subscribeToCartService, clearCartService, CartItem } from "@/service/cart.service";
+import { subscribeToCartService, clearCartService } from "@/service/cart.service";
+import { CartItem } from "@/types/cart";
 import { createOrderService } from "@/service/order.service";
 import { incrementCouponUsageService } from "@/service/coupon.service";
 import { createMidtransTransaction } from "@/service/payment.service";
@@ -10,6 +11,7 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import { paymentMethods, PaymentMethod } from "@/components/(user)/checkout/PaymentMethods";
 import { toast } from "@/components/(user)/ui/Toast";
 import { getUidFromCookie, redirectToSuccess } from "@/lib/checkout.helpers";
+import { ShippingResult } from "@/lib/shipping";
 
 export interface CheckoutForm {
   nama: string;
@@ -40,6 +42,15 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     catatan: "",
   });
 
+  // ── Shipping ─────────────────────────────────────────────────────────────
+  const [shipping, setShipping] = useState<ShippingResult | null>(null);
+  const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
+
+  const handleShippingResult = (result: ShippingResult | null, calculating: boolean) => {
+    setShipping(result);
+    setIsCalculatingShipping(calculating);
+  };
+
   // ── Init uid + email + cart ──────────────────────────────────────────────
   useEffect(() => {
     const u = getUidFromCookie();
@@ -59,13 +70,23 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIds.join(",")]);
 
+  // ── Form handlers ────────────────────────────────────────────────────────
   const handleInput = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     setFormError("");
   };
 
+  /** Dipanggil dari AddressForm saat user klik "Pakai Alamat Profil" */
+  const handleFillFromProfile = (data: Partial<CheckoutForm>) => {
+    setForm((prev) => ({ ...prev, ...data }));
+    setFormError("");
+  };
+
+  // ── Kalkulasi total ──────────────────────────────────────────────────────
   const subtotal = orderItems.reduce((acc, i) => acc + i.price * i.qty, 0);
-  const total = Math.max(subtotal - diskonKupon, 0);
+  const shippingFee = shipping?.fee ?? 0;
+  const total = Math.max(subtotal + shippingFee - diskonKupon, 0);
+
   const selectedMethod = paymentMethods.find((p) => p.id === selectedPayment) as PaymentMethod;
   const isCod = !selectedMethod.useMidtrans;
 
@@ -81,8 +102,15 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     setShowConfirm(true);
   };
 
-  // ── Shared: build order items ────────────────────────────────────────────
-  const buildItems = (snapshot: CartItem[]) => snapshot.map((i) => ({ id: i.id, name: i.name, price: i.price, qty: i.qty, category: i.category }));
+  // ── Build order ──────────────────────────────────────────────────────────
+  const buildItems = (snapshot: CartItem[]) =>
+    snapshot.map((i) => ({
+      id: i.id,
+      name: i.name,
+      price: i.price,
+      qty: i.qty,
+      category: i.category,
+    }));
 
   const buildOrderBase = (snapshot: CartItem[]) => ({
     uid: uid!,
@@ -94,8 +122,11 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     note: form.catatan,
     paymentMethod: selectedMethod.label,
     items: buildItems(snapshot),
+    subtotal,
+    shippingFee,
     total,
     ...(couponCode ? { couponCode, diskonKupon, couponId } : {}),
+    ...(shipping ? { shippingDistanceKm: shipping.distanceKm, shippingLabel: shipping.label } : {}),
   });
 
   const afterSuccess = async (snapshot: CartItem[], orderId: string, isCodOrder: boolean) => {
@@ -117,13 +148,15 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     });
   };
 
-  // ── COD ──────────────────────────────────────────────────────────────────
   const handleCodOrder = async () => {
     if (!uid) return;
     setLoading(true);
     const snapshot = [...orderItems];
     try {
-      const id = await createOrderService({ ...buildOrderBase(snapshot), paymentStatus: "unpaid" });
+      const id = await createOrderService({
+        ...buildOrderBase(snapshot),
+        paymentStatus: "unpaid",
+      });
       await afterSuccess(snapshot, id, true);
     } catch (err: any) {
       toast.error(err?.message ?? "Gagal membuat pesanan, coba lagi.");
@@ -133,7 +166,6 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     }
   };
 
-  // ── Midtrans ─────────────────────────────────────────────────────────────
   const handleMidtransOrder = async () => {
     if (!uid) return;
     setLoading(true);
@@ -173,7 +205,7 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
           );
           if (couponId && diskonKupon > 0) await incrementCouponUsageService(couponId);
           setShowConfirm(false);
-          toast.info("Pembayaran pending. Selesaikan pembayaran sebelum batas waktu.");
+          toast.info("Pembayaran pending. Selesaikan sebelum batas waktu.");
         },
         onError: (err: any) => {
           console.error(err);
@@ -211,10 +243,15 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     showConfirm,
     setShowConfirm,
     subtotal,
+    shippingFee,
     total,
+    shipping,
+    isCalculatingShipping,
+    handleShippingResult,
     selectedMethod,
     isCod,
     handleInput,
+    handleFillFromProfile,
     handleCheckoutClick,
     handleOrder,
   };

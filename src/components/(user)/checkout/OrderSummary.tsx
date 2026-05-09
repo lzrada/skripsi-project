@@ -1,16 +1,22 @@
-// src/components/checkout/OrderSummary.tsx
+// src/components/(user)/checkout/OrderSummary.tsx
 "use client";
 
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronDown, faChevronUp, faHandHoldingDollar, faLock } from "@fortawesome/free-solid-svg-icons";
-import { CartItem } from "@/service/cart.service";
+import { CartItem } from "@/types/cart";
 
-const formatPrice = (price: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(price);
+const formatPrice = (price: number) =>
+  new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(price);
 
 interface Props {
   orderItems: CartItem[];
   subtotal: number;
+  shippingFee: number;
   diskonKupon: number;
   couponCode: string;
   total: number;
@@ -20,7 +26,7 @@ interface Props {
   setShowOrderDetail: (show: boolean) => void;
 }
 
-export default function OrderSummary({ orderItems, subtotal, diskonKupon, couponCode, total, isCod, onCheckout, showOrderDetail, setShowOrderDetail }: Props) {
+export default function OrderSummary({ orderItems, subtotal, shippingFee, diskonKupon, couponCode, total, isCod, onCheckout, showOrderDetail, setShowOrderDetail }: Props) {
   return (
     <div className="space-y-4">
       {/* Detail Produk */}
@@ -61,10 +67,12 @@ export default function OrderSummary({ orderItems, subtotal, diskonKupon, coupon
             <span className="text-gray-500">Subtotal Produk</span>
             <span>{formatPrice(subtotal)}</span>
           </div>
+
           <div className="flex justify-between">
             <span className="text-gray-500">Ongkos Kirim</span>
-            <span className="text-green-600">Gratis</span>
+            {shippingFee === 0 ? <span className="text-green-600 font-semibold">Gratis</span> : <span>{formatPrice(shippingFee)}</span>}
           </div>
+
           {diskonKupon > 0 && (
             <div className="flex justify-between">
               <span className="text-gray-500">Diskon {couponCode && `(${couponCode})`}</span>

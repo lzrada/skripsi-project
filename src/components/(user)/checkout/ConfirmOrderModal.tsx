@@ -2,7 +2,7 @@
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBoxOpen, faUser, faPhone, faMapMarkerAlt, faHandHoldingDollar, faLock, faExclamationCircle } from "@fortawesome/free-solid-svg-icons";
-import { CartItem } from "@/service/cart.service";
+import { CartItem } from "@/types/cart";
 
 interface Props {
   form: { nama: string; telepon: string; alamat: string; kota: string; kodePos: string; catatan: string };

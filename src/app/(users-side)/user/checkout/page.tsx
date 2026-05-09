@@ -7,7 +7,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 
 import { useCheckout } from "@/hooks/UseCheckout";
-
 import AddressForm from "@/components/(user)/checkout/AdressForm";
 import ShippingInfo from "@/components/(user)/checkout/ShippingInfo";
 import PaymentMethodSelector from "@/components/(user)/checkout/PaymentMethodSelector";
@@ -24,8 +23,30 @@ function CheckoutForm() {
   const couponId = searchParams.get("couponId") ?? "";
   const diskonKupon = Number(searchParams.get("discount") ?? 0);
 
-  const { form, formError, orderItems, selectedPayment, setSelectedPayment, showOrderDetail, setShowOrderDetail, loading, showConfirm, setShowConfirm, subtotal, total, selectedMethod, isCod, handleInput, handleCheckoutClick, handleOrder } =
-    useCheckout(selectedIds, couponCode, couponId, diskonKupon);
+  const {
+    form,
+    formError,
+    orderItems,
+    selectedPayment,
+    setSelectedPayment,
+    showOrderDetail,
+    setShowOrderDetail,
+    loading,
+    showConfirm,
+    setShowConfirm,
+    subtotal,
+    shippingFee,
+    total,
+    shipping,
+    isCalculatingShipping,
+    handleShippingResult,
+    selectedMethod,
+    isCod,
+    handleInput,
+    handleFillFromProfile,
+    handleCheckoutClick,
+    handleOrder,
+  } = useCheckout(selectedIds, couponCode, couponId, diskonKupon);
 
   return (
     <>
@@ -60,8 +81,9 @@ function CheckoutForm() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
-            <AddressForm form={form} formError={formError} onChange={handleInput} />
-            <ShippingInfo />
+            <AddressForm form={form} formError={formError} onChange={handleInput} onFillFromProfile={handleFillFromProfile} />
+
+            <ShippingInfo shipping={shipping} isCalculating={isCalculatingShipping} onShippingResult={handleShippingResult} />
             <PaymentMethodSelector selectedPayment={selectedPayment} onSelect={setSelectedPayment} />
           </div>
 
@@ -69,6 +91,7 @@ function CheckoutForm() {
             <OrderSummary
               orderItems={orderItems}
               subtotal={subtotal}
+              shippingFee={shippingFee}
               diskonKupon={diskonKupon}
               couponCode={couponCode}
               total={total}

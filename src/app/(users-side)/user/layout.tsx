@@ -3,8 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "../../globals.css";
 import NavbarUser from "@/components/(user)/Navbar";
 import FooterUser from "@/components/(user)/Footer-user";
-import { ToastContainer } from "@/components/ui/Toast";
-import WhatsAppButton from "@/components/ui/WhatsAppButton";
+import { ToastContainer } from "@/components/(user)/ui/Toast";
+import WhatsAppButton from "@/components/(user)/ui/WhatsAppButton";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });

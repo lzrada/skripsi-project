@@ -6,7 +6,7 @@ import { faStar } from "@fortawesome/free-solid-svg-icons";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/config/firebase";
 import { addReviewService } from "@/service/review.service";
-import { toast } from "@/components/ui/Toast";
+import { toast } from "@/components/(user)/ui/Toast";
 
 function StarInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [hovered, setHovered] = useState(0);

@@ -7,7 +7,7 @@ import { faCartShopping, faChevronLeft, faTruck, faTrash, faCircleExclamation } 
 import { subscribeToCartService, updateCartQtyService, removeFromCartService, type CartItem } from "@/service/cart.service";
 import { validateCouponService } from "@/service/coupon.service";
 import { inventoryFirstCheck } from "@/constants/inventory";
-import { toast } from "@/components/ui/Toast";
+import { toast } from "@/components/(user)/ui/Toast";
 import { getCookieValue } from "@/lib/format";
 import CartItemRow from "@/components/(user)/cart/CartItemRow";
 import CartSummary from "@/components/(user)/cart/CartSummary";
@@ -38,19 +38,7 @@ function StockWarningBanner({ items }: { items: CartItem[] }) {
   );
 }
 
-function DeleteConfirmModal({
-  itemName,
-  isBulk,
-  bulkCount,
-  onConfirm,
-  onCancel,
-}: {
-  itemName: string;
-  isBulk?: boolean;
-  bulkCount?: number;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
+function DeleteConfirmModal({ itemName, isBulk, bulkCount, onConfirm, onCancel }: { itemName: string; isBulk?: boolean; bulkCount?: number; onConfirm: () => void; onCancel: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4" onClick={onCancel}>
       <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-6 text-center" onClick={(e) => e.stopPropagation()}>
@@ -276,9 +264,7 @@ export default function CartClient() {
               key={item.id}
               item={item}
               isSelected={selectedIds.includes(item.id)}
-              onToggle={() =>
-                setSelectedIds((prev) => (prev.includes(item.id) ? prev.filter((i) => i !== item.id) : [...prev, item.id]))
-              }
+              onToggle={() => setSelectedIds((prev) => (prev.includes(item.id) ? prev.filter((i) => i !== item.id) : [...prev, item.id]))}
               onDeleteClick={() => {
                 setDeleteBulk(false);
                 setDeleteTarget({ id: item.id, name: item.name });
@@ -317,4 +303,3 @@ export default function CartClient() {
     </div>
   );
 }
-

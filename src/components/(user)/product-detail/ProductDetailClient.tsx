@@ -7,10 +7,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCartShopping, faBagShopping, faShield, faTruck, faRotateLeft, faChevronLeft, faChevronRight, faStar, faStarHalfAlt, faStore } from "@fortawesome/free-solid-svg-icons";
 import { faStar as faStarEmpty } from "@fortawesome/free-regular-svg-icons";
 import { Product } from "@/types/product";
-import WishlistButton from "@/components/ui/WishlistButton";
-import ProductCard from "@/components/ui/ProductCard";
+import WishlistButton from "@/components/(user)/ui/WishlistButton";
+import ProductCard from "@/components/(user)/ui/ProductCard";
 import { addToCartService } from "@/service/cart.service";
-import { toast } from "@/components/ui/Toast";
+import { toast } from "@/components/(user)/ui/Toast";
 import ReviewSection from "./ReviewSection";
 
 function formatPrice(price: number) {

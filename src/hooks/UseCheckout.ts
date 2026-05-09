@@ -8,7 +8,7 @@ import { incrementCouponUsageService } from "@/service/coupon.service";
 import { createMidtransTransaction } from "@/service/payment.service";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { paymentMethods, PaymentMethod } from "@/components/(user)/checkout/PaymentMethods";
-import { toast } from "@/components/ui/Toast";
+import { toast } from "@/components/(user)/ui/Toast";
 import { getUidFromCookie, redirectToSuccess } from "@/lib/checkout.helpers";
 
 export interface CheckoutForm {

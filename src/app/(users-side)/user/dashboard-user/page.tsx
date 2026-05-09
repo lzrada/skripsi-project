@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import HeroBanner from "@/components/ui/HeroBanner";
+import HeroBanner from "@/components/(user)/ui/HeroBanner";
 import PromoCards from "@/components/(user)/dashboard/PromoCards";
 import DashboardProductsClient from "@/components/(user)/dashboard/DashboardProductsClient";
 

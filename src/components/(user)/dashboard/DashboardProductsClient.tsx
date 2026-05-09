@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import CategoryGrid from "@/components/ui/CategoryGrid";
+import CategoryGrid from "@/components/(user)/ui/CategoryGrid";
 import ProductSection from "@/components/(user)/dashboard/ProductSection";
 import { subscribeToProductsService } from "@/service/product.service";
 import { Product } from "@/types/product";
@@ -39,4 +39,3 @@ export default function DashboardProductsClient() {
     </div>
   );
 }
-

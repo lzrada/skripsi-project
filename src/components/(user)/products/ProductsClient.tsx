@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass, faArrowDownWideShort, faSliders, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { subscribeToProductsService } from "@/service/product.service";
 import { Product } from "@/types/product";
-import ProductCard from "@/components/ui/ProductCard";
+import ProductCard from "@/components/(user)/ui/ProductCard";
 import ProductFilterPanel, { PRICE_RANGES } from "@/components/(user)/products/ProductFilterPanel";
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc";
@@ -96,20 +96,14 @@ function ProductsContent() {
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setFilterOpen((o) => !o)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${
-                hasFilter ? "bg-[#1E2753] text-white border-[#1E2753]" : "bg-white border-gray-200 text-gray-600 hover:border-[#1E2753]"
-              }`}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${hasFilter ? "bg-[#1E2753] text-white border-[#1E2753]" : "bg-white border-gray-200 text-gray-600 hover:border-[#1E2753]"}`}
             >
               <FontAwesomeIcon icon={faSliders} className="w-3.5 h-3.5" />
               Filter {hasFilter && <span className="bg-white/30 text-xs px-1.5 rounded-full">aktif</span>}
             </button>
             <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2">
               <FontAwesomeIcon icon={faArrowDownWideShort} className="w-3.5 h-3.5 text-gray-400" />
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value as SortOption)}
-                className="text-sm text-gray-700 focus:outline-none bg-transparent cursor-pointer"
-              >
+              <select value={sort} onChange={(e) => setSort(e.target.value as SortOption)} className="text-sm text-gray-700 focus:outline-none bg-transparent cursor-pointer">
                 <option value="default">Urutkan</option>
                 <option value="price-asc">Harga: Termurah</option>
                 <option value="price-desc">Harga: Termahal</option>
@@ -181,4 +175,3 @@ export default function ProductsClient() {
     </Suspense>
   );
 }
-

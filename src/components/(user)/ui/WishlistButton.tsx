@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { FiHeart } from "react-icons/fi";
 import { FaHeart } from "react-icons/fa";
 import { toggleWishlist, isWishlisted } from "@/service/wishlist.service";
-import { toast } from "@/components/ui/Toast";
+import { toast } from "@/components/(user)/ui/Toast";
 
 function getUid(): string | null {
   if (typeof document === "undefined") return null;

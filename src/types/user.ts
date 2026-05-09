@@ -1,5 +1,3 @@
-// types/user.ts
-
 export interface UserAddress {
   province: string;
   city: string;

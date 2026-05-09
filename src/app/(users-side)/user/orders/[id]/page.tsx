@@ -8,7 +8,7 @@ import { type Order, type OrderStatus } from "@/types/order";
 import OrderCard from "@/components/(user)/orders/OrderCard";
 import CancelModal from "@/components/(user)/orders/CancelModal";
 import { subscribeToUserOrdersService, cancelOrderService, cancelAndRefundOrderService } from "@/service/order.service";
-import { toast } from "@/components/ui/Toast";
+import { toast } from "@/components/(user)/ui/Toast";
 
 const tabs: { label: string; value: OrderStatus | "Semua" }[] = [
   { label: "Semua", value: "Semua" },

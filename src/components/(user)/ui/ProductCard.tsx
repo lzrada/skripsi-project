@@ -10,8 +10,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner, faStar, faFire, faTag } from "@fortawesome/free-solid-svg-icons";
 import { categoryIcon, categoryGradient, defaultCategoryIcon, defaultGradient } from "@/constants/category";
 import { addToCartService } from "@/service/cart.service";
-import { toast } from "@/components/ui/Toast";
-import WishlistButton from "@/components/ui/WishlistButton";
+import { toast } from "@/components/(user)/ui/Toast";
+import WishlistButton from "@/components/(user)/ui/WishlistButton";
 
 export interface Product {
   id: string;

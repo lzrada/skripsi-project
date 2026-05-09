@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTag, faArrowRight } from "@fortawesome/free-solid-svg-icons";
-import ProductCard from "@/components/ui/ProductCard";
-import { SkeletonGrid } from "@/components/ui/SkeletonProductCard";
+import ProductCard from "@/components/(user)/ui/ProductCard";
+import { SkeletonGrid } from "@/components/(user)/ui/SkeletonProductCard";
 import { Product } from "@/types/product";
 
 interface LatestProductSectionProps {

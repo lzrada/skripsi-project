@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { getWishlistIds } from "@/service/wishlist.service";
 import { getProductsByIdsService } from "@/service/product.service";
 import { Product } from "@/types/product";
-import ProductCard from "@/components/ui/ProductCard";
+import ProductCard from "@/components/(user)/ui/ProductCard";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";

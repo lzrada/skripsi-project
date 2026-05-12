@@ -8,7 +8,6 @@ import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 
 import { useCheckout } from "@/hooks/UseCheckout";
 import AddressForm from "@/components/(user)/checkout/AdressForm";
-import ShippingInfo from "@/components/(user)/checkout/ShippingInfo";
 import PaymentMethodSelector from "@/components/(user)/checkout/PaymentMethodSelector";
 import OrderSummary from "@/components/(user)/checkout/OrderSummary";
 import ConfirmOrderModal from "@/components/(user)/checkout/ConfirmOrderModal";
@@ -39,7 +38,6 @@ function CheckoutForm() {
     total,
     shipping,
     isCalculatingShipping,
-    handleShippingResult,
     selectedMethod,
     isCod,
     handleInput,
@@ -82,8 +80,6 @@ function CheckoutForm() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
             <AddressForm form={form} formError={formError} onChange={handleInput} onFillFromProfile={handleFillFromProfile} />
-
-            <ShippingInfo shipping={shipping} isCalculating={isCalculatingShipping} onShippingResult={handleShippingResult} />
             <PaymentMethodSelector selectedPayment={selectedPayment} onSelect={setSelectedPayment} />
           </div>
 
@@ -92,6 +88,8 @@ function CheckoutForm() {
               orderItems={orderItems}
               subtotal={subtotal}
               shippingFee={shippingFee}
+              shipping={shipping}
+              isCalculatingShipping={isCalculatingShipping}
               diskonKupon={diskonKupon}
               couponCode={couponCode}
               total={total}

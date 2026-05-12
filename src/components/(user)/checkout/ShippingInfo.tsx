@@ -1,7 +1,7 @@
 // src/components/(user)/checkout/ShippingInfo.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTruck, faSearch, faSpinner, faCircleCheck, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { ShippingResult, geocodeAddress, calculateShipping } from "@/lib/shipping";
@@ -18,11 +18,35 @@ interface Props {
   shipping: ShippingResult | null;
   isCalculating: boolean;
   onShippingResult: (result: ShippingResult | null, isCalculating: boolean) => void;
+  autoCity?: string; // kota dari form alamat — akan auto-dihitung
 }
 
-export default function ShippingInfo({ shipping, isCalculating, onShippingResult }: Props) {
+export default function ShippingInfo({ shipping, isCalculating, onShippingResult, autoCity }: Props) {
   const [inputAlamat, setInputAlamat] = useState("");
   const [geocodeError, setGeocodeError] = useState("");
+
+  // Auto-hitung ongkir ketika kota di form alamat berubah (debounce 800ms)
+  useEffect(() => {
+    if (!autoCity?.trim()) return;
+    setInputAlamat(autoCity);
+
+    const timer = setTimeout(async () => {
+      setGeocodeError("");
+      onShippingResult(null, true);
+
+      const coords = await geocodeAddress(autoCity);
+      if (!coords) {
+        setGeocodeError('Kota tidak ditemukan otomatis. Coba isi manual di bawah.');
+        onShippingResult(null, false);
+        return;
+      }
+      const result = calculateShipping(coords.lat, coords.lng);
+      onShippingResult(result, false);
+    }, 800);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoCity]);
 
   const handleCekOngkir = async () => {
     if (!inputAlamat.trim()) {
@@ -56,7 +80,10 @@ export default function ShippingInfo({ shipping, isCalculating, onShippingResult
 
       {/* Input cek ongkir */}
       <div className="mb-3">
-        <label className="text-xs font-semibold text-gray-500 mb-1.5 block">Kota / Alamat Tujuan Pengiriman</label>
+        <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
+          Kota / Alamat Tujuan Pengiriman
+          {autoCity && <span className="ml-1.5 text-green-600 font-normal">(otomatis dari alamat)</span>}
+        </label>
         <div className="flex gap-2">
           <input
             type="text"

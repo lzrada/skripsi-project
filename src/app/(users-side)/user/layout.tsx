@@ -20,7 +20,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     <div className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-gray-50 flex flex-col`}>
       <NavbarUser />
 
-      <main id="main-content" className="flex-1 pt-28 px-4 sm:px-6 lg:px-8">
+      <main id="main-content" className="flex-1 px-4 sm:px-6 lg:px-8 pt-36 md:pt-40" style={{ paddingTop: "var(--navbar-height, 7rem)" }}>
         {children}
       </main>
 

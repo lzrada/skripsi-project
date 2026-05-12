@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -8,11 +8,11 @@ import { faBars, faXmark, faCartShopping, faUser, faBolt } from "@fortawesome/fr
 import { FiHeart } from "react-icons/fi";
 
 import { logout } from "@/service/auth.service";
-import { subscribeToCartService, CartItem } from "@/service/cart.service";
+import { subscribeToCartService } from "@/service/cart.service";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { getWishlistIds } from "@/service/wishlist.service";
 import { getCookieValue } from "@/lib/format";
-
+import { CartItem } from "@/types/cart";
 import CountBadge from "./CountBadge";
 import NavbarSearch from "./NavbarSearch";
 import UserDropdown from "./UserDropdown";
@@ -30,12 +30,27 @@ export default function NavbarUser() {
   const [wishlistCount, setWishlistCount] = useState(0);
   const [scrolled, setScrolled] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const headerRef = useRef<HTMLElement>(null);
 
   // ── Sync kategori aktif dari URL ──────────────────────────────────────────
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setSelectedCategory(params.get("category") ?? "");
   }, [pathname]);
+
+  // ── Update CSS var untuk tinggi navbar (agar konten tidak tertutup) ───────
+  useEffect(() => {
+    const updateHeight = () => {
+      if (headerRef.current) {
+        const h = headerRef.current.getBoundingClientRect().height;
+        document.documentElement.style.setProperty("--navbar-height", `${h}px`);
+      }
+    };
+    updateHeight();
+    const ro = new ResizeObserver(updateHeight);
+    if (headerRef.current) ro.observe(headerRef.current);
+    return () => ro.disconnect();
+  }, [isLoggedIn, menuOpen]);
 
   // ── Tutup menu saat navigasi ──────────────────────────────────────────────
   useEffect(() => {
@@ -109,6 +124,7 @@ export default function NavbarUser() {
       {menuOpen && <div className="fixed inset-0 bg-black/30 z-40 md:hidden" onClick={() => setMenuOpen(false)} />}
 
       <header
+        ref={headerRef}
         className={`fixed top-0 left-0 w-full z-50 bg-white transition-shadow duration-300
           ${scrolled ? "shadow-[0_2px_20px_rgba(30,39,83,0.12)]" : ""}`}
       >

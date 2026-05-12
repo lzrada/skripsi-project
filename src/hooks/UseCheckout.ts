@@ -11,7 +11,7 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import { paymentMethods, PaymentMethod } from "@/components/(user)/checkout/PaymentMethods";
 import { toast } from "@/components/(user)/ui/Toast";
 import { getUidFromCookie, redirectToSuccess } from "@/lib/checkout.helpers";
-import { ShippingResult } from "@/lib/shipping";
+import { ShippingResult, geocodeAddress, calculateShipping, getFlatFee, geocodeFromLocal, hitungOngkirDariNamaWilayah } from "@/lib/shipping";
 
 export interface CheckoutForm {
   nama: string;
@@ -42,14 +42,29 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     catatan: "",
   });
 
-  // ── Shipping ─────────────────────────────────────────────────────────────
+  // ── Shipping — otomatis dari form.kota (debounce 900ms) ──────────────────
   const [shipping, setShipping] = useState<ShippingResult | null>(null);
   const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
 
-  const handleShippingResult = (result: ShippingResult | null, calculating: boolean) => {
-    setShipping(result);
-    setIsCalculatingShipping(calculating);
-  };
+  useEffect(() => {
+    const kota = form.kota.trim();
+    if (!kota) {
+      setShipping(null);
+      setIsCalculatingShipping(false);
+      return;
+    }
+
+    setIsCalculatingShipping(true);
+
+    // Sedikit delay biar tidak trigger tiap ketukan
+    const timer = setTimeout(() => {
+      const result = hitungOngkirDariNamaWilayah(kota);
+      setShipping(result);
+      setIsCalculatingShipping(false);
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [form.kota]);
 
   // ── Init uid + email + cart ──────────────────────────────────────────────
   useEffect(() => {
@@ -76,7 +91,6 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     setFormError("");
   };
 
-  /** Dipanggil dari AddressForm saat user klik "Pakai Alamat Profil" */
   const handleFillFromProfile = (data: Partial<CheckoutForm>) => {
     setForm((prev) => ({ ...prev, ...data }));
     setFormError("");
@@ -247,7 +261,6 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     total,
     shipping,
     isCalculatingShipping,
-    handleShippingResult,
     selectedMethod,
     isCod,
     handleInput,

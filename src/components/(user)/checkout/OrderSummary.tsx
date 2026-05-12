@@ -1,10 +1,10 @@
-// src/components/(user)/checkout/OrderSummary.tsx
 "use client";
 
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown, faChevronUp, faHandHoldingDollar, faLock } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faChevronUp, faHandHoldingDollar, faLock, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { CartItem } from "@/types/cart";
+import { ShippingResult } from "@/lib/shipping";
 
 const formatPrice = (price: number) =>
   new Intl.NumberFormat("id-ID", {
@@ -17,6 +17,8 @@ interface Props {
   orderItems: CartItem[];
   subtotal: number;
   shippingFee: number;
+  shipping: ShippingResult | null;
+  isCalculatingShipping: boolean;
   diskonKupon: number;
   couponCode: string;
   total: number;
@@ -26,7 +28,7 @@ interface Props {
   setShowOrderDetail: (show: boolean) => void;
 }
 
-export default function OrderSummary({ orderItems, subtotal, shippingFee, diskonKupon, couponCode, total, isCod, onCheckout, showOrderDetail, setShowOrderDetail }: Props) {
+export default function OrderSummary({ orderItems, subtotal, shippingFee, shipping, isCalculatingShipping, diskonKupon, couponCode, total, isCod, onCheckout, showOrderDetail, setShowOrderDetail }: Props) {
   return (
     <div className="space-y-4">
       {/* Detail Produk */}
@@ -63,16 +65,39 @@ export default function OrderSummary({ orderItems, subtotal, shippingFee, diskon
         <p className="text-sm font-bold text-gray-800">Ringkasan Pembayaran</p>
 
         <div className="space-y-2 text-sm">
+          {/* Subtotal */}
           <div className="flex justify-between">
             <span className="text-gray-500">Subtotal Produk</span>
             <span>{formatPrice(subtotal)}</span>
           </div>
 
-          <div className="flex justify-between">
+          {/* Ongkos Kirim — otomatis dari kota */}
+          <div className="flex justify-between items-center">
             <span className="text-gray-500">Ongkos Kirim</span>
-            {shippingFee === 0 ? <span className="text-green-600 font-semibold">Gratis</span> : <span>{formatPrice(shippingFee)}</span>}
+            {isCalculatingShipping ? (
+              <span className="flex items-center gap-1.5 text-gray-400 text-xs">
+                <FontAwesomeIcon icon={faSpinner} className="w-3 h-3 animate-spin" />
+                Menghitung...
+              </span>
+            ) : shipping ? (
+              shipping.isFree ? (
+                <span className="text-green-600 font-semibold">Gratis 🎉</span>
+              ) : (
+                <span className="font-semibold">{formatPrice(shippingFee)}</span>
+              )
+            ) : (
+              <span className="text-gray-400 text-xs italic">— isi kota dulu</span>
+            )}
           </div>
 
+          {/* Info jarak — hanya tampil kalau sudah ada hasil shipping */}
+          {shipping && !isCalculatingShipping && (
+            <p className="text-xs text-gray-400 text-right">
+              {shipping.label} · est. {shipping.estimasi}
+            </p>
+          )}
+
+          {/* Diskon kupon */}
           {diskonKupon > 0 && (
             <div className="flex justify-between">
               <span className="text-gray-500">Diskon {couponCode && `(${couponCode})`}</span>
@@ -81,6 +106,7 @@ export default function OrderSummary({ orderItems, subtotal, shippingFee, diskon
           )}
         </div>
 
+        {/* Total */}
         <div className="border-t pt-3 flex justify-between items-center">
           <span className="font-bold">Total</span>
           <span className="text-xl font-bold text-[#1E2753]">{formatPrice(total)}</span>

@@ -1,4 +1,3 @@
-// src/components/(user)/ui/HeroBanner.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -25,7 +24,6 @@ export default function HeroBanner() {
   const prev = () => setCurrent((c) => (c - 1 + slides.length) % slides.length);
   const next = () => setCurrent((c) => (c + 1) % slides.length);
 
-  // Skeleton dengan tinggi yang sama agar tidak ada layout shift
   if (!mounted) {
     return <div className="relative w-full h-56 sm:h-72 md:h-80 lg:h-96 rounded-2xl overflow-hidden bg-slate-900" />;
   }

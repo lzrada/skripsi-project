@@ -1,8 +1,4 @@
-// src/lib/checkout.helpers.ts
-// ✅ Tidak lagi mendefinisikan formatPrice / getCookieValue sendiri
-// Semua diimpor dari @/lib/format
-
-import { CartItem } from "@/service/cart.service";
+import { CartItem } from "@/types/cart";
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { formatPrice, getCookieValue, getUidFromCookie } from "@/lib/format";
 

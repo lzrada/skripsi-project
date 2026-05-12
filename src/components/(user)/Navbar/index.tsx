@@ -8,7 +8,8 @@ import { faBars, faXmark, faCartShopping, faUser, faBolt } from "@fortawesome/fr
 import { FiHeart } from "react-icons/fi";
 
 import { logout } from "@/service/auth.service";
-import { subscribeToCartService, CartItem } from "@/service/cart.service";
+import { subscribeToCartService } from "@/service/cart.service";
+import { CartItem } from "@/types/cart";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { getWishlistIds } from "@/service/wishlist.service";
 import { getCookieValue } from "@/lib/format";

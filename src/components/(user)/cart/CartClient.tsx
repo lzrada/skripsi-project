@@ -4,14 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCartShopping, faChevronLeft, faTruck, faTrash, faCircleExclamation } from "@fortawesome/free-solid-svg-icons";
-import { subscribeToCartService, updateCartQtyService, removeFromCartService, type CartItem } from "@/service/cart.service";
+import { subscribeToCartService, updateCartQtyService, removeFromCartService } from "@/service/cart.service";
 import { validateCouponService } from "@/service/coupon.service";
 import { inventoryFirstCheck } from "@/constants/inventory";
 import { toast } from "@/components/(user)/ui/Toast";
 import { getCookieValue } from "@/lib/format";
 import CartItemRow from "@/components/(user)/cart/CartItemRow";
 import CartSummary from "@/components/(user)/cart/CartSummary";
-
+import { CartItem } from "@/types/cart";
 function StockWarningBanner({ items }: { items: CartItem[] }) {
   const invalid = items.filter((i) => !inventoryFirstCheck(i.qty, i.stock));
   if (invalid.length === 0) return null;

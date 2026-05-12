@@ -1,23 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronLeft, faBoxOpen, faBagShopping } from "@fortawesome/free-solid-svg-icons";
-import { type Order, type OrderStatus } from "@/types/order";
-import OrderCard from "@/components/(user)/orders/OrderCard";
+import { faChevronLeft, faLocationDot, faPhone, faUser, faNoteSticky, faTruck, faMoneyBill, faRotateLeft, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { type Order, statusConfig } from "@/types/order";
+import { subscribeToOrderByIdService, cancelOrderService, cancelAndRefundOrderService } from "@/service/order.service";
+import OrderTracking from "@/components/(user)/orders/OrderTracking";
+import ReviewModal from "@/components/(user)/orders/ReviewModal";
 import CancelModal from "@/components/(user)/orders/CancelModal";
-import { subscribeToUserOrdersService, cancelOrderService, cancelAndRefundOrderService } from "@/service/order.service";
 import { toast } from "@/components/(user)/ui/Toast";
-
-const tabs: { label: string; value: OrderStatus | "Semua" }[] = [
-  { label: "Semua", value: "Semua" },
-  { label: "Menunggu", value: "Menunggu Konfirmasi" },
-  { label: "Diproses", value: "Diproses" },
-  { label: "Dikirim", value: "Dikirim" },
-  { label: "Selesai", value: "Selesai" },
-  { label: "Dibatalkan", value: "Dibatalkan" },
-];
 
 function getUid(): string | null {
   if (typeof document === "undefined") return null;
@@ -29,127 +23,250 @@ function getUid(): string | null {
   );
 }
 
-export default function OrdersPage() {
-  const [activeTab, setActiveTab] = useState<OrderStatus | "Semua">("Semua");
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [cancelTarget, setCancelTarget] = useState<Order | null>(null);
+function formatPrice(price: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(price);
+}
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export default function OrderDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const uid = getUid();
+
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  // Review
+  const [reviewTarget, setReviewTarget] = useState<{ id: string; name: string } | null>(null);
+  const [reviewedIds, setReviewedIds] = useState<string[]>([]);
+
+  // Cancel
+  const [showCancel, setShowCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const uid = getUid();
-    if (!uid) {
-      setLoading(false);
-      return;
-    }
-    const unsub = subscribeToUserOrdersService(uid, (data) => {
-      setOrders(data);
+    if (!id) return;
+    const unsub = subscribeToOrderByIdService(id, (data) => {
+      if (!data) {
+        setNotFound(true);
+      } else {
+        setOrder(data);
+      }
       setLoading(false);
     });
     return () => unsub();
-  }, []);
-
-  const filtered = activeTab === "Semua" ? orders : orders.filter((o) => o.status === activeTab);
+  }, [id]);
 
   const confirmCancel = async () => {
-    if (!cancelTarget) return;
+    if (!order) return;
     setCancelling(true);
     setCancelError(null);
     try {
-      const isPaid = cancelTarget.paymentStatus === "paid";
-      const midtransOrderId = (cancelTarget.midtransResult as any)?.order_id;
-
+      const isPaid = order.paymentStatus === "paid";
+      const midtransOrderId = (order.midtransResult as any)?.order_id;
       if (isPaid && midtransOrderId) {
-        await cancelAndRefundOrderService(cancelTarget.id, midtransOrderId, cancelTarget.total);
-        toast.success("Pesanan dibatalkan. Dana akan dikembalikan dalam 3–14 hari kerja.");
+        await cancelAndRefundOrderService(order.id, midtransOrderId, order.total);
+        toast.success("Pesanan dibatalkan. Dana dikembalikan dalam 3–14 hari kerja.");
       } else {
-        await cancelOrderService(cancelTarget.id);
+        await cancelOrderService(order.id);
         toast.success("Pesanan berhasil dibatalkan.");
       }
-      setCancelTarget(null);
+      setShowCancel(false);
     } catch (err: any) {
-      setCancelError(err?.message ?? "Gagal membatalkan pesanan. Coba lagi.");
+      setCancelError(err?.message ?? "Gagal membatalkan. Coba lagi.");
     } finally {
       setCancelling(false);
     }
   };
 
-  if (loading)
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-gray-400">Memuat pesanan...</p>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <FontAwesomeIcon icon={faSpinner} className="w-6 h-6 text-gray-300 animate-spin" />
       </div>
     );
+  }
 
-  if (!getUid())
+  if (notFound || !order) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-20 flex flex-col items-center gap-4">
-        <p className="text-gray-600 font-semibold">Silakan login untuk melihat pesanan</p>
-        <Link href="/login" className="px-6 py-3 bg-[#1E2753] text-white rounded-xl font-semibold text-sm">
-          Login
+      <div className="max-w-2xl mx-auto px-4 py-20 text-center">
+        <p className="text-gray-500 font-semibold mb-4">Pesanan tidak ditemukan.</p>
+        <Link href="/user/orders" className="text-[#1E2753] font-semibold underline text-sm">
+          Kembali ke Pesanan
         </Link>
       </div>
     );
+  }
+
+  const status = statusConfig[order.status];
+  const canCancel = order.status === "Menunggu Konfirmasi";
+  const canReview = order.status === "Selesai";
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
-      <div className="flex items-center gap-3 mb-6">
-        <Link href="/user/dashboard-user" className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 hover:bg-gray-50 transition text-gray-500">
-          <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
-        </Link>
-        <div>
-          <h1 className="text-xl font-bold text-gray-800">Pesanan Saya</h1>
-          <p className="text-xs text-gray-400">{orders.length} pesanan</p>
-        </div>
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-5">
-        {tabs.map((tab) => {
-          const count = tab.value === "Semua" ? orders.length : orders.filter((o) => o.status === tab.value).length;
-          return (
-            <button
-              key={tab.value}
-              onClick={() => setActiveTab(tab.value)}
-              className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${activeTab === tab.value ? "bg-[#1E2753] text-white border-[#1E2753]" : "bg-white text-gray-500 border-gray-200 hover:border-[#1E2753]"}`}
-            >
-              {tab.label}
-              {count > 0 && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${activeTab === tab.value ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}>{count}</span>}
-            </button>
-          );
-        })}
-      </div>
-
-      {filtered.length > 0 ? (
-        <div className="space-y-4">
-          {filtered.map((order) => (
-            <OrderCard key={order.id} order={order} onCancel={() => setCancelTarget(order)} />
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-20 gap-3 text-gray-400">
-          <FontAwesomeIcon icon={faBoxOpen} className="w-12 h-12 text-gray-200" />
-          <p className="font-semibold">Belum ada pesanan</p>
-          <Link href="/user/dashboard-user" className="flex items-center gap-2 mt-2 px-5 py-2.5 bg-[#1E2753] text-white rounded-xl text-sm font-semibold">
-            <FontAwesomeIcon icon={faBagShopping} className="w-4 h-4" />
-            Mulai Belanja
-          </Link>
-        </div>
+    <>
+      {reviewTarget && uid && (
+        <ReviewModal
+          productId={reviewTarget.id}
+          productName={reviewTarget.name}
+          uid={uid}
+          onClose={() => setReviewTarget(null)}
+          onSuccess={(pid) => {
+            setReviewedIds((prev) => [...prev, pid]);
+            setReviewTarget(null);
+          }}
+        />
       )}
 
-      {cancelTarget && (
+      {showCancel && (
         <CancelModal
-          orderId={cancelTarget.id}
-          isPaid={cancelTarget.paymentStatus === "paid"}
+          orderId={order.id}
+          isPaid={order.paymentStatus === "paid"}
           loading={cancelling}
           error={cancelError}
           onConfirm={confirmCancel}
           onClose={() => {
-            setCancelTarget(null);
+            setShowCancel(false);
             setCancelError(null);
           }}
         />
       )}
-    </div>
+
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <Link href="/user/orders" className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 hover:bg-gray-50 transition text-gray-500">
+            <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
+          </Link>
+          <div>
+            <h1 className="text-xl font-bold text-gray-800">Detail Pesanan</h1>
+            <p className="text-xs text-gray-400">#{order.id}</p>
+          </div>
+          <span className={`ml-auto flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${status.bg} ${status.color}`}>
+            <FontAwesomeIcon icon={status.icon} className="w-3 h-3" />
+            {status.label}
+          </span>
+        </div>
+
+        {/* Tracking */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <p className="text-sm font-bold text-gray-800 mb-4">Status Pesanan</p>
+          <OrderTracking status={order.status} />
+          <p className="text-xs text-gray-400 mt-3 text-right">Dipesan: {formatDate(order.date)}</p>
+        </div>
+
+        {/* Produk */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-gray-100">
+            <p className="text-sm font-bold text-gray-800">
+              Produk <span className="text-gray-400">({order.items.length})</span>
+            </p>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {order.items.map((item) => (
+              <div key={item.id} className="flex items-center gap-3 px-5 py-3">
+                <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0 text-xl">📦</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 line-clamp-2">{item.name}</p>
+                  <p className="text-xs text-gray-400">
+                    x{item.qty} · {formatPrice(item.price)}
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                  <p className="text-sm font-bold text-[#1E2753]">{formatPrice(item.price * item.qty)}</p>
+                  {canReview && !reviewedIds.includes(item.id) && (
+                    <button onClick={() => setReviewTarget({ id: item.id, name: item.name })} className="text-[10px] font-semibold text-[#E85D04] border border-[#E85D04]/30 bg-orange-50 hover:bg-orange-100 px-2 py-1 rounded-lg transition">
+                      Beri Ulasan
+                    </button>
+                  )}
+                  {canReview && reviewedIds.includes(item.id) && <span className="text-[10px] font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-lg">✓ Diulas</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Ringkasan Pembayaran */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+          <p className="text-sm font-bold text-gray-800">Ringkasan Pembayaran</p>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between text-gray-500">
+              <span>Subtotal Produk</span>
+              <span className="text-gray-800">{formatPrice(order.items.reduce((s, i) => s + i.price * i.qty, 0))}</span>
+            </div>
+            <div className="flex justify-between text-gray-500">
+              <span>Ongkos Kirim</span>
+              <span className="text-gray-800">
+                {order.total - order.items.reduce((s, i) => s + i.price * i.qty, 0) <= 0 ? <span className="text-green-600 font-semibold">Gratis</span> : formatPrice(order.total - order.items.reduce((s, i) => s + i.price * i.qty, 0))}
+              </span>
+            </div>
+          </div>
+          <div className="border-t pt-3 flex justify-between items-center">
+            <span className="font-bold text-gray-800">Total</span>
+            <span className="text-lg font-bold text-[#1E2753]">{formatPrice(order.total)}</span>
+          </div>
+        </div>
+
+        {/* Info Pengiriman */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+          <p className="text-sm font-bold text-gray-800">Informasi Pengiriman</p>
+          <div className="space-y-2.5 text-sm">
+            <div className="flex items-start gap-2.5">
+              <FontAwesomeIcon icon={faUser} className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+              <span className="text-gray-700">{order.recipientName}</span>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <FontAwesomeIcon icon={faPhone} className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+              <span className="text-gray-700">{order.phone}</span>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <FontAwesomeIcon icon={faLocationDot} className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+              <span className="text-gray-700">{order.address}</span>
+            </div>
+            {order.note && (
+              <div className="flex items-start gap-2.5">
+                <FontAwesomeIcon icon={faNoteSticky} className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+                <span className="text-gray-500 italic">{order.note}</span>
+              </div>
+            )}
+            <div className="flex items-start gap-2.5">
+              <FontAwesomeIcon icon={faMoneyBill} className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+              <span className="text-gray-700">{order.paymentMethod}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Aksi */}
+        <div className="flex gap-3">
+          {canCancel && (
+            <button onClick={() => setShowCancel(true)} className="flex-1 py-3 border-2 border-red-400 text-red-500 rounded-xl text-sm font-semibold hover:bg-red-500 hover:text-white transition-all">
+              Batalkan Pesanan
+            </button>
+          )}
+          {order.status === "Selesai" && (
+            <Link href="/user/dashboard-user" className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#1E2753] text-white rounded-xl text-sm font-semibold hover:bg-[#2a3470] transition-all">
+              <FontAwesomeIcon icon={faRotateLeft} className="w-3.5 h-3.5" />
+              Beli Lagi
+            </Link>
+          )}
+          <Link href="/user/orders" className="flex-1 py-3 border-2 border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:border-gray-300 transition text-center">
+            Kembali
+          </Link>
+        </div>
+      </div>
+    </>
   );
 }

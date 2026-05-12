@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash } from "@fortawesome/free-solid-svg-icons";
-import { CartItem } from "@/service/cart.service";
+import { CartItem } from "@/types/cart";
 import { categoryGradient, defaultGradient } from "@/constants/category";
 import { inventoryFirstCheck } from "@/constants/inventory";
 import { formatPrice } from "@/lib/format";

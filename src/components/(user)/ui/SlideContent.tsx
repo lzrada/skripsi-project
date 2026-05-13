@@ -9,17 +9,24 @@ interface SlideContentProps {
 export default function SlideContent({ slide }: SlideContentProps) {
   return (
     <div className="absolute inset-0 flex items-center px-8 md:px-16">
-      <div className="flex-1">
-        <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full ${slide.accentBg} text-gray-900 mb-3`}>{slide.tag}</span>
-        <h1 className="text-white text-2xl md:text-4xl font-bold leading-tight mb-2">{slide.title}</h1>
-        <p className={`${slide.accentText} text-sm md:text-base mb-5 max-w-sm`}>{slide.subtitle}</p>
-        <Link href={slide.href} className={`inline-flex items-center gap-2 ${slide.accentBg} text-gray-900 font-bold text-sm px-6 py-2.5 rounded-xl hover:opacity-90 transition-opacity`}>
-          {slide.cta}
+      {/* Decorative circles */}
+      <div className="absolute -right-12 -top-12 w-64 h-64 rounded-full bg-white/5 pointer-events-none" />
+      <div className="absolute right-20 -bottom-16 w-48 h-48 rounded-full bg-white/5 pointer-events-none" />
+
+      <div className="flex-1 relative z-10">
+        <span className={`inline-block text-xs font-black px-3 py-1.5 rounded-full ${slide.accentBg} text-gray-900 mb-4 tracking-widest uppercase shadow-sm`}>{slide.tag}</span>
+        <h1 className="text-white text-2xl sm:text-3xl md:text-4xl font-black leading-tight mb-3 drop-shadow-sm">{slide.title}</h1>
+        <p className={`${slide.accentText} text-sm md:text-base mb-6 max-w-sm leading-relaxed opacity-90`}>{slide.subtitle}</p>
+        <Link href={slide.href} className={`inline-flex items-center gap-2 ${slide.accentBg} text-gray-900 font-black text-sm px-7 py-3 rounded-xl hover:opacity-90 hover:scale-105 transition-all shadow-lg`}>
+          {slide.cta} →
         </Link>
       </div>
 
-      <div className="hidden md:flex items-center justify-center w-52 h-52 opacity-10">
-        <FontAwesomeIcon icon={slide.icon} className="text-white text-7xl " />
+      {/* Icon decoration — lebih visible */}
+      <div className="hidden md:flex items-center justify-center w-56 h-56 relative z-10 flex-shrink-0">
+        <div className="w-44 h-44 rounded-full bg-white/8 flex items-center justify-center">
+          <FontAwesomeIcon icon={slide.icon} className="text-white w-20 h-20 opacity-25" />
+        </div>
       </div>
     </div>
   );

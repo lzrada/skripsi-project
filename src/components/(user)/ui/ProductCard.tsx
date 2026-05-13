@@ -30,6 +30,7 @@ export interface Product {
 
 interface ProductCardProps {
   product: Product;
+  priority?: boolean;
 }
 
 function formatPrice(price: number) {
@@ -92,7 +93,7 @@ function StockBadge({ stock }: { stock: number }) {
   );
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+export default function ProductCard({ product, priority = false }: ProductCardProps) {
   const router = useRouter();
   const liveStock = product.stock;
 
@@ -152,7 +153,15 @@ export default function ProductCard({ product }: ProductCardProps) {
       <div className="relative overflow-hidden bg-gray-50">
         {product.images?.[0] ? (
           <div className="relative w-full aspect-square">
-            <Image src={product.images[0]} alt={product.name} fill sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" className="object-contain p-3 group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+            <Image
+              src={product.images[0]}
+              alt={product.name}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              className="object-contain p-3 group-hover:scale-105 transition-transform duration-500"
+              loading={priority ? "eager" : "lazy"}
+              priority={priority}
+            />
           </div>
         ) : (
           <div className={`w-full aspect-square bg-gradient-to-br ${gradient} flex items-center justify-center`}>

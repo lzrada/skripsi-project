@@ -25,11 +25,11 @@ export default function HeroBanner() {
   const next = () => setCurrent((c) => (c + 1) % slides.length);
 
   if (!mounted) {
-    return <div className="relative w-full h-56 sm:h-72 md:h-80 lg:h-96 rounded-2xl overflow-hidden bg-slate-900" />;
+    return <div className="relative w-full h-64 sm:h-80 md:h-[380px] lg:h-[420px] rounded-2xl overflow-hidden bg-slate-900" />;
   }
 
   return (
-    <div className="relative w-full h-56 sm:h-72 md:h-80 lg:h-96 rounded-2xl overflow-hidden bg-slate-900">
+    <div className="relative w-full h-64 sm:h-80 md:h-[380px] lg:h-[420px] rounded-2xl overflow-hidden bg-slate-900 shadow-xl shadow-slate-900/20">
       <div className="absolute -right-10 -top-10 w-48 h-48 rounded-full bg-white/5 z-10 pointer-events-none" />
       <div className="absolute -right-5 -bottom-10 w-32 h-32 rounded-full bg-white/5 z-10 pointer-events-none" />
 

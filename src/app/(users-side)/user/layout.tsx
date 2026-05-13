@@ -1,4 +1,3 @@
-// src/app/(users-side)/user/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "../../globals.css";
@@ -20,7 +19,8 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     <div className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-gray-50 flex flex-col`}>
       <NavbarUser />
 
-      <main id="main-content" className="flex-1 px-4 sm:px-6 lg:px-8 pt-36 md:pt-40" style={{ paddingTop: "var(--navbar-height, 7rem)" }}>
+      {/* padding-top otomatis sesuai tinggi navbar yang diukur JS */}
+      <main id="main-content" className="flex-1" style={{ paddingTop: "var(--navbar-h, 112px)" }}>
         {children}
       </main>
 

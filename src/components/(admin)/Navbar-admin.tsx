@@ -3,6 +3,7 @@
 import { JSX, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
 import { IoHome } from "react-icons/io5";
 import { FiList } from "react-icons/fi";
 import { IoMdPricetag } from "react-icons/io";
@@ -39,13 +40,20 @@ const NavbarAdmin = (): JSX.Element => {
 
   return (
     <div className="w-16 sm:w-60 bg-[#1a2035] min-h-screen flex flex-col p-3 sm:p-5 shrink-0 shadow-xl">
-      <div className="my-4 hidden sm:block">
-        <p className="text-white font-bold text-base leading-tight">Rizky Elektronik</p>
-        <span className="text-xs text-slate-400 font-normal mt-0.5 block">Admin Panel</span>
+      <div className="my-4 hidden sm:flex items-center gap-2.5">
+        <div className="rounded-xl overflow-hidden shadow-md ring-2 ring-white/10 flex-shrink-0">
+          <Image src="/images/logo-toko.jpeg" alt="Rizky Elektronik" width={40} height={40} className="object-cover w-10 h-10" />
+        </div>
+        <div className="leading-none">
+          <p className="text-white font-black text-sm tracking-tight">Rizky Elektronik</p>
+          <span className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase mt-0.5 block">Admin Panel</span>
+        </div>
       </div>
 
       <div className="my-4 flex justify-center sm:hidden">
-        <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg">R</div>
+        <div className="rounded-xl overflow-hidden shadow-md ring-2 ring-white/10">
+          <Image src="/images/logo-toko.jpeg" alt="Rizky Elektronik" width={40} height={40} className="object-cover w-10 h-10" />
+        </div>
       </div>
 
       <hr className="border-slate-600/50 mb-4" />

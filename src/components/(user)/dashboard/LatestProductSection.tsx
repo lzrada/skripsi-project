@@ -35,8 +35,8 @@ export default function LatestProductSection({ products, loading }: LatestProduc
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {products.map((p) => (
-          <ProductCard key={p.id} product={p} />
+        {products.map((p, i) => (
+          <ProductCard key={p.id} product={p} priority={i < 4} />
         ))}
       </div>
     </section>

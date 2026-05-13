@@ -2,6 +2,16 @@ import { faMoneyBill, faCreditCard, faWallet, faHandHoldingDollar } from "@forta
 
 export const paymentMethods = [
   {
+    id: "cod",
+    label: "Bayar di Tempat / Bayar di Toko (COD)",
+    desc: "Hanya wilayah Blitar & sekitarnya",
+    icon: faHandHoldingDollar,
+    color: "text-orange-500",
+    bg: "bg-orange-50",
+    useMidtrans: false,
+    paymentType: undefined,
+  },
+  {
     id: "transfer",
     label: "Transfer Bank",
     desc: "BCA, BRI, BNI, Mandiri",
@@ -30,16 +40,6 @@ export const paymentMethods = [
     bg: "bg-green-50",
     useMidtrans: true,
     paymentType: "ewallet" as const,
-  },
-  {
-    id: "cod",
-    label: "Bayar di Tempat (COD)",
-    desc: "Hanya wilayah Blitar & sekitarnya",
-    icon: faHandHoldingDollar,
-    color: "text-orange-500",
-    bg: "bg-orange-50",
-    useMidtrans: false,
-    paymentType: undefined,
   },
 ];
 

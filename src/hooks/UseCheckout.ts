@@ -11,7 +11,7 @@ import { getCurrentUser } from "@/lib/getCurrentUser";
 import { paymentMethods, PaymentMethod } from "@/components/(user)/checkout/PaymentMethods";
 import { toast } from "@/components/(user)/ui/Toast";
 import { getUidFromCookie, redirectToSuccess } from "@/lib/checkout.helpers";
-import { ShippingResult, geocodeAddress, calculateShipping, getFlatFee, geocodeFromLocal, hitungOngkirDariNamaWilayah } from "@/lib/shipping";
+import { ShippingResult, hitungOngkirDariNamaWilayah } from "@/lib/shipping";
 
 export interface CheckoutForm {
   nama: string;
@@ -21,6 +21,12 @@ export interface CheckoutForm {
   kodePos: string;
   catatan: string;
 }
+
+export type ShippingStatus =
+  | "idle" // belum ada input kota
+  | "calculating" // sedang proses
+  | "found" // berhasil dapat ongkir
+  | "not_found"; // kota tidak dikenali — blokir checkout
 
 export function useCheckout(selectedIds: string[], couponCode: string, couponId: string, diskonKupon: number) {
   const router = useRouter();
@@ -42,31 +48,41 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     catatan: "",
   });
 
-  // ── Shipping — otomatis dari form.kota (debounce 900ms) ──────────────────
   const [shipping, setShipping] = useState<ShippingResult | null>(null);
-  const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
+  const [shippingStatus, setShippingStatus] = useState<ShippingStatus>("idle");
 
+  // Auto-hitung ongkir setiap field kota berubah (debounce 700ms)
   useEffect(() => {
     const kota = form.kota.trim();
+
     if (!kota) {
       setShipping(null);
-      setIsCalculatingShipping(false);
+      setShippingStatus("idle");
       return;
     }
 
-    setIsCalculatingShipping(true);
+    setShippingStatus("calculating");
 
-    // Sedikit delay biar tidak trigger tiap ketukan
-    const timer = setTimeout(() => {
-      const result = hitungOngkirDariNamaWilayah(kota);
-      setShipping(result);
-      setIsCalculatingShipping(false);
-    }, 600);
+    const timer = setTimeout(async () => {
+      try {
+        const result = await hitungOngkirDariNamaWilayah(kota);
+        if (result) {
+          setShipping(result);
+          setShippingStatus("found");
+        } else {
+          setShipping(null);
+          setShippingStatus("not_found");
+        }
+      } catch {
+        setShipping(null);
+        setShippingStatus("not_found");
+      }
+    }, 700);
 
     return () => clearTimeout(timer);
   }, [form.kota]);
 
-  // ── Init uid + email + cart ──────────────────────────────────────────────
+  // Init uid + email + cart
   useEffect(() => {
     const u = getUidFromCookie();
     setUid(u);
@@ -85,7 +101,6 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIds.join(",")]);
 
-  // ── Form handlers ────────────────────────────────────────────────────────
   const handleInput = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     setFormError("");
@@ -96,9 +111,8 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     setFormError("");
   };
 
-  // ── Kalkulasi total ──────────────────────────────────────────────────────
   const subtotal = orderItems.reduce((acc, i) => acc + i.price * i.qty, 0);
-  const shippingFee = shipping?.fee ?? 0;
+  const shippingFee = shippingStatus === "found" ? (shipping?.fee ?? 0) : 0;
   const total = Math.max(subtotal + shippingFee - diskonKupon, 0);
 
   const selectedMethod = paymentMethods.find((p) => p.id === selectedPayment) as PaymentMethod;
@@ -108,15 +122,26 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     if (!form.nama.trim()) return setFormError("Nama lengkap wajib diisi.");
     if (!form.telepon.trim()) return setFormError("Nomor telepon wajib diisi.");
     if (!form.alamat.trim()) return setFormError("Alamat lengkap wajib diisi.");
+
+    if (shippingStatus === "calculating") {
+      return setFormError("Sedang menghitung ongkos kirim, tunggu sebentar...");
+    }
+    if (shippingStatus === "not_found") {
+      return setFormError("Kota tujuan tidak dikenali. Hubungi toko untuk konfirmasi ongkos kirim.");
+    }
+    if (shippingStatus === "idle" || !shipping) {
+      return setFormError("Isi kolom Kota / Kabupaten terlebih dahulu agar ongkos kirim bisa dihitung.");
+    }
+
     if (!uid) {
       window.location.href = "/login";
       return;
     }
+
     setFormError("");
     setShowConfirm(true);
   };
 
-  // ── Build order ──────────────────────────────────────────────────────────
   const buildItems = (snapshot: CartItem[]) =>
     snapshot.map((i) => ({
       id: i.id,
@@ -187,7 +212,10 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     try {
       const { token } = await createMidtransTransaction({
         items: buildItems(snapshot),
-        user: { name: form.nama, email: userEmail || "pelanggan@rizky-elektronik.com" },
+        user: {
+          name: form.nama,
+          email: userEmail || "pelanggan@rizky-elektronik.com",
+        },
         totalPrice: total,
         paymentType: selectedMethod.paymentType,
       });
@@ -260,7 +288,8 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     shippingFee,
     total,
     shipping,
-    isCalculatingShipping,
+    shippingStatus,
+    isCalculatingShipping: shippingStatus === "calculating",
     selectedMethod,
     isCod,
     handleInput,

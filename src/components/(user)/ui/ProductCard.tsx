@@ -94,7 +94,7 @@ function StockBadge({ stock }: { stock: number }) {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const router = useRouter();
-  const liveStock = product.stock; // real-time dari parent listener, bukan onSnapshot per card
+  const liveStock = product.stock;
 
   const gradient = categoryGradient[product.category] ?? defaultGradient;
   const icon = categoryIcon[product.category] ?? defaultCategoryIcon;
@@ -181,10 +181,10 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
         )}
 
-        {/* ── Badge Kondisi Bekas ── */}
+        {/* ── Badge Kondisi Second ── */}
         {isBekas && (
           <div className="absolute top-2 left-2 z-10" style={{ top: discountPct ? "2.2rem" : undefined }}>
-            <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-lg shadow-sm">2nd</span>
+            <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-lg shadow-sm">Second</span>
           </div>
         )}
 
@@ -228,7 +228,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           <p className="text-sm font-black text-[#1E2753] leading-none">{formatPrice(product.price)}</p>
         </div>
 
-        {/* Stock Badge — modern & informatif */}
+        {/* Stock Badge */}
         <StockBadge stock={liveStock} />
 
         {/* Tombol Keranjang */}

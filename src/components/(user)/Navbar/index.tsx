@@ -19,6 +19,7 @@ import NavbarSearch from "./NavbarSearch";
 import UserDropdown from "./UserDropdown";
 import MobileMenu from "./MobileMenu";
 import CategoryBar from "./CategoryBar";
+import Image from "next/image";
 
 export default function NavbarUser() {
   const pathname = usePathname();
@@ -135,20 +136,20 @@ export default function NavbarUser() {
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 sm:gap-3 h-14 sm:h-16">
               {/* Logo */}
-              <Link href="/user/dashboard-user" className="shrink-0 flex items-center gap-2 group">
+              {/* <Link href="/user/dashboard-user" className="shrink-0 flex items-center gap-2 group">
                 <div
                   className="w-8 h-8 sm:w-9 sm:h-9 bg-[#1E2753] rounded-xl flex items-center
                   justify-center group-hover:bg-[#2d3a8c] transition-colors"
                 >
                   <FontAwesomeIcon icon={faBolt} className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400" />
-                </div>
-                {/* Nama toko — disembunyikan di HP kecil biar search bar lebih lebar */}
-                <div className="hidden sm:block leading-none">
+                </div> */}
+              {/* Nama toko — disembunyikan di HP kecil biar search bar lebih lebar */}
+              {/* <div className="hidden sm:block leading-none">
                   <p className="text-[#1E2753] font-black text-base">Rizky</p>
                   <p className="text-[#E85D04] text-[10px] font-bold tracking-widest uppercase">Elektronik</p>
                 </div>
-              </Link>
-
+              </Link> */}
+              <Image src="/images/logo-toko.jpeg" alt="Logo" width={40} height={40} />
               {/* Search — full bar */}
               <NavbarSearch />
 

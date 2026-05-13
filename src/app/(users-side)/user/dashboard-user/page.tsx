@@ -12,8 +12,8 @@ export default function DashboardUser() {
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 -mt-10 space-y-8 sm:space-y-10 pb-20 sm:pb-6">
       <HeroBanner />
-      <PromoCards />
       <DashboardProductsClient />
+      <PromoCards />
     </div>
   );
 }

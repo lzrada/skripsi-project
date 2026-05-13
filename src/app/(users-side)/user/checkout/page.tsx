@@ -37,6 +37,7 @@ function CheckoutForm() {
     shippingFee,
     total,
     shipping,
+    shippingStatus,
     isCalculatingShipping,
     selectedMethod,
     isCod,
@@ -89,6 +90,7 @@ function CheckoutForm() {
               subtotal={subtotal}
               shippingFee={shippingFee}
               shipping={shipping}
+              shippingStatus={shippingStatus}
               isCalculatingShipping={isCalculatingShipping}
               diskonKupon={diskonKupon}
               couponCode={couponCode}

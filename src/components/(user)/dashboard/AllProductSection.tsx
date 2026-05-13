@@ -4,7 +4,7 @@ import ProductCard from "@/components/(user)/ui/ProductCard";
 import { SkeletonGrid } from "@/components/(user)/ui/SkeletonProductCard";
 import { Product } from "@/types/product";
 
-const TABS = ["Semua", "Promo"] as const;
+const TABS = ["Semua", "Promo", "New", "Second"] as const;
 type Tab = (typeof TABS)[number];
 
 interface AllProductsSectionProps {

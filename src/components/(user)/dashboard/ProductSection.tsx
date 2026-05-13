@@ -10,10 +10,18 @@ const LOAD_MORE_STEP = 10;
 const FLASH_SALE_LIMIT = 4;
 const TERBARU_LIMIT = 4;
 
-type Tab = "Semua" | "Promo";
+type Tab = "Semua" | "Promo" | "New" | "Second";
 
 function isOnSale(p: Product) {
   return !!p.originalPrice && p.originalPrice > p.price;
+}
+
+function isNew(p: Product) {
+  return p.condition?.toLowerCase() === "baru";
+}
+
+function isSecond(p: Product) {
+  return p.condition?.toLowerCase() === "bekas";
 }
 
 export interface ProductSectionProps {
@@ -31,7 +39,8 @@ export default function ProductSection({ products, loading }: ProductSectionProp
   // Derivasi data per section
   const flashSaleProducts = inStock.filter(isOnSale).slice(0, FLASH_SALE_LIMIT);
   const latestProducts = inStock.slice(0, TERBARU_LIMIT);
-  const filteredProducts = activeTab === "Promo" ? inStock.filter(isOnSale) : inStock;
+
+  const filteredProducts = activeTab === "Promo" ? inStock.filter(isOnSale) : activeTab === "New" ? inStock.filter(isNew) : activeTab === "Second" ? inStock.filter(isSecond) : inStock;
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);

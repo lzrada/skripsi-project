@@ -1,7 +1,7 @@
 export const STORE_CONFIG = {
   name: "Rizky Elektronik",
-  lat: -8.0957,
-  lng: 112.1687,
+  lat: -8.04765,
+  lng: 112.21233,
   freeShippingRadiusKm: 10,
   ratePerKm: 3_000,
   minimumShippingFee: 15_000,

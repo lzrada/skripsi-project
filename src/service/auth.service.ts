@@ -1,11 +1,10 @@
-// src/service/auth.service.ts
 import { auth, db } from "@/config/firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 hari
-const COOKIE_BASE = `path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Strict`;
-
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
+// SameSite=Lax (bukan Strict) — wajib untuk OAuth popup/redirect
+const COOKIE_BASE = `path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
 const COOKIE_OPTIONS = process.env.NODE_ENV === "production" ? `${COOKIE_BASE}; Secure` : COOKIE_BASE;
 
 function setCookies(token: string, role: string, uid: string) {
@@ -17,7 +16,7 @@ function setCookies(token: string, role: string, uid: string) {
 
 function clearCookies() {
   if (typeof document === "undefined") return;
-  const clear = "path=/; max-age=0; SameSite=Strict";
+  const clear = "path=/; max-age=0; SameSite=Lax";
   document.cookie = `firebaseToken=; ${clear}`;
   document.cookie = `userRole=; ${clear}`;
   document.cookie = `uid=; ${clear}`;
@@ -29,6 +28,11 @@ function validateEmail(email: string): boolean {
 
 function validatePassword(password: string): boolean {
   return password.length >= 8;
+}
+
+// Tunggu 150ms agar cookie sempat ter-flush ke browser sebelum redirect
+function waitForCookieFlush(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 150));
 }
 
 export const loginWithEmail = async (email: string, password: string) => {
@@ -59,6 +63,7 @@ export const loginWithEmail = async (email: string, password: string) => {
 
     const token = await user.getIdToken();
     setCookies(token, role, user.uid);
+    await waitForCookieFlush();
 
     return { role };
   } catch (error: any) {
@@ -69,19 +74,12 @@ export const loginWithEmail = async (email: string, password: string) => {
   }
 };
 
-// Ganti signInWithRedirect → signInWithPopup.
-// signInWithRedirect sering gagal karena:
-//   1. Browser modern memblokir third-party cookies yang dibutuhkan redirect flow
-//   2. CSP (Content-Security-Policy) di next.config memblokir redirect ke accounts.google.com
-//   3. Di Next.js, getRedirectResult() bergantung pada session storage lintas halaman
-//      yang bisa hilang sebelum redirect selesai
-// signInWithPopup menyelesaikan OAuth di popup window terpisah dan langsung
-// return UserCredential — tidak perlu getRedirectResult() sama sekali.
 export const loginWithGoogle = async () => {
   try {
     const provider = new GoogleAuthProvider();
     provider.addScope("email");
     provider.addScope("profile");
+    provider.setCustomParameters({ prompt: "select_account" });
 
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
@@ -89,7 +87,6 @@ export const loginWithGoogle = async () => {
     const userRef = doc(db, "users", user.uid);
     let snap = await getDoc(userRef);
 
-    // Buat dokumen Firestore jika user Google pertama kali login
     if (!snap.exists()) {
       await setDoc(userRef, {
         uid: user.uid,
@@ -115,15 +112,14 @@ export const loginWithGoogle = async () => {
       throw { code: "auth/no-role", message: "Role tidak ditemukan" };
     }
 
-    const token = await user.getIdToken();
+    // forceRefresh=true pastikan token fresh setelah popup selesai
+    const token = await user.getIdToken(true);
     setCookies(token, role, user.uid);
+    await waitForCookieFlush(); // ← kunci: cookie harus ter-tulis sebelum redirect
 
     return { success: true, role };
   } catch (error: any) {
-    // User sengaja tutup popup — bukan error, tidak perlu ditampilkan
-    if (error?.code === "auth/popup-closed-by-user") {
-      return null;
-    }
+    if (error?.code === "auth/popup-closed-by-user") return null;
     if (process.env.NODE_ENV !== "production") {
       console.error("GOOGLE LOGIN ERROR:", error);
     }
@@ -131,8 +127,6 @@ export const loginWithGoogle = async () => {
   }
 };
 
-// Stub kosong — handleGoogleRedirect tidak diperlukan lagi setelah migrasi ke popup.
-// Dibiarkan agar tidak breaking kalau masih ada import di file lain.
 export const handleGoogleRedirect = async () => null;
 
 export const registerWithEmail = async (email: string, password: string, fullName: string, phoneNumber: string) => {
@@ -140,10 +134,7 @@ export const registerWithEmail = async (email: string, password: string, fullNam
     throw { code: "auth/invalid-email-format", message: "Format email tidak valid" };
   }
   if (!validatePassword(password)) {
-    throw {
-      code: "auth/weak-password",
-      message: "Password minimal 8 karakter",
-    };
+    throw { code: "auth/weak-password", message: "Password minimal 8 karakter" };
   }
   if (!fullName.trim()) {
     throw { code: "auth/missing-name", message: "Nama lengkap wajib diisi" };
@@ -171,7 +162,6 @@ export const registerWithEmail = async (email: string, password: string, fullNam
     });
 
     await signOut(auth);
-
     return { success: true };
   } catch (error: any) {
     if (process.env.NODE_ENV !== "production") {
@@ -185,7 +175,6 @@ export const resetPassword = async (email: string) => {
   if (!validateEmail(email)) {
     throw { code: "auth/invalid-email-format", message: "Format email tidak valid" };
   }
-
   try {
     await sendPasswordResetEmail(auth, email.trim());
     return { success: true };

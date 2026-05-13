@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/config/firebase";
 import { updateUserProfileService } from "@/service/user.service";
@@ -13,6 +13,19 @@ interface AccountProfileCardProps {
 }
 
 export default function AccountProfileCard({ user }: AccountProfileCardProps) {
+  const normalizedPhotoURL = useMemo(() => {
+    const value = typeof user?.photoURL === "string" ? user.photoURL.trim() : "";
+    return value && value !== "null" && value !== "undefined" ? value : "";
+  }, [user?.photoURL]);
+
+  const [showImage, setShowImage] = useState(Boolean(normalizedPhotoURL));
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setShowImage(Boolean(normalizedPhotoURL));
+    setImageError(false);
+  }, [normalizedPhotoURL]);
+
   // Edit Profile modal
   const [editOpen, setEditOpen] = useState(false);
   const [photoURL, setPhotoURL] = useState(user?.photoURL || "");
@@ -66,14 +79,14 @@ export default function AccountProfileCard({ user }: AccountProfileCardProps) {
     }
   };
 
-  const initial = user?.fullName?.charAt(0)?.toUpperCase() || "U";
+  const initial = user?.fullName?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || "U";
 
   return (
     <>
       <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col items-center text-center">
-          {user?.photoURL ? (
-            <img src={user.photoURL} alt={user.fullName} className="h-24 w-24 rounded-full object-cover" />
+          {showImage && !imageError ? (
+            <img src={normalizedPhotoURL} alt={user?.fullName || user?.email || "User"} className="h-24 w-24 rounded-full object-cover" onError={() => setImageError(true)} />
           ) : (
             <div className="flex h-24 w-24 items-center justify-center rounded-full bg-black text-3xl font-bold text-white">{initial}</div>
           )}

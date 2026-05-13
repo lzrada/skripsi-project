@@ -1,6 +1,3 @@
-// src/service/checkout.service.ts
-// Logic checkout dipisah dari halaman UI agar mudah di-maintain dan di-test
-
 import { CartItem } from "@/types/cart";
 import { createOrderService, CreateOrderPayload } from "./order.service";
 import { clearCartService } from "./cart.service";

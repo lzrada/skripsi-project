@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash, faSpinner, faEnvelope, faLock, faBolt } from "@fortawesome/free-solid-svg-icons";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
-import { loginWithEmail, loginWithGoogle, handleGoogleRedirect } from "@/service/auth.service";
+import { loginWithEmail, loginWithGoogle } from "@/service/auth.service";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -54,21 +54,31 @@ function LoginForm() {
     setError("");
     setLoadingGoogle(true);
     try {
-      await loginWithGoogle();
-    } catch {
-      setError("Login Google gagal. Silakan coba lagi.");
+      const res = await loginWithGoogle();
+      if (!res) {
+        // User tutup popup sendiri — tidak perlu error
+        setLoadingGoogle(false);
+        return;
+      }
+      if (res.role) {
+        redirectByRole(res.role as "user" | "admin");
+      }
+    } catch (err: any) {
+      const code = err?.code;
+      if (code === "auth/popup-blocked") {
+        setError("Popup diblokir browser. Izinkan popup untuk situs ini lalu coba lagi.");
+      } else if (code === "auth/no-role") {
+        setError("Role akun belum diset. Hubungi admin.");
+      } else if (code === "auth/cancelled-popup-request") {
+        // Diabaikan — user klik tombol dua kali
+        setLoadingGoogle(false);
+        return;
+      } else {
+        setError("Login Google gagal. Silakan coba lagi.");
+      }
       setLoadingGoogle(false);
     }
   };
-
-  useEffect(() => {
-    const checkGoogleLogin = async () => {
-      const res = await handleGoogleRedirect();
-      if (res?.success && res.role) redirectByRole(res.role as "user" | "admin");
-    };
-    checkGoogleLogin();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center px-4 py-10">
@@ -79,7 +89,6 @@ function LoginForm() {
       <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 bg-white rounded-3xl shadow-2xl shadow-blue-900/10 overflow-hidden">
         {/* ── Left panel: branding ── */}
         <div className="hidden md:flex flex-col justify-between bg-gradient-to-br from-[#1E2753] via-[#243080] to-[#1a2060] p-10 text-white relative overflow-hidden">
-          {/* Pattern */}
           <div
             className="absolute inset-0 opacity-5"
             style={{
@@ -141,7 +150,6 @@ function LoginForm() {
             </Link>
           </p>
 
-          {/* Error */}
           {error && (
             <div className="flex items-center gap-2.5 bg-red-50 border border-red-200 text-red-600 text-xs rounded-2xl px-4 py-3 mb-4">
               <span className="w-1.5 h-1.5 bg-red-500 rounded-full flex-shrink-0" />
@@ -150,7 +158,6 @@ function LoginForm() {
           )}
 
           <form onSubmit={handleLogin} className="space-y-4">
-            {/* Email */}
             <div>
               <label className="text-xs font-bold text-slate-600 mb-1.5 block">Email</label>
               <div className="relative">
@@ -169,7 +176,6 @@ function LoginForm() {
               </div>
             </div>
 
-            {/* Password */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-bold text-slate-600">Password</label>
@@ -196,7 +202,6 @@ function LoginForm() {
               </div>
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
@@ -207,14 +212,12 @@ function LoginForm() {
             </button>
           </form>
 
-          {/* Divider */}
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-slate-200" />
             <span className="text-xs font-medium text-slate-400">atau masuk dengan</span>
             <div className="flex-1 h-px bg-slate-200" />
           </div>
 
-          {/* Google */}
           <button
             onClick={handleGoogle}
             disabled={loadingGoogle}

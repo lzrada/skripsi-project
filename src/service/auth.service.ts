@@ -1,6 +1,6 @@
 // src/service/auth.service.ts
 import { auth, db } from "@/config/firebase";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, signOut } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 hari
@@ -69,30 +69,27 @@ export const loginWithEmail = async (email: string, password: string) => {
   }
 };
 
+// Ganti signInWithRedirect → signInWithPopup.
+// signInWithRedirect sering gagal karena:
+//   1. Browser modern memblokir third-party cookies yang dibutuhkan redirect flow
+//   2. CSP (Content-Security-Policy) di next.config memblokir redirect ke accounts.google.com
+//   3. Di Next.js, getRedirectResult() bergantung pada session storage lintas halaman
+//      yang bisa hilang sebelum redirect selesai
+// signInWithPopup menyelesaikan OAuth di popup window terpisah dan langsung
+// return UserCredential — tidak perlu getRedirectResult() sama sekali.
 export const loginWithGoogle = async () => {
   try {
     const provider = new GoogleAuthProvider();
-
     provider.addScope("email");
     provider.addScope("profile");
-    await signInWithRedirect(auth, provider);
-  } catch (error: any) {
-    if (process.env.NODE_ENV !== "production") {
-      console.error("GOOGLE LOGIN ERROR:", error);
-    }
-    throw error;
-  }
-};
 
-export const handleGoogleRedirect = async () => {
-  try {
-    const result = await getRedirectResult(auth);
-    if (!result) return null;
-
+    const result = await signInWithPopup(auth, provider);
     const user = result.user;
+
     const userRef = doc(db, "users", user.uid);
     let snap = await getDoc(userRef);
 
+    // Buat dokumen Firestore jika user Google pertama kali login
     if (!snap.exists()) {
       await setDoc(userRef, {
         uid: user.uid,
@@ -100,6 +97,13 @@ export const handleGoogleRedirect = async () => {
         fullName: user.displayName ?? "",
         photoURL: user.photoURL ?? "",
         role: "user",
+        address: {
+          province: "",
+          city: "",
+          district: "",
+          postalCode: "",
+          detailAddress: "",
+        },
         createdAt: serverTimestamp(),
       });
       snap = await getDoc(userRef);
@@ -107,6 +111,7 @@ export const handleGoogleRedirect = async () => {
 
     const role = snap.data()?.role;
     if (!role) {
+      await signOut(auth);
       throw { code: "auth/no-role", message: "Role tidak ditemukan" };
     }
 
@@ -115,15 +120,22 @@ export const handleGoogleRedirect = async () => {
 
     return { success: true, role };
   } catch (error: any) {
-    if (process.env.NODE_ENV !== "production") {
-      console.error("GOOGLE REDIRECT ERROR:", error);
+    // User sengaja tutup popup — bukan error, tidak perlu ditampilkan
+    if (error?.code === "auth/popup-closed-by-user") {
+      return null;
     }
-    return { success: false };
+    if (process.env.NODE_ENV !== "production") {
+      console.error("GOOGLE LOGIN ERROR:", error);
+    }
+    throw error;
   }
 };
 
+// Stub kosong — handleGoogleRedirect tidak diperlukan lagi setelah migrasi ke popup.
+// Dibiarkan agar tidak breaking kalau masih ada import di file lain.
+export const handleGoogleRedirect = async () => null;
+
 export const registerWithEmail = async (email: string, password: string, fullName: string, phoneNumber: string) => {
-  // Validasi sebelum hit Firebase
   if (!validateEmail(email)) {
     throw { code: "auth/invalid-email-format", message: "Format email tidak valid" };
   }

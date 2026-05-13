@@ -38,12 +38,15 @@ const nextConfig: NextConfig = {
     const isProd = process.env.NODE_ENV === "production";
 
     const scriptSrc = isProd
-      ? ["script-src 'self' 'unsafe-inline'", "https://app.sandbox.midtrans.com", "https://api.midtrans.com"].join(" ")
-      : [
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      ? [
+          "script-src 'self' 'unsafe-inline'",
           "https://app.sandbox.midtrans.com",
           "https://api.midtrans.com",
-        ].join(" ");
+          // Firebase Auth popup membutuhkan script dari Google
+          "https://apis.google.com",
+          "https://accounts.google.com",
+        ].join(" ")
+      : ["script-src 'self' 'unsafe-inline' 'unsafe-eval'", "https://app.sandbox.midtrans.com", "https://api.midtrans.com", "https://apis.google.com", "https://accounts.google.com"].join(" ");
 
     return [
       {
@@ -74,11 +77,26 @@ const nextConfig: NextConfig = {
             value: [
               "default-src 'self'",
               scriptSrc,
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
               "font-src 'self' https://fonts.gstatic.com data:",
-              "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://ui-avatars.com https://www.gravatar.com",
-              "connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.supabase.co https://api.midtrans.com https://app.sandbox.midtrans.com wss://*.firebaseio.com",
-              "frame-src https://app.sandbox.midtrans.com https://api.midtrans.com",
+              "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com https://ui-avatars.com https://www.gravatar.com https://lh3.googleusercontent.com",
+              // connect-src: tambah semua endpoint Firebase Auth + Google OAuth
+              [
+                "connect-src 'self'",
+                "https://*.firebaseio.com",
+                "https://*.googleapis.com",
+                "https://securetoken.googleapis.com",
+                "https://identitytoolkit.googleapis.com",
+                "https://oauth2.googleapis.com",
+                "https://*.supabase.co",
+                "https://api.midtrans.com",
+                "https://app.sandbox.midtrans.com",
+                "wss://*.firebaseio.com",
+              ].join(" "),
+              // frame-src: tambah Google OAuth untuk popup
+              "frame-src https://app.sandbox.midtrans.com https://api.midtrans.com https://accounts.google.com",
+              // form-action: izinkan submit ke Google OAuth
+              "form-action 'self' https://accounts.google.com",
             ].join("; "),
           },
         ],

@@ -127,7 +127,7 @@ export const loginWithGoogle = async () => {
   }
 };
 
-export const handleGoogleRedirect = async () => null;
+export const handleGoogleRedirect = async (): Promise<{ success: boolean } | null> => null;
 
 export const registerWithEmail = async (email: string, password: string, fullName: string, phoneNumber: string) => {
   if (!validateEmail(email)) {

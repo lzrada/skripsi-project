@@ -22,7 +22,7 @@ export default function Register() {
 
   useEffect(() => {
     const checkGoogle = async () => {
-      const res = await handleGoogleRedirect();
+      const res = (await handleGoogleRedirect()) as { success: boolean } | null;
       if (res?.success) window.location.replace("/user/dashboard-user");
     };
     checkGoogle();

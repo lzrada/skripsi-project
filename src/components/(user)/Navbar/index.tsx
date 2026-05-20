@@ -119,7 +119,7 @@ export default function NavbarUser() {
       <header ref={headerRef} className={`fixed top-0 left-0 w-full z-50 bg-white transition-shadow duration-300 ${scrolled ? "shadow-[0_2px_20px_rgba(30,39,83,0.12)]" : ""}`}>
         {!isLoggedIn && (
           <div className="bg-[#1E2753] text-white text-xs py-1.5 px-4 flex justify-between items-center">
-            <span className="hidden sm:inline">🚚 Gratis ongkir untuk wilayah Blitar dan sekitarnya!</span>
+            <span className="hidden sm:inline">🚚 Gratis ongkir untuk wilayah blitar!</span>
             <span className="sm:hidden text-[11px]">🚚 Gratis ongkir wilayah Blitar</span>
             <div className="flex gap-4 items-center">
               <Link href="/login" className="hover:text-yellow-300 transition-colors">

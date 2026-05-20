@@ -178,10 +178,8 @@ export default function ProductDetailClient({ product, related }: { product: Pro
 
   return (
     <>
-      {/* ── Wrapper utama — pb-28 agar tidak tertutup sticky bar di mobile ── */}
       <div className="min-h-screen bg-[#F9FAFB] pb-28 sm:pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          {/* ── Breadcrumb ── */}
           <nav className="flex items-center gap-1.5 text-xs text-gray-400 mb-4 flex-wrap">
             <Link href="/user/dashboard-user" className="hover:text-[#1E2753] transition-colors">
               Beranda
@@ -198,17 +196,13 @@ export default function ProductDetailClient({ product, related }: { product: Pro
             <span className="text-gray-600 font-medium line-clamp-1 max-w-[160px] sm:max-w-none">{product.name}</span>
           </nav>
 
-          {/* ── Grid utama: gambar + info ── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-8">
-            {/* ── Kolom kiri: galeri ── */}
             <div className="space-y-3">
-              {/* Gambar utama */}
               <div className="relative bg-white rounded-2xl border border-gray-100 overflow-hidden aspect-square shadow-sm">
                 {images.length > 0 ? (
                   <>
                     <Image src={images[activeImage]} alt={product.name} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-contain p-4 sm:p-6" priority />
 
-                    {/* Navigasi gambar */}
                     {images.length > 1 && (
                       <>
                         <button

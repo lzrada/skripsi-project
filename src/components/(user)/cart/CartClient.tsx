@@ -10,8 +10,9 @@ import { inventoryFirstCheck } from "@/constants/inventory";
 import { toast } from "@/components/(user)/ui/Toast";
 import { getCookieValue } from "@/lib/format";
 import CartItemRow from "@/components/(user)/cart/CartItemRow";
-import CartSummary from "@/components/(user)/cart/CartSummary";
+import CartSummary, { CartSummaryDesktop, CartSummaryMobile } from "@/components/(user)/cart/CartSummary";
 import { CartItem } from "@/types/cart";
+
 function StockWarningBanner({ items }: { items: CartItem[] }) {
   const invalid = items.filter((i) => !inventoryFirstCheck(i.qty, i.stock));
   if (invalid.length === 0) return null;
@@ -88,7 +89,6 @@ export default function CartClient() {
       setLoading(false);
       return;
     }
-
     const unsub = subscribeToCartService(u, (items) => {
       setCartItems(items);
       setSelectedIds((prev) => {
@@ -154,25 +154,53 @@ export default function CartClient() {
     return url;
   })();
 
+  const summaryProps = {
+    selectedCount: selectedIds.length,
+    subtotal,
+    diskonKupon,
+    total,
+    hasStockViolation,
+    appliedCoupon,
+    couponInput,
+    couponLoading,
+    onCouponInputChange: setCouponInput,
+    onApplyCoupon: handleApplyCoupon,
+    onRemoveCoupon: () => {
+      setAppliedCoupon(null);
+      setCouponInput("");
+      toast.info("Kupon dihapus.");
+    },
+    checkoutHref,
+  };
+
   if (loading)
     return (
-      <div className="max-w-7xl mx-auto px-4 py-8 space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 animate-pulse">
-            <div className="flex gap-4">
-              <div className="w-4 h-4 bg-slate-200 rounded mt-1" />
-              <div className="w-20 h-20 bg-slate-100 rounded-xl flex-shrink-0" />
-              <div className="flex-1 space-y-2">
-                <div className="w-3/4 h-4 bg-slate-200 rounded" />
-                <div className="w-1/2 h-3 bg-slate-100 rounded" />
-                <div className="flex justify-between mt-3">
-                  <div className="w-24 h-5 bg-slate-200 rounded" />
-                  <div className="w-24 h-8 bg-slate-100 rounded-xl" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="lg:col-span-2 space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 animate-pulse">
+                <div className="flex gap-4">
+                  <div className="w-4 h-4 bg-slate-200 rounded mt-1" />
+                  <div className="w-20 h-20 bg-slate-100 rounded-xl flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
+                    <div className="w-3/4 h-4 bg-slate-200 rounded" />
+                    <div className="w-1/2 h-3 bg-slate-100 rounded" />
+                    <div className="flex justify-between mt-3">
+                      <div className="w-24 h-5 bg-slate-200 rounded" />
+                      <div className="w-24 h-8 bg-slate-100 rounded-xl" />
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
-        ))}
+          <div className="hidden lg:block space-y-4">
+            <div className="bg-white rounded-2xl border border-gray-100 h-36 animate-pulse" />
+            <div className="bg-white rounded-2xl border border-gray-100 h-52 animate-pulse" />
+            <div className="bg-white rounded-2xl border border-gray-100 h-24 animate-pulse" />
+          </div>
+        </div>
       </div>
     );
 
@@ -219,6 +247,7 @@ export default function CartClient() {
         />
       )}
 
+      {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/user/products" className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 hover:bg-gray-50 transition text-gray-500">
           <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
@@ -229,10 +258,12 @@ export default function CartClient() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Grid: kiri produk (2 kolom) + kanan summary (1 kolom) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        {/* KOLOM KIRI — Daftar Produk */}
         <div className="lg:col-span-2 space-y-3">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3 flex items-center justify-between">
-            <label className="flex items-center gap-3 cursor-pointer">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm px-4 py-3 flex items-center justify-between">
+            <label className="flex items-center gap-3 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={selectedIds.length === cartItems.length && cartItems.length > 0}
@@ -281,24 +312,15 @@ export default function CartClient() {
           </div>
         </div>
 
-        <CartSummary
-          selectedCount={selectedIds.length}
-          subtotal={subtotal}
-          diskonKupon={diskonKupon}
-          total={total}
-          hasStockViolation={hasStockViolation}
-          appliedCoupon={appliedCoupon}
-          couponInput={couponInput}
-          couponLoading={couponLoading}
-          onCouponInputChange={setCouponInput}
-          onApplyCoupon={handleApplyCoupon}
-          onRemoveCoupon={() => {
-            setAppliedCoupon(null);
-            setCouponInput("");
-            toast.info("Kupon dihapus.");
-          }}
-          checkoutHref={checkoutHref}
-        />
+        {/* KOLOM KANAN — Desktop sidebar saja */}
+        <div className="hidden md:block lg:block lg:col-span-1">
+          <CartSummaryDesktop {...summaryProps} />
+        </div>
+      </div>
+
+      {/* MOBILE BOTTOM BAR — Render di luar grid */}
+      <div className="lg:hidden md:hidden">
+        <CartSummaryMobile {...summaryProps} />
       </div>
     </div>
   );

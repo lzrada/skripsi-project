@@ -2,17 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { collection, onSnapshot, query, orderBy, Timestamp } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "@/config/firebase";
 import ChartLine from "@/components/(admin)/ui/ChartLine";
 import LowStockAlert from "@/components/(admin)/ui/LowStockAlert";
 import CategoryBreakdown from "@/components/(admin)/ui/CategoryBreakdown";
 import TopProductsChart from "@/components/(admin)/ui/TopProductChart";
-import { subscribeToLowStockProductsService } from "@/service/inventory.service";
-import { DEFAULT_REORDER_POINT } from "@/constants/inventory";
+import { isLowStock, isCriticalStock, calculateReorderPoint } from "@/constants/inventory";
 import { KPICards } from "@/components/(admin)/dashboard/KPICards";
 import { RecentOrdersSection } from "@/components/(admin)/dashboard/RecentOrdersSection";
-import type { LowStockProduct } from "@/service/inventory.service";
 
 export default function DashboardPage() {
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -23,7 +21,7 @@ export default function DashboardPage() {
   const [processOrders, setProcessOrders] = useState(0);
   const [doneOrders, setDoneOrders] = useState(0);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
-  const [lowStockProducts, setLowStockProducts] = useState<LowStockProduct[]>([]);
+  const [lowStockCount, setLowStockCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -48,8 +46,22 @@ export default function DashboardPage() {
     );
 
     const unsubProducts = onSnapshot(collection(db, "products"), (snap) => setTotalProducts(snap.size));
+
     const unsubUsers = onSnapshot(collection(db, "users"), (snap) => setTotalUsers(snap.size));
-    const unsubInventory = subscribeToLowStockProductsService(DEFAULT_REORDER_POINT, (products) => setLowStockProducts(products));
+
+    // Subscribe inventory — filter pakai isCriticalStock + isLowStock
+    // agar konsisten dengan halaman Monitoring Stok
+    const unsubInventory = onSnapshot(query(collection(db, "products"), orderBy("name")), (snap) => {
+      const alertCount = snap.docs.filter((d) => {
+        const item = d.data();
+        const stock: number = item.stock ?? 0;
+        const avgSales: number = item.averageDailySales ?? 0;
+        const leadTime: number = item.leadTimeDays ?? 3;
+        const reorderPoint: number = item.reorderPoint ?? (avgSales > 0 ? calculateReorderPoint(avgSales, leadTime) : 5);
+        return isCriticalStock(stock) || isLowStock(stock, reorderPoint);
+      }).length;
+      setLowStockCount(alertCount);
+    });
 
     return () => {
       unsubOrders();
@@ -58,14 +70,6 @@ export default function DashboardPage() {
       unsubInventory();
     };
   }, []);
-
-  const statusBadge: Record<string, { bg: string; text: string; dot: string }> = {
-    "Menunggu Konfirmasi": { bg: "bg-amber-50", text: "text-amber-700", dot: "bg-amber-400" },
-    Diproses: { bg: "bg-blue-50", text: "text-blue-700", dot: "bg-blue-400" },
-    Dikirim: { bg: "bg-purple-50", text: "text-purple-700", dot: "bg-purple-400" },
-    Selesai: { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-400" },
-    Dibatalkan: { bg: "bg-red-50", text: "text-red-600", dot: "bg-red-400" },
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 p-5 lg:p-7">
@@ -81,8 +85,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Banner Reorder Point */}
-      {!loading && lowStockProducts.length > 0 && (
+      {/* Banner peringatan stok */}
+      {!loading && lowStockCount > 0 && (
         <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl px-5 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
@@ -91,8 +95,8 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-bold text-red-700">{lowStockProducts.length} produk stoknya di bawah Reorder Point!</p>
-              <p className="text-xs text-red-500 mt-0.5">Segera lakukan restock untuk menghindari kehabisan stok.</p>
+              <p className="text-sm font-bold text-red-700">{lowStockCount} produk membutuhkan perhatian stok!</p>
+              <p className="text-xs text-red-500 mt-0.5">Terdapat produk dengan stok kritis atau di bawah Reorder Point.</p>
             </div>
           </div>
           <Link href="/admin/inventory-monitoring" className="shrink-0 text-xs font-semibold text-red-600 bg-red-100 hover:bg-red-200 px-4 py-2 rounded-xl transition">
@@ -102,16 +106,7 @@ export default function DashboardPage() {
       )}
 
       {/* KPI Cards */}
-      <KPICards
-        loading={loading}
-        totalRevenue={totalRevenue}
-        totalOrders={totalOrders}
-        totalProducts={totalProducts}
-        totalUsers={totalUsers}
-        pendingOrders={pendingOrders}
-        doneOrders={doneOrders}
-        lowStockProducts={lowStockProducts.length}
-      />
+      <KPICards loading={loading} totalRevenue={totalRevenue} totalOrders={totalOrders} totalProducts={totalProducts} totalUsers={totalUsers} pendingOrders={pendingOrders} doneOrders={doneOrders} lowStockProducts={lowStockCount} />
 
       {/* Chart + Status Summary */}
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-5 mb-5">

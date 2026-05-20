@@ -1,7 +1,7 @@
 // src/service/inventory.service.ts
 import { db } from "@/config/firebase";
 import { collection, onSnapshot, query, doc, updateDoc } from "firebase/firestore";
-import { isLowStock, DEFAULT_REORDER_POINT, calculateReorderPoint } from "@/constants/inventory";
+import { isLowStock, isCriticalStock, DEFAULT_REORDER_POINT, calculateReorderPoint } from "@/constants/inventory";
 
 export interface LowStockProduct {
   id: string;
@@ -26,6 +26,11 @@ export const subscribeToLowStockProductsService = (ropThreshold: number = DEFAUL
 
         const reorderPoint: number = avgSales > 0 ? calculateReorderPoint(avgSales, leadTime) : (data.reorderPoint ?? ropThreshold);
 
+        // Produk perlu ditampilkan jika:
+        // 1. Stok <= ROP (Perlu Restock), ATAU
+        // 2. Stok <= MINIMUM_STOCK_THRESHOLD (Stok Kritis) — meskipun ROP-nya kecil
+        const needsAlert = isLowStock(stock, reorderPoint) || isCriticalStock(stock);
+
         return {
           id: docItem.id,
           name: data.name ?? "",
@@ -33,11 +38,11 @@ export const subscribeToLowStockProductsService = (ropThreshold: number = DEFAUL
           reorderPoint,
           averageDailySales: avgSales,
           leadTimeDays: leadTime,
-          suggestedReorder: isLowStock(stock, reorderPoint) ? reorderPoint * 2 : undefined,
+          suggestedReorder: needsAlert ? Math.max(reorderPoint * 2, 5) : undefined,
         };
       });
 
-      const lowStockProducts = allProducts.filter((p) => isLowStock(p.stock, p.reorderPoint));
+      const lowStockProducts = allProducts.filter((p) => isLowStock(p.stock, p.reorderPoint) || isCriticalStock(p.stock));
 
       if (typeof callback === "function") {
         callback(lowStockProducts);

@@ -31,10 +31,8 @@ export default function DashboardProductsClient() {
 
   return (
     <div className="space-y-8 sm:space-y-10">
-      {/* Grid kategori — client */}
       <CategoryGrid counts={counts} />
 
-      {/* Daftar produk (flash sale, terbaru, semua) — client */}
       <ProductSection products={products} loading={loading} />
     </div>
   );

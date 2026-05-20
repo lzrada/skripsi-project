@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCartShopping, faBagShopping, faShield, faTruck, faRotateLeft, faChevronLeft, faChevronRight, faStar, faStarHalfAlt, faStore } from "@fortawesome/free-solid-svg-icons";
+import { faCartShopping, faBagShopping, faShield, faTruck, faRotateLeft, faChevronLeft, faChevronRight, faStar, faStarHalfAlt, faStore, faFire, faTag } from "@fortawesome/free-solid-svg-icons";
 import { faStar as faStarEmpty } from "@fortawesome/free-regular-svg-icons";
 import { Product } from "@/types/product";
 import WishlistButton from "@/components/(user)/ui/WishlistButton";
@@ -14,7 +14,11 @@ import { toast } from "@/components/(user)/ui/Toast";
 import ReviewSection from "./ReviewSection";
 
 function formatPrice(price: number) {
-  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(price);
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(price);
 }
 
 function getUidFromCookie(): string | null {
@@ -38,6 +42,36 @@ function StarDisplay({ rating, size = "sm" }: { rating: number; size?: "sm" | "m
   );
 }
 
+function StockBadge({ stock }: { stock: number }) {
+  if (stock === 0)
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-bold text-red-500 bg-red-50 border border-red-200 px-2.5 py-1 rounded-full">
+        <span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block" />
+        Stok Habis
+      </span>
+    );
+  if (stock <= 3)
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 bg-orange-50 border border-orange-200 px-2.5 py-1 rounded-full">
+        <FontAwesomeIcon icon={faFire} className="w-3 h-3" />
+        Hampir Habis! Sisa {stock}
+      </span>
+    );
+  if (stock <= 10)
+    return (
+      <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+        Stok terbatas ({stock})
+      </span>
+    );
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
+      Tersedia ({stock})
+    </span>
+  );
+}
+
 export default function ProductDetailClient({ product, related }: { product: Product; related: Product[] }) {
   const [activeImage, setActiveImage] = useState(0);
   const [qty, setQty] = useState(1);
@@ -45,7 +79,9 @@ export default function ProductDetailClient({ product, related }: { product: Pro
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
 
-  const discountPercent = product.originalPrice ? Math.round((1 - product.price / product.originalPrice) * 100) : null;
+  const images = product.images ?? [];
+  const isOutOfStock = product.stock <= 0;
+  const discountPercent = product.originalPrice && product.originalPrice > product.price ? Math.round((1 - product.price / product.originalPrice) * 100) : null;
 
   const handleAddToCart = async () => {
     const uid = getUidFromCookie();
@@ -54,7 +90,7 @@ export default function ProductDetailClient({ product, related }: { product: Pro
       window.location.href = "/login";
       return;
     }
-    if (product.stock <= 0) {
+    if (isOutOfStock) {
       toast.error("Maaf, stok produk ini sudah habis.");
       return;
     }
@@ -68,7 +104,7 @@ export default function ProductDetailClient({ product, related }: { product: Pro
         category: product.category,
         condition: product.condition ?? "baru",
         stock: product.stock,
-        image: product.images?.[0] ?? "",
+        image: images[0] ?? "",
         qty,
       });
       setAdded(true);
@@ -88,7 +124,7 @@ export default function ProductDetailClient({ product, related }: { product: Pro
       window.location.href = "/login";
       return;
     }
-    if (product.stock <= 0) {
+    if (isOutOfStock) {
       toast.error("Maaf, stok produk ini sudah habis.");
       return;
     }
@@ -101,7 +137,7 @@ export default function ProductDetailClient({ product, related }: { product: Pro
         category: product.category,
         condition: product.condition ?? "baru",
         stock: product.stock,
-        image: product.images?.[0] ?? "",
+        image: images[0] ?? "",
         qty,
       });
       window.location.href = `/user/checkout?ids=${product.id}`;
@@ -110,207 +146,339 @@ export default function ProductDetailClient({ product, related }: { product: Pro
     }
   };
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-10">
-      <nav className="flex items-center gap-2 text-xs text-gray-400">
-        <Link href="/user/dashboard-user" className="hover:text-[#1E2753]">
-          Beranda
-        </Link>
-        <span>/</span>
-        <Link href={`/user/products?category=${encodeURIComponent(product.category)}`} className="hover:text-[#1E2753]">
-          {product.category}
-        </Link>
-        <span>/</span>
-        <span className="text-gray-600 font-medium line-clamp-1">{product.name}</span>
-      </nav>
+  const TRUST = [
+    {
+      icon: faShield,
+      label: "Garansi Toko",
+      color: "text-blue-500",
+      bg: "bg-blue-50",
+    },
+    {
+      icon: faTruck,
+      label: "Gratis Ongkir",
+      color: "text-emerald-500",
+      bg: "bg-emerald-50",
+    },
+    {
+      icon: faRotateLeft,
+      label: "Bisa Retur",
+      color: "text-orange-500",
+      bg: "bg-orange-50",
+    },
+  ];
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Gallery */}
-        <div className="space-y-3">
-          <div className="w-full aspect-square md:aspect-[4/3] rounded-2xl overflow-hidden relative bg-white border border-gray-100 shadow-sm">
-            {product.images && product.images.length > 0 ? (
-              <>
-                <Image src={product.images[activeImage]} alt={product.name} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-contain p-3" />
-                {product.images.length > 1 && (
+  const TABS = [
+    { key: "deskripsi" as const, label: "Deskripsi" },
+    { key: "spesifikasi" as const, label: "Spesifikasi" },
+    {
+      key: "ulasan" as const,
+      label: `Ulasan (${product.totalReviews ?? 0})`,
+    },
+  ];
+
+  return (
+    <>
+      {/* ── Wrapper utama — pb-28 agar tidak tertutup sticky bar di mobile ── */}
+      <div className="min-h-screen bg-[#F9FAFB] pb-28 sm:pb-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+          {/* ── Breadcrumb ── */}
+          <nav className="flex items-center gap-1.5 text-xs text-gray-400 mb-4 flex-wrap">
+            <Link href="/user/dashboard-user" className="hover:text-[#1E2753] transition-colors">
+              Beranda
+            </Link>
+            <span>/</span>
+            <Link href="/user/products" className="hover:text-[#1E2753] transition-colors">
+              Produk
+            </Link>
+            <span>/</span>
+            <Link href={`/user/products?category=${encodeURIComponent(product.category)}`} className="hover:text-[#1E2753] transition-colors">
+              {product.category}
+            </Link>
+            <span>/</span>
+            <span className="text-gray-600 font-medium line-clamp-1 max-w-[160px] sm:max-w-none">{product.name}</span>
+          </nav>
+
+          {/* ── Grid utama: gambar + info ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-8">
+            {/* ── Kolom kiri: galeri ── */}
+            <div className="space-y-3">
+              {/* Gambar utama */}
+              <div className="relative bg-white rounded-2xl border border-gray-100 overflow-hidden aspect-square shadow-sm">
+                {images.length > 0 ? (
                   <>
-                    <button
-                      onClick={() => setActiveImage((i) => (i - 1 + product.images!.length) % product.images!.length)}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white hover:bg-gray-50 rounded-full flex items-center justify-center shadow-md border border-gray-100 transition"
-                    >
-                      <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={() => setActiveImage((i) => (i + 1) % product.images!.length)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white hover:bg-gray-50 rounded-full flex items-center justify-center shadow-md border border-gray-100 transition"
-                    >
-                      <FontAwesomeIcon icon={faChevronRight} className="w-3 h-3" />
-                    </button>
-                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                      {product.images.map((_, i) => (
-                        <button key={i} onClick={() => setActiveImage(i)} className={`w-1.5 h-1.5 rounded-full transition-all ${i === activeImage ? "bg-[#1E2753] w-4" : "bg-gray-300"}`} />
-                      ))}
+                    <Image src={images[activeImage]} alt={product.name} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-contain p-4 sm:p-6" priority />
+
+                    {/* Navigasi gambar */}
+                    {images.length > 1 && (
+                      <>
+                        <button
+                          onClick={() => setActiveImage((i) => (i - 1 + images.length) % images.length)}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 rounded-full shadow flex items-center justify-center hover:bg-white transition"
+                        >
+                          <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3 text-gray-600" />
+                        </button>
+                        <button
+                          onClick={() => setActiveImage((i) => (i + 1) % images.length)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 rounded-full shadow flex items-center justify-center hover:bg-white transition"
+                        >
+                          <FontAwesomeIcon icon={faChevronRight} className="w-3 h-3 text-gray-600" />
+                        </button>
+                      </>
+                    )}
+
+                    {/* Badge diskon */}
+                    {discountPercent && discountPercent > 0 && (
+                      <div className="absolute top-3 left-3 z-10">
+                        <span className="flex items-center gap-1 bg-red-500 text-white text-xs font-black px-2.5 py-1 rounded-xl shadow">
+                          <FontAwesomeIcon icon={faTag} className="w-3 h-3" />-{discountPercent}%
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Wishlist */}
+                    <div className="absolute top-3 right-3 z-10">
+                      <WishlistButton productId={product.id} productName={product.name} size="md" />
                     </div>
                   </>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-300 text-6xl">📦</div>
                 )}
-                {discountPercent && <span className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">-{discountPercent}%</span>}
-                <div className="absolute top-3 right-3">
-                  <WishlistButton productId={product.id} productName={product.name} size="md" />
-                </div>
-              </>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-300 text-6xl">📦</div>
-            )}
-          </div>
-          {product.images && product.images.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {product.images.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveImage(i)}
-                  className={`shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition bg-white ${i === activeImage ? "border-[#1E2753]" : "border-gray-100 opacity-60 hover:opacity-100"}`}
-                >
-                  <Image src={img} alt={`Foto ${i + 1}`} width={80} height={80} className="object-contain w-full h-full p-1" />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+              </div>
 
-        {/* Info produk */}
-        <div className="space-y-4">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-gray-800 leading-snug mb-2">{product.name}</h1>
-            <div className="flex items-center gap-3 text-sm flex-wrap">
+              {/* Thumbnail strip */}
+              {images.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {images.map((img, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveImage(i)}
+                      className={`shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-xl border-2 overflow-hidden bg-white transition-all ${i === activeImage ? "border-[#1E2753] shadow-md" : "border-gray-100 opacity-60 hover:opacity-100"}`}
+                    >
+                      <Image src={img} alt={`${product.name} ${i + 1}`} width={64} height={64} className="object-contain p-1 w-full h-full" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Trust badges — di bawah gambar, hanya desktop */}
+              <div className="hidden md:grid grid-cols-3 gap-2">
+                {TRUST.map((t) => (
+                  <div key={t.label} className={`flex flex-col items-center gap-1.5 p-3 ${t.bg} rounded-xl`}>
+                    <FontAwesomeIcon icon={t.icon} className={`w-4 h-4 ${t.color}`} />
+                    <span className="text-[11px] font-semibold text-gray-600 text-center">{t.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Kolom kanan: info produk ── */}
+            <div className="space-y-4">
+              {/* Nama produk */}
+              <div>
+                <Link href={`/user/products?category=${encodeURIComponent(product.category)}`} className="text-xs font-bold text-[#1E2753]/50 uppercase tracking-widest hover:text-[#1E2753] transition-colors">
+                  {product.category}
+                </Link>
+                <h1 className="text-xl sm:text-2xl font-black text-gray-900 mt-1 leading-snug">{product.name}</h1>
+              </div>
+
+              {/* Rating */}
               {(product.averageRating ?? 0) > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <StarDisplay rating={product.averageRating ?? 0} />
-                  <span className="text-xs text-gray-500">
-                    {product.averageRating?.toFixed(1)} ({product.totalReviews} ulasan)
-                  </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <StarDisplay rating={product.averageRating ?? 0} size="sm" />
+                  <span className="text-sm font-bold text-gray-700">{product.averageRating?.toFixed(1)}</span>
+                  {(product.totalReviews ?? 0) > 0 && <span className="text-xs text-gray-400">({product.totalReviews} ulasan)</span>}
                 </div>
               )}
-              <div className="flex items-center gap-1 text-gray-500">
-                <FontAwesomeIcon icon={faStore} className="w-4 h-4 text-[#1E2753]" />
-                <span>Stok {product.stock}</span>
+
+              {/* Harga */}
+              <div className="bg-gray-50 rounded-2xl p-4">
+                {product.originalPrice && product.originalPrice > product.price && <p className="text-sm text-gray-400 line-through mb-0.5">{formatPrice(product.originalPrice)}</p>}
+                <p className="text-3xl sm:text-4xl font-black text-[#1E2753]">{formatPrice(product.price)}</p>
+                {discountPercent && discountPercent > 0 && <p className="text-sm text-emerald-600 font-semibold mt-1">Hemat {formatPrice((product.originalPrice ?? product.price) - product.price)}</p>}
               </div>
-              {product.condition && (
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${product.condition.toLowerCase() === "baru" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
-                  {product.condition.toLowerCase() === "baru" ? "Baru" : "Bekas / Second"}
-                </span>
-              )}
+
+              {/* Kondisi + stok badge */}
+              <div className="flex items-center gap-3 flex-wrap">
+                {product.condition && <span className={`text-xs font-bold px-3 py-1 rounded-full ${product.condition.toLowerCase() === "bekas" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>{product.condition}</span>}
+                <StockBadge stock={product.stock} />
+              </div>
+
+              {/* Info toko */}
+              <div className="flex items-center gap-3 p-3.5 bg-white border border-gray-100 rounded-2xl">
+                <div className="w-10 h-10 bg-[#1E2753] rounded-xl flex items-center justify-center shrink-0">
+                  <FontAwesomeIcon icon={faStore} className="w-5 h-5 text-yellow-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-800">Rizky Elektronik</p>
+                  <p className="text-xs text-gray-400">Toko resmi · Blitar, Jawa Timur</p>
+                </div>
+              </div>
+
+              {/* Trust badges mobile */}
+              <div className="grid grid-cols-3 gap-2 md:hidden">
+                {TRUST.map((t) => (
+                  <div key={t.label} className={`flex flex-col items-center gap-1 p-2.5 ${t.bg} rounded-xl`}>
+                    <FontAwesomeIcon icon={t.icon} className={`w-4 h-4 ${t.color}`} />
+                    <span className="text-[10px] font-semibold text-gray-600 text-center leading-tight">{t.label}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Qty + tombol aksi — hanya desktop/tablet */}
+              <div className="hidden sm:block space-y-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-semibold text-gray-600">Jumlah:</span>
+                  <div className="flex items-center border-2 border-gray-100 rounded-xl overflow-hidden">
+                    <button
+                      onClick={() => setQty((q) => Math.max(1, q - 1))}
+                      disabled={qty <= 1 || isOutOfStock}
+                      className="w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-30 transition font-bold text-lg"
+                    >
+                      −
+                    </button>
+                    <span className="w-10 text-center text-sm font-bold text-gray-800">{qty}</span>
+                    <button
+                      onClick={() => setQty((q) => Math.min(product.stock, q + 1))}
+                      disabled={qty >= product.stock || isOutOfStock}
+                      className="w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-30 transition font-bold text-lg"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <span className="text-xs text-gray-400">Maks. {product.stock}</span>
+                </div>
+
+                {/* Tombol desktop */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleBuyNow}
+                    disabled={isOutOfStock}
+                    className={`flex-1 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                      isOutOfStock ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-[#1E2753] text-white hover:bg-[#2a3470]"
+                    }`}
+                  >
+                    <FontAwesomeIcon icon={faBagShopping} className="w-4 h-4" />
+                    Beli Sekarang
+                  </button>
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={adding || isOutOfStock}
+                    className={`flex-1 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 border-2 transition-all ${
+                      added ? "bg-emerald-500 border-emerald-500 text-white" : isOutOfStock ? "bg-gray-100 border-gray-100 text-gray-400 cursor-not-allowed" : "border-[#1E2753] text-[#1E2753] hover:bg-[#1E2753] hover:text-white"
+                    }`}
+                  >
+                    <FontAwesomeIcon icon={faCartShopping} className="w-4 h-4" />
+                    {adding ? "Menambahkan..." : added ? "Ditambahkan ✓" : "Keranjang"}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="bg-gray-50 rounded-xl p-4">
-            {product.originalPrice && <p className="text-sm text-gray-400 line-through mb-1">{formatPrice(product.originalPrice)}</p>}
-            <p className="text-3xl font-bold text-[#1E2753]">{formatPrice(product.price)}</p>
-            {discountPercent && <span className="inline-block mt-1 bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">Hemat {formatPrice(product.originalPrice! - product.price)}</span>}
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { icon: faShield, label: "Garansi Toko", color: "text-blue-500" },
-              { icon: faTruck, label: "Gratis Ongkir", color: "text-green-500" },
-              { icon: faRotateLeft, label: "Bisa Retur", color: "text-orange-500" },
-            ].map((item) => (
-              <div key={item.label} className="flex flex-col items-center gap-1 p-2 bg-gray-50 rounded-xl text-center">
-                <FontAwesomeIcon icon={item.icon} className={`w-5 h-5 ${item.color}`} />
-                <span className="text-[10px] text-gray-600 font-medium">{item.label}</span>
-              </div>
-            ))}
-          </div>
-
-          <div>
-            <p className="text-sm font-semibold text-gray-700 mb-2">Jumlah</p>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center border-2 border-gray-200 rounded-xl overflow-hidden">
-                <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 font-bold text-lg">
-                  −
-                </button>
-                <span className="w-12 text-center font-semibold text-gray-800">{qty}</span>
+          {/* ── Tab: deskripsi / spesifikasi / ulasan ── */}
+          <div className="mt-6 sm:mt-8 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            {/* Tab header */}
+            <div className="flex border-b border-gray-100 overflow-x-auto">
+              {TABS.map((tab) => (
                 <button
-                  onClick={() => setQty((q) => Math.min(product.stock, q + 1))}
-                  disabled={product.stock === 0}
-                  className="w-10 h-10 flex items-center justify-center text-gray-600 hover:bg-gray-100 font-bold text-lg disabled:opacity-40"
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`flex-1 min-w-[90px] py-3.5 text-sm font-bold whitespace-nowrap transition-colors ${activeTab === tab.key ? "text-[#1E2753] border-b-2 border-[#1E2753] bg-[#1E2753]/5" : "text-gray-400 hover:text-gray-600"}`}
                 >
-                  +
+                  {tab.label}
                 </button>
-              </div>
-              <span className="text-xs text-gray-400">Stok tersedia: {product.stock}</span>
-            </div>
-          </div>
-
-          {product.stock === 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-              <p className="text-sm font-semibold text-red-600">Stok habis</p>
-              <p className="text-xs text-red-400 mt-0.5">Produk ini sedang tidak tersedia.</p>
-            </div>
-          )}
-
-          <div className="flex gap-3">
-            <button
-              onClick={handleBuyNow}
-              disabled={product.stock === 0}
-              className="flex-1 py-3 bg-[#1E2753] text-white rounded-xl font-semibold text-sm hover:bg-[#2a3470] transition flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              <FontAwesomeIcon icon={faBagShopping} className="w-4 h-4" /> Beli Sekarang
-            </button>
-            <button
-              onClick={handleAddToCart}
-              disabled={adding || product.stock === 0}
-              className={`flex-1 py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2 border-2 ${added ? "bg-green-500 border-green-500 text-white" : "border-[#1E2753] text-[#1E2753] hover:bg-[#1E2753] hover:text-white disabled:opacity-50"}`}
-            >
-              <FontAwesomeIcon icon={faCartShopping} className="w-4 h-4" />
-              {adding ? "..." : added ? "Ditambahkan!" : "Keranjang"}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="flex border-b border-gray-100">
-          {(["deskripsi", "spesifikasi", "ulasan"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-4 text-sm font-semibold capitalize transition-colors ${activeTab === tab ? "text-[#1E2753] border-b-2 border-[#1E2753]" : "text-gray-500 hover:text-gray-700"}`}
-            >
-              {tab === "ulasan" ? `Ulasan (${product.totalReviews ?? 0})` : tab}
-            </button>
-          ))}
-        </div>
-        <div className="p-6">
-          {activeTab === "deskripsi" && <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{product.description || "Tidak ada deskripsi."}</p>}
-          {activeTab === "spesifikasi" && (
-            <div className="space-y-2 text-sm">
-              {[
-                ["Kategori", product.category],
-                ["Kondisi", product.condition ?? "Baru"],
-                ["Stok", `${product.stock} unit`],
-                ["Jumlah Foto", `${product.images?.length ?? 0} foto`],
-              ].map(([label, value]) => (
-                <div key={label} className="flex py-2 border-b border-gray-100 last:border-0">
-                  <span className="w-36 text-gray-500">{label}</span>
-                  <span className="font-medium text-gray-800 capitalize">{value}</span>
-                </div>
               ))}
             </div>
+
+            {/* Tab konten */}
+            <div className="p-4 sm:p-6">
+              {activeTab === "deskripsi" && <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{product.description || <span className="text-gray-400 italic">Deskripsi belum tersedia.</span>}</p>}
+
+              {activeTab === "spesifikasi" && (
+                <div className="space-y-2 text-sm">
+                  {[
+                    ["Kategori", product.category],
+                    ["Kondisi", product.condition ?? "Baru"],
+                    ["Stok", `${product.stock} unit`],
+                    ["Jumlah Foto", `${images.length} foto`],
+                  ].map(([label, value]) => (
+                    <div key={label} className="flex py-2 border-b border-gray-100 last:border-0">
+                      <span className="w-36 text-gray-500">{label}</span>
+                      <span className="font-medium text-gray-800 capitalize">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {activeTab === "ulasan" && <ReviewSection productId={product.id} totalReviews={product.totalReviews ?? 0} averageRating={product.averageRating ?? 0} />}
+            </div>
+          </div>
+
+          {/* ── Produk terkait ── */}
+          {related.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-lg font-bold text-gray-800 mb-4">Produk Terkait</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+                {related.slice(0, 5).map((p) => (
+                  <ProductCard key={p.id} product={p} />
+                ))}
+              </div>
+            </div>
           )}
-          {activeTab === "ulasan" && <ReviewSection productId={product.id} totalReviews={product.totalReviews ?? 0} averageRating={product.averageRating ?? 0} />}
         </div>
       </div>
 
-      {related.length > 0 && (
-        <section>
-          <h2 className="text-lg font-bold text-gray-800 mb-4">Produk Terkait</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {related.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
+      {/* ── Sticky bottom action bar — mobile only (sm ke bawah) ── */}
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-[0_-4px_24px_rgba(0,0,0,0.10)] px-4 py-3">
+        {/* Qty + total harga */}
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 font-medium">Jumlah:</span>
+            <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setQty((q) => Math.max(1, q - 1))}
+                disabled={qty <= 1 || isOutOfStock}
+                className="w-7 h-7 flex items-center justify-center text-gray-600 text-sm hover:bg-gray-50 disabled:opacity-30 transition font-bold"
+              >
+                −
+              </button>
+              <span className="w-7 text-center text-xs font-bold text-gray-800">{qty}</span>
+              <button
+                onClick={() => setQty((q) => Math.min(product.stock, q + 1))}
+                disabled={qty >= product.stock || isOutOfStock}
+                className="w-7 h-7 flex items-center justify-center text-gray-600 text-sm hover:bg-gray-50 disabled:opacity-30 transition font-bold"
+              >
+                +
+              </button>
+            </div>
           </div>
-        </section>
-      )}
-    </div>
+          <p className="text-base font-black text-[#1E2753]">{formatPrice(product.price * qty)}</p>
+        </div>
+
+        {/* Tombol aksi */}
+        <div className="flex gap-2.5">
+          <button
+            onClick={handleBuyNow}
+            disabled={isOutOfStock}
+            className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
+              isOutOfStock ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-[#1E2753] text-white hover:bg-[#2a3470]"
+            }`}
+          >
+            <FontAwesomeIcon icon={faBagShopping} className="w-4 h-4" />
+            Beli Sekarang
+          </button>
+          <button
+            onClick={handleAddToCart}
+            disabled={adding || isOutOfStock}
+            className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5 border-2 transition-all active:scale-95 ${
+              added ? "bg-emerald-500 border-emerald-500 text-white" : isOutOfStock ? "bg-gray-100 border-gray-100 text-gray-400 cursor-not-allowed" : "border-[#1E2753] text-[#1E2753]"
+            }`}
+          >
+            <FontAwesomeIcon icon={faCartShopping} className="w-4 h-4" />
+            {adding ? "..." : added ? "✓ Ditambah" : "Keranjang"}
+          </button>
+        </div>
+      </div>
+    </>
   );
 }

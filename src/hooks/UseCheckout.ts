@@ -22,11 +22,7 @@ export interface CheckoutForm {
   catatan: string;
 }
 
-export type ShippingStatus =
-  | "idle" // belum ada input kota
-  | "calculating" // sedang proses
-  | "found" // berhasil dapat ongkir
-  | "not_found"; // kota tidak dikenali — blokir checkout
+export type ShippingStatus = "idle" | "calculating" | "found" | "not_found";
 
 export function useCheckout(selectedIds: string[], couponCode: string, couponId: string, diskonKupon: number) {
   const router = useRouter();
@@ -51,7 +47,6 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
   const [shipping, setShipping] = useState<ShippingResult | null>(null);
   const [shippingStatus, setShippingStatus] = useState<ShippingStatus>("idle");
 
-  // Auto-hitung ongkir setiap field kota berubah (debounce 700ms)
   useEffect(() => {
     const kota = form.kota.trim();
 
@@ -82,7 +77,6 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     return () => clearTimeout(timer);
   }, [form.kota]);
 
-  // Init uid + email + cart
   useEffect(() => {
     const u = getUidFromCookie();
     setUid(u);

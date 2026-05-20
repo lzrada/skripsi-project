@@ -36,11 +36,11 @@ export default function CartItemRow({ item, isSelected, onToggle, onDeleteClick,
   return (
     <div className={`bg-white rounded-2xl border-2 shadow-sm p-4 transition-all duration-200 ${stockInvalid ? "border-red-300 bg-red-50/30" : isSelected ? "border-[#1E2753]" : "border-gray-100"}`}>
       <div className="flex gap-3">
-        <div className="flex items-start pt-1 flex-shrink-0">
+        <div className="flex items-start pt-1 shrink-0">
           <input type="checkbox" checked={isSelected} onChange={onToggle} className="w-4 h-4 accent-[#1E2753] cursor-pointer" />
         </div>
 
-        <div className={`w-20 h-20 rounded-xl flex-shrink-0 overflow-hidden relative border border-gray-100 ${item.image ? "bg-gray-50" : `bg-gradient-to-br ${gradient}`}`}>
+        <div className={`w-20 h-20 rounded-xl shrink-0 overflow-hidden relative border border-gray-100 ${item.image ? "bg-gray-50" : `bg-gradient-to-br ${gradient}`}`}>
           {item.image ? <Image src={item.image} alt={item.name} fill sizes="80px" className="object-contain p-1.5" /> : <div className="w-full h-full flex items-center justify-center text-2xl">📦</div>}
         </div>
 

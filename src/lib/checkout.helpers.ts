@@ -2,7 +2,6 @@ import { CartItem } from "@/types/cart";
 import { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { formatPrice, getCookieValue, getUidFromCookie } from "@/lib/format";
 
-// Re-export agar komponen lama yang import dari sini tetap bekerja tanpa ubah import
 export { formatPrice, getCookieValue, getUidFromCookie };
 
 export interface RedirectSuccessParams {

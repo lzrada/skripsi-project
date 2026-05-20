@@ -69,8 +69,6 @@ export interface CheckoutPayload {
 
 export type CheckoutResult = { status: "success"; orderId: string } | { status: "pending" } | { status: "cancelled" } | { status: "error"; message: string };
 
-// ─── Kalkulasi ────────────────────────────────────────────────────────────────
-
 export function calculateTotal(subtotal: number, diskonKupon: number): number {
   return Math.max(subtotal - diskonKupon, 0);
 }
@@ -84,8 +82,6 @@ export function buildOrderItems(items: CartItem[]) {
     category: i.category,
   }));
 }
-
-// ─── Proses Checkout COD ──────────────────────────────────────────────────────
 
 async function processCodCheckout(payload: CheckoutPayload): Promise<CheckoutResult> {
   const { uid, address, orderItems, subtotal, diskonKupon, couponCode, couponId } = payload;
@@ -116,14 +112,11 @@ async function processCodCheckout(payload: CheckoutPayload): Promise<CheckoutRes
   return { status: "success", orderId };
 }
 
-// ─── Proses Checkout via Midtrans ─────────────────────────────────────────────
-
 async function processMidtransCheckout(payload: CheckoutPayload): Promise<CheckoutResult> {
   const { uid, address, paymentMethodId, orderItems, subtotal, diskonKupon, couponCode, couponId, userEmail } = payload;
   const total = calculateTotal(subtotal, diskonKupon);
   const method = PAYMENT_METHODS.find((m) => m.id === paymentMethodId)!;
 
-  // 1. Buat token Midtrans
   const { token } = await createMidtransTransaction({
     items: buildOrderItems(orderItems),
     user: { name: address.nama, email: userEmail },
@@ -131,7 +124,6 @@ async function processMidtransCheckout(payload: CheckoutPayload): Promise<Checko
     paymentType: method.midtransType!,
   });
 
-  // 2. Buka Midtrans popup dan tunggu hasilnya
   const snapResult = await openMidtransSnap(token);
 
   if (snapResult.status === "close" || snapResult.status === "error") {
@@ -141,7 +133,6 @@ async function processMidtransCheckout(payload: CheckoutPayload): Promise<Checko
     return { status: "cancelled" };
   }
 
-  // 3. Simpan order ke Firestore
   const paymentStatus = snapResult.status === "success" ? "paid" : "pending";
 
   const orderId = await createOrderService({

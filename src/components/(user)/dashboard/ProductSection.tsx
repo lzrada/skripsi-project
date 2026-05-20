@@ -33,10 +33,8 @@ export default function ProductSection({ products, loading }: ProductSectionProp
   const [activeTab, setActiveTab] = useState<Tab>("Semua");
   const [visibleCount, setVisibleCount] = useState(LOAD_MORE_STEP);
 
-  // Semua produk yang masih ada stok
   const inStock = products.filter((p) => p.stock > 0);
 
-  // Derivasi data per section
   const flashSaleProducts = inStock.filter(isOnSale).slice(0, FLASH_SALE_LIMIT);
   const latestProducts = inStock.slice(0, TERBARU_LIMIT);
 
@@ -44,7 +42,7 @@ export default function ProductSection({ products, loading }: ProductSectionProp
 
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
-    setVisibleCount(LOAD_MORE_STEP); // Reset pagination saat ganti tab
+    setVisibleCount(LOAD_MORE_STEP);
   };
 
   return (

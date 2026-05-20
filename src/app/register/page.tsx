@@ -22,7 +22,9 @@ export default function Register() {
 
   useEffect(() => {
     const checkGoogle = async () => {
-      const res = (await handleGoogleRedirect()) as { success: boolean } | null;
+      const res = (await handleGoogleRedirect()) as {
+        success: boolean;
+      } | null;
       if (res?.success) window.location.replace("/user/dashboard-user");
     };
     checkGoogle();
@@ -79,11 +81,11 @@ export default function Register() {
     }
   };
 
-  // ── Success state ────────────────────────────────────────────────────────
+  // ── Success state ─────────────────────────────────────────────────────────
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center px-4">
-        <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl shadow-blue-900/10 p-10 text-center">
+        <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl shadow-blue-900/10 p-8 sm:p-10 text-center">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-5">
             <FontAwesomeIcon icon={faCircleCheck} className="w-10 h-10 text-green-500" />
           </div>
@@ -99,7 +101,6 @@ export default function Register() {
     );
   }
 
-  // ── Field config ─────────────────────────────────────────────────────────
   const fields = [
     {
       id: "fullName",
@@ -109,7 +110,6 @@ export default function Register() {
       onChange: setFullName,
       placeholder: "Masukkan nama lengkap",
       icon: faUser,
-      showToggle: false,
     },
     {
       id: "phoneNumber",
@@ -119,7 +119,6 @@ export default function Register() {
       onChange: setPhoneNumber,
       placeholder: "08xx-xxxx-xxxx",
       icon: faPhone,
-      showToggle: false,
     },
     {
       id: "email",
@@ -129,18 +128,17 @@ export default function Register() {
       onChange: setEmail,
       placeholder: "nama@email.com",
       icon: faEnvelope,
-      showToggle: false,
     },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center px-4 py-10">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center px-4 py-8">
       {/* Decorative blobs */}
       <div className="fixed top-0 left-0 w-96 h-96 bg-[#1E2753]/8 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2" />
       <div className="fixed bottom-0 right-0 w-80 h-80 bg-orange-400/10 rounded-full blur-3xl pointer-events-none translate-x-1/3 translate-y-1/3" />
 
       <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 bg-white rounded-3xl shadow-2xl shadow-blue-900/10 overflow-hidden">
-        {/* ── Left: branding ── */}
+        {/* ── Left: branding — desktop only ── */}
         <div className="hidden md:flex flex-col justify-between bg-gradient-to-br from-[#1E2753] via-[#243080] to-[#1a2060] p-10 text-white relative overflow-hidden">
           <div
             className="absolute inset-0 opacity-5"
@@ -180,20 +178,33 @@ export default function Register() {
         </div>
 
         {/* ── Right: form ── */}
-        <div className="flex flex-col justify-center px-8 py-10 sm:px-10 overflow-y-auto max-h-screen">
-          {/* Mobile brand */}
-          <div className="flex items-center gap-2 mb-6 md:hidden">
-            <div className="w-8 h-8 bg-[#1E2753] rounded-xl flex items-center justify-center">
-              <FontAwesomeIcon icon={faBolt} className="w-4 h-4 text-yellow-400" />
+        {/*
+          Mobile: scroll dalam layar penuh — overflow-y-auto + max-h-screen
+          supaya form panjang bisa di-scroll tanpa outer page jump
+        */}
+        <div className="flex flex-col justify-start md:justify-center px-6 py-7 sm:px-10 sm:py-10 overflow-y-auto max-h-screen md:max-h-none">
+          {/* Mobile: branding + chip keunggulan */}
+          <div className="md:hidden mb-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-9 h-9 bg-[#1E2753] rounded-xl flex items-center justify-center">
+                <FontAwesomeIcon icon={faBolt} className="w-4 h-4 text-yellow-400" />
+              </div>
+              <div>
+                <span className="font-black text-[#1E2753] text-base">Rizky</span>
+                <span className="text-[#E85D04] text-xs font-bold tracking-widest ml-1">ELEKTRONIK</span>
+              </div>
             </div>
-            <div>
-              <span className="font-black text-[#1E2753] text-base">Rizky</span>
-              <span className="text-[#E85D04] text-xs font-bold tracking-widest ml-1">ELEKTRONIK</span>
+            <div className="flex gap-2 flex-wrap">
+              {["⚡ Daftar Gratis", "🎯 Pantau Pesanan", "❤️ Simpan Wishlist"].map((chip) => (
+                <span key={chip} className="text-[11px] font-semibold bg-[#1E2753]/8 text-[#1E2753] px-2.5 py-1 rounded-full">
+                  {chip}
+                </span>
+              ))}
             </div>
           </div>
 
           <h1 className="text-2xl font-black text-slate-800 mb-1">Buat akun baru</h1>
-          <p className="text-sm text-slate-500 mb-6">
+          <p className="text-sm text-slate-500 mb-5">
             Sudah punya akun?{" "}
             <Link href="/login" className="text-[#1E2753] font-bold hover:underline">
               Masuk di sini
@@ -209,7 +220,7 @@ export default function Register() {
           )}
 
           <form onSubmit={handleRegister} className="space-y-3.5">
-            {/* Text fields */}
+            {/* Field: nama, telp, email */}
             {fields.map((f) => (
               <div key={f.id}>
                 <label className="text-xs font-bold text-slate-600 mb-1.5 block">{f.label}</label>
@@ -250,9 +261,9 @@ export default function Register() {
                   <FontAwesomeIcon className="w-4 h-4" icon={showPassword ? faEyeSlash : faEye} />
                 </button>
               </div>
-              {/* Strength hint */}
+              {/* Password strength bar */}
               {password.length > 0 && (
-                <div className="flex gap-1 mt-1.5">
+                <div className="flex gap-1 mt-1.5 items-center">
                   {[...Array(4)].map((_, i) => (
                     <div
                       key={i}
@@ -266,7 +277,7 @@ export default function Register() {
               )}
             </div>
 
-            {/* Confirm Password */}
+            {/* Konfirmasi Password */}
             <div>
               <label className="text-xs font-bold text-slate-600 mb-1.5 block">Konfirmasi Password</label>
               <div className="relative">
@@ -299,7 +310,7 @@ export default function Register() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-11 bg-[#1E2753] hover:bg-[#2a3470] disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 mt-1 shadow-lg shadow-blue-900/20"
+              className="w-full h-11 bg-[#1E2753] hover:bg-[#2a3470] disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 mt-1 shadow-lg shadow-blue-900/20 active:scale-95"
             >
               {loading && <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />}
               {loading ? "Membuat akun..." : "Buat Akun Gratis"}
@@ -309,7 +320,7 @@ export default function Register() {
           {/* Divider */}
           <div className="flex items-center gap-3 my-4">
             <div className="flex-1 h-px bg-slate-200" />
-            <span className="text-xs font-medium text-slate-400">atau daftar dengan</span>
+            <span className="text-xs font-medium text-slate-400 whitespace-nowrap">atau daftar dengan</span>
             <div className="flex-1 h-px bg-slate-200" />
           </div>
 
@@ -317,7 +328,7 @@ export default function Register() {
           <button
             onClick={handleGoogle}
             disabled={loadingGoogle}
-            className="flex items-center justify-center w-full h-11 border-2 border-slate-200 rounded-2xl gap-3 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-60 transition-all text-sm text-slate-700 font-semibold"
+            className="flex items-center justify-center w-full h-11 border-2 border-slate-200 rounded-2xl gap-3 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-60 transition-all text-sm text-slate-700 font-semibold active:scale-95"
           >
             {loadingGoogle ? <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin text-slate-500" /> : <FontAwesomeIcon icon={faGoogle} className="w-4 h-4 text-red-500" />}
             {loadingGoogle ? "Memproses..." : "Daftar dengan Google"}

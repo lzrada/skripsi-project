@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTableCells } from "@fortawesome/free-solid-svg-icons";
+import { faBox, faTableCells } from "@fortawesome/free-solid-svg-icons";
 import ProductCard from "@/components/(user)/ui/ProductCard";
 import { SkeletonGrid } from "@/components/(user)/ui/SkeletonProductCard";
 import { Product } from "@/types/product";
@@ -58,7 +58,9 @@ export default function AllProductsSection({ products, loading, activeTab, visib
         </>
       ) : (
         <div className="text-center py-16 text-gray-400">
-          <p className="text-4xl mb-3">📦</p>
+          <p className="text-4xl mb-3">
+            <FontAwesomeIcon icon={faBox} className="w-10 h-10 text-[#1E2753]" />
+          </p>
           <p className="font-medium">Tidak ada produk ditemukan</p>
           <p className="text-sm mt-1">Coba tab lain atau cari produk berbeda</p>
         </div>

@@ -14,7 +14,7 @@ type SortOption = "default" | "price-asc" | "price-desc" | "name-asc";
 function ProductSkeleton() {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
-      <div className="w-full h-48 bg-gray-200" />
+      <div className="w-full aspect-square bg-gray-200" />
       <div className="p-3 space-y-2">
         <div className="h-4 bg-gray-200 rounded w-3/4" />
         <div className="h-3 bg-gray-200 rounded w-1/2" />
@@ -49,6 +49,14 @@ function ProductsContent() {
   useEffect(() => {
     setActiveCategory(selectedCategory);
   }, [selectedCategory]);
+
+  // Kunci scroll body saat filter sheet terbuka di mobile
+  useEffect(() => {
+    document.body.style.overflow = filterOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [filterOpen]);
 
   const handleCategoryChange = (cat: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -87,62 +95,120 @@ function ProductsContent() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-gray-800">{pageTitle}</h1>
-            <p className="text-xs text-gray-400 mt-0.5">{loading ? "Memuat..." : `${filteredProducts.length} produk ditemukan`}</p>
+      {/* ── Mobile filter bottom-sheet overlay ── */}
+      {filterOpen && <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setFilterOpen(false)} />}
+
+      {/* ── Mobile filter bottom-sheet panel ── */}
+      <div
+        className={`fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl
+          transition-transform duration-300 ease-out md:hidden
+          ${filterOpen ? "translate-y-0" : "translate-y-full"}`}
+        style={{ maxHeight: "80vh", overflowY: "auto" }}
+      >
+        {/* Handle bar */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 bg-gray-300 rounded-full" />
+        </div>
+
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <p className="text-base font-bold text-gray-800">Filter Produk</p>
+          <button onClick={() => setFilterOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500">
+            <FontAwesomeIcon icon={faXmark} className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <div className="px-5 pb-8">
+          <ProductFilterPanel
+            activeCategory={activeCategory}
+            priceRange={priceRange}
+            conditionFilter={conditionFilter}
+            onCategoryChange={(cat) => {
+              handleCategoryChange(cat);
+              setFilterOpen(false);
+            }}
+            onPriceChange={setPriceRange}
+            onConditionChange={setConditionFilter}
+            onReset={() => {
+              resetFilters();
+              setFilterOpen(false);
+            }}
+            hasFilter={hasFilter}
+          />
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 py-5">
+        {/* ── Header: judul + kontrol ── */}
+        <div className="flex items-center justify-between gap-3 mb-4">
+          {/* Judul */}
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800 truncate">{pageTitle}</h1>
+            <p className="text-xs text-gray-400 mt-0.5">{loading ? "Memuat..." : `${filteredProducts.length} produk`}</p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+
+          {/* Kontrol kanan */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Tombol filter */}
             <button
               onClick={() => setFilterOpen((o) => !o)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${hasFilter ? "bg-[#1E2753] text-white border-[#1E2753]" : "bg-white border-gray-200 text-gray-600 hover:border-[#1E2753]"}`}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${hasFilter ? "bg-[#1E2753] text-white border-[#1E2753]" : "bg-white border-gray-200 text-gray-600 hover:border-[#1E2753]"}`}
             >
               <FontAwesomeIcon icon={faSliders} className="w-3.5 h-3.5" />
-              Filter {hasFilter && <span className="bg-white/30 text-xs px-1.5 rounded-full">aktif</span>}
+              <span className="hidden sm:inline">Filter</span>
+              {hasFilter && <span className="w-2 h-2 rounded-full bg-orange-400 sm:hidden" />}
+              {hasFilter && <span className="hidden sm:inline bg-white/30 text-xs px-1.5 rounded-full">aktif</span>}
             </button>
-            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2">
-              <FontAwesomeIcon icon={faArrowDownWideShort} className="w-3.5 h-3.5 text-gray-400" />
-              <select value={sort} onChange={(e) => setSort(e.target.value as SortOption)} className="text-sm text-gray-700 focus:outline-none bg-transparent cursor-pointer">
+
+            {/* Sort dropdown */}
+            <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-2.5 sm:px-3 py-2">
+              <FontAwesomeIcon icon={faArrowDownWideShort} className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+              <select value={sort} onChange={(e) => setSort(e.target.value as SortOption)} className="text-xs sm:text-sm text-gray-700 focus:outline-none bg-transparent cursor-pointer max-w-[90px] sm:max-w-none">
                 <option value="default">Urutkan</option>
-                <option value="price-asc">Harga: Termurah</option>
-                <option value="price-desc">Harga: Termahal</option>
-                <option value="name-asc">Nama: A-Z</option>
+                <option value="price-asc">Termurah</option>
+                <option value="price-desc">Termahal</option>
+                <option value="name-asc">A–Z</option>
               </select>
             </div>
+
+            {/* Reset filter — hanya muncul kalau ada filter aktif */}
             {hasFilter && (
-              <button onClick={resetFilters} className="flex items-center gap-1.5 px-3 py-2 bg-red-50 border border-red-100 rounded-xl text-xs font-medium text-red-500 hover:bg-red-100 transition-all">
+              <button onClick={resetFilters} className="flex items-center gap-1 p-2 sm:px-3 sm:py-2 bg-red-50 border border-red-100 rounded-xl text-xs font-medium text-red-500 hover:bg-red-100 transition-all" aria-label="Reset filter">
                 <FontAwesomeIcon icon={faXmark} className="w-3 h-3" />
-                Reset Filter
+                <span className="hidden sm:inline">Reset</span>
               </button>
             )}
           </div>
         </div>
 
+        {/* ── Desktop filter panel (inline, bukan sheet) ── */}
         {filterOpen && (
-          <ProductFilterPanel
-            activeCategory={activeCategory}
-            priceRange={priceRange}
-            conditionFilter={conditionFilter}
-            onCategoryChange={handleCategoryChange}
-            onPriceChange={setPriceRange}
-            onConditionChange={setConditionFilter}
-            onReset={resetFilters}
-            hasFilter={hasFilter}
-          />
+          <div className="hidden md:block mb-5">
+            <ProductFilterPanel
+              activeCategory={activeCategory}
+              priceRange={priceRange}
+              conditionFilter={conditionFilter}
+              onCategoryChange={handleCategoryChange}
+              onPriceChange={setPriceRange}
+              onConditionChange={setConditionFilter}
+              onReset={resetFilters}
+              hasFilter={hasFilter}
+            />
+          </div>
         )}
 
+        {/* ── Banner hasil pencarian ── */}
         {searchQuery && !loading && (
           <div className="mb-4 flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
             <FontAwesomeIcon icon={faMagnifyingGlass} className="w-4 h-4 text-blue-400 flex-shrink-0" />
-            <p className="text-sm text-blue-700">
-              Ditemukan <span className="font-bold">{filteredProducts.length} produk</span> untuk kata kunci <span className="font-bold">"{searchQuery}"</span>
+            <p className="text-xs sm:text-sm text-blue-700">
+              <span className="font-bold">{filteredProducts.length} produk</span> untuk <span className="font-bold">"{searchQuery}"</span>
             </p>
           </div>
         )}
 
+        {/* ── Grid produk ── */}
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {[...Array(8)].map((_, i) => (
               <ProductSkeleton key={i} />
             ))}
@@ -150,14 +216,14 @@ function ProductsContent() {
         ) : filteredProducts.length === 0 ? (
           <div className="bg-white border border-gray-100 rounded-2xl p-10 text-center">
             <p className="text-4xl mb-3">🔍</p>
-            <h2 className="text-lg font-semibold text-gray-700">{searchQuery ? "Produk tidak ditemukan" : "Belum ada produk"}</h2>
-            <p className="text-sm text-gray-500 mt-1">{searchQuery ? `Tidak ada hasil untuk "${searchQuery}".` : "Coba ubah filter pencarian."}</p>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-700">{searchQuery ? "Produk tidak ditemukan" : "Belum ada produk"}</h2>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">{searchQuery ? `Tidak ada hasil untuk "${searchQuery}".` : "Coba ubah filter pencarian."}</p>
             <button onClick={resetFilters} className="mt-4 inline-block px-5 py-2.5 bg-[#1E2753] text-white rounded-xl text-sm font-semibold">
               Reset Filter
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {filteredProducts.map((item) => (
               <ProductCard key={item.id} product={item} />
             ))}

@@ -12,7 +12,7 @@ export interface AddProductPayload {
   originalPrice?: number;
   price: number;
   stock: number;
-  reorderPoint: number; // sesuai skripsi - batas minimum stok
+  reorderPoint: number;
   description?: string;
   images: string[];
 }
@@ -29,7 +29,6 @@ export interface UpdateProductPayload {
   images: string[];
 }
 
-// Upload multiple images ke Supabase
 export const uploadMultipleImagesService = async (files: File[]): Promise<string[]> => {
   try {
     const uploadedUrls: string[] = [];
@@ -117,7 +116,6 @@ export const deleteProductService = async (id: string) => {
   }
 };
 
-// Subscribe realtime semua produk
 export const subscribeToProductsService = (callback: (products: Product[]) => void) => {
   try {
     const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
@@ -132,7 +130,6 @@ export const subscribeToProductsService = (callback: (products: Product[]) => vo
           originalPrice: data.originalPrice ?? undefined,
           price: data.price || 0,
           stock: data.stock || 0,
-          // Reorder Point untuk monitoring stok sesuai skripsi
           reorderPoint: data.reorderPoint ?? 5,
           description: data.description || "",
           images: data.images || [],

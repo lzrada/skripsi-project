@@ -11,13 +11,24 @@ export interface CreateOrderPayload {
   kodePos: string;
   note: string;
   paymentMethod: string;
-  items: { id: string; name: string; price: number; qty: number; category: string }[];
+  items: {
+    id: string;
+    name: string;
+    price: number;
+    qty: number;
+    category: string;
+    image?: string;
+  }[];
+  subtotal: number;
+  shippingFee: number;
   total: number;
   couponCode?: string;
   diskonKupon?: number;
   couponId?: string;
   paymentStatus?: "paid" | "pending" | "unpaid";
   midtransResult?: Record<string, unknown>;
+  shippingDistanceKm?: number;
+  shippingLabel?: string;
 }
 
 // ── Buat order baru (Inventory First) ────────────────────────────────────────
@@ -45,7 +56,17 @@ export const createOrderService = async (payload: CreateOrderPayload): Promise<s
       address: `${payload.address}, ${payload.kota} ${payload.kodePos}`.trim(),
       note: payload.note,
       paymentMethod: payload.paymentMethod,
-      items: payload.items,
+      // Simpan image di setiap item agar bisa ditampilkan di halaman order
+      items: payload.items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        qty: item.qty,
+        category: item.category,
+        ...(item.image ? { image: item.image } : {}),
+      })),
+      subtotal: payload.subtotal,
+      shippingFee: payload.shippingFee,
       total: payload.total,
       status: "Menunggu Konfirmasi" as OrderStatus,
       date: new Date().toISOString(),
@@ -54,6 +75,7 @@ export const createOrderService = async (payload: CreateOrderPayload): Promise<s
       ...(payload.couponCode ? { couponCode: payload.couponCode, diskonKupon: payload.diskonKupon ?? 0 } : {}),
       ...(payload.paymentStatus ? { paymentStatus: payload.paymentStatus } : {}),
       ...(payload.midtransResult ? { midtransResult: payload.midtransResult } : {}),
+      ...(payload.shippingDistanceKm !== undefined ? { shippingDistanceKm: payload.shippingDistanceKm, shippingLabel: payload.shippingLabel } : {}),
     });
 
     // Kurangi stok hanya jika sudah paid
@@ -124,7 +146,6 @@ export const cancelOrderService = async (orderId: string): Promise<void> => {
 
 // ── Batalkan order + refund Midtrans (untuk order yang sudah paid) ────────────
 export const cancelAndRefundOrderService = async (orderId: string, midtransOrderId: string, total: number): Promise<void> => {
-  // 1. Refund ke Midtrans dulu
   const res = await fetch("/api/midtrans", {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
@@ -140,7 +161,6 @@ export const cancelAndRefundOrderService = async (orderId: string, midtransOrder
     throw new Error(err?.error ?? "Gagal memproses refund ke Midtrans.");
   }
 
-  // 2. Baru batalkan order di Firestore + kembalikan stok
   await cancelOrderService(orderId);
 };
 
@@ -156,6 +176,8 @@ export const subscribeToUserOrdersService = (uid: string, callback: (orders: Ord
         date: data.date ?? "",
         status: data.status ?? "Menunggu Konfirmasi",
         items: data.items ?? [],
+        subtotal: data.subtotal ?? 0,
+        shippingFee: data.shippingFee ?? 0,
         total: data.total ?? 0,
         paymentMethod: data.paymentMethod ?? "",
         address: data.address ?? "",
@@ -164,6 +186,8 @@ export const subscribeToUserOrdersService = (uid: string, callback: (orders: Ord
         note: data.note,
         paymentStatus: data.paymentStatus,
         midtransResult: data.midtransResult,
+        couponCode: data.couponCode,
+        diskonKupon: data.diskonKupon,
       } as Order;
     });
     callback(orders);
@@ -182,6 +206,8 @@ export const subscribeToAllOrdersService = (callback: (orders: Order[]) => void)
         date: data.date ?? "",
         status: data.status ?? "Menunggu Konfirmasi",
         items: data.items ?? [],
+        subtotal: data.subtotal ?? 0,
+        shippingFee: data.shippingFee ?? 0,
         total: data.total ?? 0,
         paymentMethod: data.paymentMethod ?? "",
         address: data.address ?? "",
@@ -190,6 +216,8 @@ export const subscribeToAllOrdersService = (callback: (orders: Order[]) => void)
         note: data.note,
         paymentStatus: data.paymentStatus,
         midtransResult: data.midtransResult,
+        couponCode: data.couponCode,
+        diskonKupon: data.diskonKupon,
       } as Order;
     });
     callback(orders);
@@ -224,6 +252,8 @@ export const subscribeToOrderByIdService = (orderId: string, callback: (order: O
       date: data.date ?? "",
       status: data.status ?? "Menunggu Konfirmasi",
       items: data.items ?? [],
+      subtotal: data.subtotal ?? 0,
+      shippingFee: data.shippingFee ?? 0,
       total: data.total ?? 0,
       paymentMethod: data.paymentMethod ?? "",
       address: data.address ?? "",
@@ -232,6 +262,8 @@ export const subscribeToOrderByIdService = (orderId: string, callback: (order: O
       note: data.note ?? "",
       paymentStatus: data.paymentStatus,
       midtransResult: data.midtransResult,
+      couponCode: data.couponCode,
+      diskonKupon: data.diskonKupon,
     } as Order);
   });
 };

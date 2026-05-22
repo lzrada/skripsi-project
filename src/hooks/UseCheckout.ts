@@ -194,7 +194,6 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     } catch (err: any) {
       toast.error(err?.message ?? "Gagal membuat pesanan, coba lagi.");
       setShowConfirm(false);
-    } finally {
       setLoading(false);
     }
   };
@@ -204,6 +203,8 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     setLoading(true);
     const snapshot = [...orderItems];
     try {
+      // FIX: kirim diskonKupon, couponCode, dan shippingFee agar gross_amount
+      // di Midtrans cocok dengan item_details (mencegah error 400 dari Midtrans)
       const { token } = await createMidtransTransaction({
         items: buildItems(snapshot),
         user: {
@@ -212,6 +213,9 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
         },
         totalPrice: total,
         paymentType: selectedMethod.paymentType,
+        diskonKupon: diskonKupon > 0 ? diskonKupon : undefined,
+        couponCode: couponCode || undefined,
+        shippingFee: shippingFee > 0 ? shippingFee : undefined,
       });
 
       if (!window.snap) {
@@ -246,6 +250,7 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
         onError: (err: any) => {
           console.error(err);
           toast.error("Pembayaran gagal. Silakan coba lagi.");
+          setLoading(false);
         },
         onClose: () => {
           toast.info("Kamu menutup jendela pembayaran.");
@@ -256,7 +261,6 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
       console.error(err);
       setFormError("Gagal memproses pembayaran. Coba lagi.");
       setShowConfirm(false);
-    } finally {
       setLoading(false);
     }
   };

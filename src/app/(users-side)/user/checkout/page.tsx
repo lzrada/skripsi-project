@@ -56,6 +56,7 @@ function CheckoutForm() {
           isCod={isCod}
           orderItems={orderItems}
           subtotal={subtotal}
+          shippingFee={shippingFee}
           diskonKupon={diskonKupon}
           couponCode={couponCode}
           total={total}

@@ -8,6 +8,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronLeft, faLocationDot, faPhone, faUser, faNoteSticky, faTruck, faMoneyBill, faRotateLeft, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { type Order, statusConfig } from "@/types/order";
 import { subscribeToOrderByIdService, cancelOrderService, cancelAndRefundOrderService } from "@/service/order.service";
+import { categoryIcon, categoryGradient, defaultCategoryIcon, defaultGradient } from "@/constants/category";
 import OrderTracking from "@/components/(user)/orders/OrderTracking";
 import ReviewModal from "@/components/(user)/orders/ReviewModal";
 import CancelModal from "@/components/(user)/orders/CancelModal";
@@ -39,6 +40,21 @@ function formatDate(dateStr: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function ItemImage({ image, name, category }: { image?: string; name: string; category: string }) {
+  if (image) {
+    return (
+      <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+        <Image src={image} alt={name} width={48} height={48} className="w-full h-full object-contain p-1" />
+      </div>
+    );
+  }
+  return (
+    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${categoryGradient[category] ?? defaultGradient} flex items-center justify-center flex-shrink-0`}>
+      <FontAwesomeIcon icon={categoryIcon[category] ?? defaultCategoryIcon} className="w-5 h-5 text-white/80" />
+    </div>
+  );
 }
 
 export default function OrderDetailPage() {
@@ -151,22 +167,18 @@ export default function OrderDetailPage() {
           <Link href="/user/orders" className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 hover:bg-gray-50 transition text-gray-500">
             <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
           </Link>
-          <div>
-            <h1 className="text-xl font-bold text-gray-800">Detail Pesanan</h1>
-            <p className="text-xs text-gray-400">#{order.id}</p>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-bold text-gray-800">Detail Pesanan</h1>
+            <p className="text-xs text-gray-400 truncate">#{order.id}</p>
           </div>
-          <span className={`ml-auto flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${status.bg} ${status.color}`}>
+          <span className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border ${status.bg} ${status.color}`}>
             <FontAwesomeIcon icon={status.icon} className="w-3 h-3" />
             {status.label}
           </span>
         </div>
 
         {/* Tracking */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-sm font-bold text-gray-800 mb-4">Status Pesanan</p>
-          <OrderTracking status={order.status} />
-          <p className="text-xs text-gray-400 mt-3 text-right">Dipesan: {formatDate(order.date)}</p>
-        </div>
+        <OrderTracking status={order.status} date={order.date} />
 
         {/* Produk */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -178,7 +190,7 @@ export default function OrderDetailPage() {
           <div className="divide-y divide-gray-50">
             {order.items.map((item) => (
               <div key={item.id} className="flex items-center gap-3 px-5 py-3">
-                <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0 text-xl">📦</div>
+                <ItemImage image={item.image} name={item.name} category={item.category} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-800 line-clamp-2">{item.name}</p>
                   <p className="text-xs text-gray-400">
@@ -209,10 +221,14 @@ export default function OrderDetailPage() {
             </div>
             <div className="flex justify-between text-gray-500">
               <span>Ongkos Kirim</span>
-              <span className="text-gray-800">
-                {order.total - order.items.reduce((s, i) => s + i.price * i.qty, 0) <= 0 ? <span className="text-green-600 font-semibold">Gratis</span> : formatPrice(order.total - order.items.reduce((s, i) => s + i.price * i.qty, 0))}
-              </span>
+              <span className="text-gray-800">{(order.shippingFee ?? 0) > 0 ? formatPrice(order.shippingFee) : <span className="text-green-600 font-semibold">Gratis</span>}</span>
             </div>
+            {(order.diskonKupon ?? 0) > 0 && (
+              <div className="flex justify-between text-gray-500">
+                <span>Diskon{order.couponCode ? ` (${order.couponCode})` : ""}</span>
+                <span className="text-red-500 font-semibold">-{formatPrice(order.diskonKupon!)}</span>
+              </div>
+            )}
           </div>
           <div className="border-t pt-3 flex justify-between items-center">
             <span className="font-bold text-gray-800">Total</span>
@@ -242,29 +258,31 @@ export default function OrderDetailPage() {
                 <span className="text-gray-500 italic">{order.note}</span>
               </div>
             )}
-            <div className="flex items-start gap-2.5">
-              <FontAwesomeIcon icon={faMoneyBill} className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
-              <span className="text-gray-700">{order.paymentMethod}</span>
-            </div>
+          </div>
+        </div>
+
+        {/* Info Pembayaran */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-2.5">
+          <p className="text-sm font-bold text-gray-800">Informasi Pembayaran</p>
+          <div className="flex items-center gap-2.5 text-sm">
+            <FontAwesomeIcon icon={faMoneyBill} className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <span className="text-gray-700">{order.paymentMethod}</span>
           </div>
         </div>
 
         {/* Aksi */}
         <div className="flex gap-3">
           {canCancel && (
-            <button onClick={() => setShowCancel(true)} className="flex-1 py-3 border-2 border-red-400 text-red-500 rounded-xl text-sm font-semibold hover:bg-red-500 hover:text-white transition-all">
+            <button onClick={() => setShowCancel(true)} className="flex-1 py-3 border-2 border-red-400 text-red-500 rounded-2xl text-sm font-semibold hover:bg-red-500 hover:text-white transition-all">
               Batalkan Pesanan
             </button>
           )}
           {order.status === "Selesai" && (
-            <Link href="/user/dashboard-user" className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#1E2753] text-white rounded-xl text-sm font-semibold hover:bg-[#2a3470] transition-all">
+            <Link href="/user/dashboard-user" className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#1E2753] text-white rounded-2xl text-sm font-semibold hover:bg-[#2a3470] transition-all">
               <FontAwesomeIcon icon={faRotateLeft} className="w-3.5 h-3.5" />
               Beli Lagi
             </Link>
           )}
-          <Link href="/user/orders" className="flex-1 py-3 border-2 border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:border-gray-300 transition text-center">
-            Kembali
-          </Link>
         </div>
       </div>
     </>

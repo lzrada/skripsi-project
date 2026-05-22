@@ -24,9 +24,37 @@ function createCoreClient() {
 // ── POST /api/midtrans → buat transaksi baru ──────────────────────────────────
 export async function POST(req: Request) {
   try {
-    const { items, user, totalPrice, paymentType } = await req.json();
+    const { items, user, totalPrice, paymentType, diskonKupon, couponCode, shippingFee } = await req.json();
 
     const snap = createSnapClient();
+
+    // Hitung total dari item_details agar cocok dengan gross_amount Midtrans
+    const itemDetails: any[] = items.map((item: any) => ({
+      id: item.id,
+      price: item.price,
+      quantity: item.qty,
+      name: item.name.substring(0, 50),
+    }));
+
+    // Tambahkan ongkir sebagai item jika ada
+    if (shippingFee && shippingFee > 0) {
+      itemDetails.push({
+        id: "SHIPPING",
+        price: shippingFee,
+        quantity: 1,
+        name: "Ongkos Kirim",
+      });
+    }
+
+    // Tambahkan diskon kupon sebagai item negatif agar gross_amount cocok
+    if (diskonKupon && diskonKupon > 0) {
+      itemDetails.push({
+        id: "COUPON",
+        price: -diskonKupon,
+        quantity: 1,
+        name: couponCode ? `Diskon Kupon (${couponCode})`.substring(0, 50) : "Diskon Kupon",
+      });
+    }
 
     const parameter: any = {
       transaction_details: {
@@ -38,12 +66,7 @@ export async function POST(req: Request) {
         first_name: user.name,
         email: user.email,
       },
-      item_details: items.map((item: any) => ({
-        id: item.id,
-        price: item.price,
-        quantity: item.qty,
-        name: item.name.substring(0, 50),
-      })),
+      item_details: itemDetails,
     };
 
     if (paymentType && ENABLED_PAYMENTS[paymentType]) {
@@ -69,8 +92,6 @@ export async function DELETE(req: Request) {
 
     const core = createCoreClient();
 
-    // Coba refund dulu (jika sudah settlement/capture)
-    // Jika gagal karena belum settlement, lakukan cancel
     let result;
     try {
       result = await (core as any).refund(orderId, {

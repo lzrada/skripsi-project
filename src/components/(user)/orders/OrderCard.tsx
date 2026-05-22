@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronDown, faChevronUp, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
 import { categoryIcon, categoryGradient, defaultCategoryIcon, defaultGradient } from "@/constants/category";
@@ -28,6 +29,21 @@ function formatDate(dateStr: string) {
   });
 }
 
+function ItemImage({ image, name, category }: { image?: string; name: string; category: string }) {
+  if (image) {
+    return (
+      <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+        <Image src={image} alt={name} width={48} height={48} className="w-full h-full object-contain p-1" />
+      </div>
+    );
+  }
+  return (
+    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${categoryGradient[category] ?? defaultGradient} flex items-center justify-center flex-shrink-0`}>
+      <FontAwesomeIcon icon={categoryIcon[category] ?? defaultCategoryIcon} className="w-5 h-5 text-white/80" />
+    </div>
+  );
+}
+
 export default function OrderCard({ order, onCancel }: OrderCardProps) {
   const [expanded, setExpanded] = useState(false);
   const status = statusConfig[order.status];
@@ -51,9 +67,7 @@ export default function OrderCard({ order, onCancel }: OrderCardProps) {
       <div className="px-4 py-3 space-y-2">
         {(expanded ? order.items : order.items.slice(0, 1)).map((item) => (
           <div key={item.id} className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${categoryGradient[item.category] ?? defaultGradient} flex items-center justify-center flex-shrink-0`}>
-              <FontAwesomeIcon icon={categoryIcon[item.category] ?? defaultCategoryIcon} className="w-5 h-5 text-white/80" />
-            </div>
+            <ItemImage image={item.image} name={item.name} category={item.category} />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-gray-800 line-clamp-1">{item.name}</p>
               <p className="text-xs text-gray-400">

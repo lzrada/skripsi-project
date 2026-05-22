@@ -312,13 +312,11 @@ export default function CartClient() {
           </div>
         </div>
 
-        {/* KOLOM KANAN — Desktop sidebar saja */}
         <div className="hidden md:block lg:block lg:col-span-1">
           <CartSummaryDesktop {...summaryProps} />
         </div>
       </div>
 
-      {/* MOBILE BOTTOM BAR — Render di luar grid */}
       <div className="lg:hidden md:hidden">
         <CartSummaryMobile {...summaryProps} />
       </div>

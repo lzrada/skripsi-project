@@ -1,15 +1,23 @@
 "use client";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBoxOpen, faUser, faPhone, faMapMarkerAlt, faHandHoldingDollar, faLock, faExclamationCircle } from "@fortawesome/free-solid-svg-icons";
+import { faBoxOpen, faUser, faPhone, faMapMarkerAlt, faHandHoldingDollar, faLock } from "@fortawesome/free-solid-svg-icons";
 import { CartItem } from "@/types/cart";
 
 interface Props {
-  form: { nama: string; telepon: string; alamat: string; kota: string; kodePos: string; catatan: string };
+  form: {
+    nama: string;
+    telepon: string;
+    alamat: string;
+    kota: string;
+    kodePos: string;
+    catatan: string;
+  };
   paymentLabel: string;
   isCod: boolean;
   orderItems: CartItem[];
   subtotal: number;
+  shippingFee: number;
   diskonKupon: number;
   couponCode: string;
   total: number;
@@ -18,8 +26,13 @@ interface Props {
   onClose: () => void;
 }
 
-export default function ConfirmOrderModal({ form, paymentLabel, isCod, orderItems, subtotal, diskonKupon, couponCode, total, loading, onConfirm, onClose }: Props) {
-  const formatPrice = (price: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(price);
+export default function ConfirmOrderModal({ form, paymentLabel, isCod, orderItems, subtotal, shippingFee, diskonKupon, couponCode, total, loading, onConfirm, onClose }: Props) {
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(price);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-0 sm:px-4" onClick={onClose}>
@@ -91,7 +104,7 @@ export default function ConfirmOrderModal({ form, paymentLabel, isCod, orderItem
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Ongkos Kirim</span>
-              <span className="text-green-600 font-semibold">Gratis</span>
+              {shippingFee > 0 ? <span className="font-semibold">{formatPrice(shippingFee)}</span> : <span className="text-green-600 font-semibold">Gratis 🎉</span>}
             </div>
             {diskonKupon > 0 && (
               <div className="flex justify-between text-sm">

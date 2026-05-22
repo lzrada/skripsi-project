@@ -1,4 +1,12 @@
-export const createMidtransTransaction = async (payload: { items: any[]; user: { name: string; email: string }; totalPrice: number; paymentType?: "transfer" | "kartu" | "ewallet" }) => {
+export const createMidtransTransaction = async (payload: {
+  items: any[];
+  user: { name: string; email: string };
+  totalPrice: number;
+  paymentType?: "transfer" | "kartu" | "ewallet";
+  diskonKupon?: number;
+  couponCode?: string;
+  shippingFee?: number;
+}) => {
   const res = await fetch("/api/midtrans", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

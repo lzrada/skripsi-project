@@ -24,7 +24,7 @@ export interface UpdateProductPayload {
   originalPrice?: number;
   price: number;
   stock: number;
-  reorderPoint: number; // sesuai skripsi
+  reorderPoint: number;
   description?: string;
   images: string[];
 }
@@ -79,6 +79,7 @@ export const addProductService = async (payload: AddProductPayload) => {
       reorderPoint: payload.reorderPoint ?? 5,
       description: payload.description ?? "",
       images: payload.images,
+      sold: 0, // ← TAMBAHKAN: inisialisasi sold = 0
       createdAt: serverTimestamp(),
     });
     return response;
@@ -100,6 +101,7 @@ export const updateProductService = async (id: string, payload: UpdateProductPay
       reorderPoint: payload.reorderPoint ?? 5,
       description: payload.description ?? "",
       images: payload.images,
+      // Catatan: sold sengaja tidak di-reset saat update produk
     });
   } catch (error) {
     console.error("updateProductService Error:", error);
@@ -135,6 +137,7 @@ export const subscribeToProductsService = (callback: (products: Product[]) => vo
           images: data.images || [],
           averageRating: data.averageRating ?? 0,
           totalReviews: data.totalReviews ?? 0,
+          sold: data.sold ?? 0, // ← TAMBAHKAN
           createdAt: data.createdAt || null,
         };
       });
@@ -165,6 +168,7 @@ export const getProductByIdService = async (productId: string): Promise<Product 
       images: data.images ?? [],
       averageRating: data.averageRating ?? 0,
       totalReviews: data.totalReviews ?? 0,
+      sold: data.sold ?? 0, // ← TAMBAHKAN
       createdAt: data.createdAt ?? null,
     };
   } catch (error) {
@@ -195,6 +199,7 @@ export const getRelatedProductsService = async (category: string, excludeId: str
           images: data.images ?? [],
           averageRating: data.averageRating ?? 0,
           totalReviews: data.totalReviews ?? 0,
+          sold: data.sold ?? 0, // ← TAMBAHKAN
         };
       });
   } catch (error) {
@@ -224,6 +229,7 @@ export const getProductsByIdsService = async (ids: string[]): Promise<Product[]>
           images: data.images ?? [],
           averageRating: data.averageRating ?? 0,
           totalReviews: data.totalReviews ?? 0,
+          sold: data.sold ?? 0, // ← TAMBAHKAN
         };
       });
   } catch (error) {

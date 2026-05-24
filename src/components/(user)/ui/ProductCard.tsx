@@ -42,6 +42,12 @@ function formatPrice(price: number) {
   }).format(price);
 }
 
+// Format angka sold: 1500 → "1,5rb", 999 → "999"
+function formatSold(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(".", ",")}rb`;
+  return n.toString();
+}
+
 function getUid(): string | null {
   if (typeof document === "undefined") return null;
   return (
@@ -83,6 +89,31 @@ function StockBadge({ stock }: { stock: number }) {
       Tersedia
     </span>
   );
+}
+
+// Badge terjual — hanya muncul jika sold > 0
+function SoldBadge({ sold }: { sold: number }) {
+  if (sold <= 0) return null;
+  if (sold >= 100) {
+    // Laris keras → gradient api merah-oranye
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-gradient-to-r from-orange-500 to-red-500 px-2 py-0.5 rounded-full shadow-sm">
+        <FontAwesomeIcon icon={faFire} className="w-2.5 h-2.5 animate-pulse" />
+        {formatSold(sold)}+ terjual
+      </span>
+    );
+  }
+  if (sold >= 10) {
+    // Lumayan laku → oranye muda
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
+        <FontAwesomeIcon icon={faFire} className="w-2.5 h-2.5" />
+        {formatSold(sold)} terjual
+      </span>
+    );
+  }
+  // Baru sedikit → abu halus
+  return <span className="text-[10px] text-gray-400 font-medium">{sold} terjual</span>;
 }
 
 function isNewProduct(createdAt?: any): boolean {
@@ -146,13 +177,12 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
     }
   };
 
-  // Hitung offset top badge Second/New berdasarkan ada tidaknya badge diskon
   const badgeTopOffset = discountPct ? "2rem" : "0.5rem";
 
   return (
     <div
       onClick={() => router.push(`/user/product-detail/${product.id}`)}
-      className="group relative bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-[#1E2753]/20 hover:shadow-2xl shadow-sm transition-all duration-300 flex flex-col cursor-pointer"
+      className="group relative bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-orange-200 hover:shadow-2xl shadow-sm transition-all duration-300 flex flex-col cursor-pointer"
     >
       {/* ── Area Gambar ── */}
       <div className="relative overflow-hidden bg-gray-50">
@@ -174,7 +204,7 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
           </div>
         )}
 
-        {/* Overlay hover — Lihat Detail */}
+        {/* Overlay hover */}
         <div className="hidden sm:flex absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 items-center justify-center opacity-0 group-hover:opacity-100">
           <Link
             href={`/user/product-detail/${product.id}`}
@@ -249,15 +279,15 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
           <p className="text-sm sm:text-base font-black text-[#1E2753] leading-tight">{formatPrice(product.price)}</p>
         </div>
 
-        {/* Stok + Terjual */}
+        {/* Stok + Terjual — satu baris, stok kiri, terjual kanan */}
         <div className="flex items-center justify-between flex-wrap gap-1">
           <StockBadge stock={liveStock} />
-          {(product.sold ?? 0) > 0 && <span className="text-[10px] text-gray-400 font-medium">{product.sold} terjual</span>}
+          <SoldBadge sold={product.sold ?? 0} />
         </div>
 
         {/* ── Action Buttons ── */}
         <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
-          {/* Tombol Detail */}
+          {/* Tombol Detail — tidak berubah sama sekali */}
           <Link
             href={`/user/product-detail/${product.id}`}
             className="flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-xl border-2 border-[#1E2753] text-[#1E2753] hover:bg-[#1E2753] hover:text-white transition-all duration-200 flex items-center justify-center gap-1.5"
@@ -265,12 +295,15 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
             Detail
           </Link>
 
-          {/* Tombol Keranjang */}
           <button
             onClick={handleAddToCart}
             disabled={adding || isOutOfStock}
-            className={`flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 ${
-              added ? "bg-emerald-500 text-white" : isOutOfStock ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-[#1E2753] text-white hover:bg-[#2a3470] active:scale-95"
+            className={`flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 relative overflow-hidden ${
+              added
+                ? "bg-emerald-500 "
+                : isOutOfStock
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-sm shadow-orange-200 hover:from-orange-400 hover:to-red-400 hover:shadow-md hover:scale-[1.03] active:scale-95 before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:-translate-x-full hover:before:translate-x-full before:transition-transform before:duration-500"
             } disabled:opacity-60`}
           >
             {adding ? (

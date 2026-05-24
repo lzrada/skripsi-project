@@ -1,5 +1,5 @@
 import { db } from "@/config/firebase";
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, serverTimestamp, runTransaction, where } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, serverTimestamp, runTransaction, where, getDoc } from "firebase/firestore";
 import { Order, OrderStatus } from "@/types/order";
 
 export interface CreateOrderPayload {
@@ -37,7 +37,6 @@ export const createOrderService = async (payload: CreateOrderPayload): Promise<s
     const productRefs = payload.items.map((item) => doc(db, "products", item.id));
     const productSnaps = await Promise.all(productRefs.map((ref) => transaction.get(ref)));
 
-    // Validasi stok semua produk sebelum buat order
     for (let i = 0; i < payload.items.length; i++) {
       const snap = productSnaps[i];
       const item = payload.items[i];
@@ -56,7 +55,6 @@ export const createOrderService = async (payload: CreateOrderPayload): Promise<s
       address: `${payload.address}, ${payload.kota} ${payload.kodePos}`.trim(),
       note: payload.note,
       paymentMethod: payload.paymentMethod,
-      // Simpan image di setiap item agar bisa ditampilkan di halaman order
       items: payload.items.map((item) => ({
         id: item.id,
         name: item.name,
@@ -72,13 +70,13 @@ export const createOrderService = async (payload: CreateOrderPayload): Promise<s
       date: new Date().toISOString(),
       createdAt: serverTimestamp(),
       stockDeducted: false,
+      soldIncremented: false, // ← TAMBAHKAN: flag agar sold hanya di-increment sekali
       ...(payload.couponCode ? { couponCode: payload.couponCode, diskonKupon: payload.diskonKupon ?? 0 } : {}),
       ...(payload.paymentStatus ? { paymentStatus: payload.paymentStatus } : {}),
       ...(payload.midtransResult ? { midtransResult: payload.midtransResult } : {}),
       ...(payload.shippingDistanceKm !== undefined ? { shippingDistanceKm: payload.shippingDistanceKm, shippingLabel: payload.shippingLabel } : {}),
     });
 
-    // Kurangi stok hanya jika sudah paid
     if (payload.paymentStatus === "paid") {
       for (let i = 0; i < payload.items.length; i++) {
         const currentStock: number = productSnaps[i].data()!.stock;
@@ -114,6 +112,31 @@ export const deductStockOnPaymentService = async (orderId: string): Promise<void
   });
 };
 
+// ── INCREMENT sold saat order Selesai ─────────────────────────────────────────
+// Dipanggil khusus saat status berubah menjadi "Selesai"
+export const incrementSoldOnCompleteService = async (orderId: string): Promise<void> => {
+  await runTransaction(db, async (transaction) => {
+    const orderRef = doc(db, "orders", orderId);
+    const orderSnap = await transaction.get(orderRef);
+    if (!orderSnap.exists()) throw new Error("Pesanan tidak ditemukan.");
+
+    const data = orderSnap.data();
+    // Guard: jangan increment sold dua kali
+    if (data.soldIncremented === true) return;
+
+    const items: { id: string; qty: number }[] = data.items ?? [];
+    for (const item of items) {
+      const productRef = doc(db, "products", item.id);
+      const productSnap = await transaction.get(productRef);
+      if (productSnap.exists()) {
+        const currentSold: number = productSnap.data().sold ?? 0;
+        transaction.update(productRef, { sold: currentSold + item.qty });
+      }
+    }
+    transaction.update(orderRef, { soldIncremented: true });
+  });
+};
+
 // ── Batalkan order + kembalikan stok ─────────────────────────────────────────
 export const cancelOrderService = async (orderId: string): Promise<void> => {
   await runTransaction(db, async (transaction) => {
@@ -144,7 +167,7 @@ export const cancelOrderService = async (orderId: string): Promise<void> => {
   });
 };
 
-// ── Batalkan order + refund Midtrans (untuk order yang sudah paid) ────────────
+// ── Batalkan order + refund Midtrans ─────────────────────────────────────────
 export const cancelAndRefundOrderService = async (orderId: string, midtransOrderId: string, total: number): Promise<void> => {
   const res = await fetch("/api/midtrans", {
     method: "DELETE",
@@ -232,9 +255,15 @@ export const updatePaymentStatusService = async (orderId: string, paymentStatus:
 };
 
 // ── Update status order oleh admin ───────────────────────────────────────────
+// ⚡ DIREVISI: Saat status = "Selesai", otomatis increment sold di tiap produk
 export const updateOrderStatusService = async (orderId: string, status: OrderStatus): Promise<void> => {
   const orderRef = doc(db, "orders", orderId);
   await updateDoc(orderRef, { status });
+
+  // Saat order Selesai → increment sold counter produk
+  if (status === "Selesai") {
+    await incrementSoldOnCompleteService(orderId);
+  }
 };
 
 // ── Subscribe satu order by ID ────────────────────────────────────────────────

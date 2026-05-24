@@ -26,6 +26,7 @@ export interface Product {
   totalReviews?: number;
   description?: string;
   images?: string[];
+  createdAt?: any;
 }
 
 interface ProductCardProps {
@@ -84,6 +85,13 @@ function StockBadge({ stock }: { stock: number }) {
   );
 }
 
+function isNewProduct(createdAt?: any): boolean {
+  if (!createdAt) return false;
+  const created = createdAt?.toDate ? createdAt.toDate() : new Date(createdAt);
+  const diffDays = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
+  return diffDays <= 30;
+}
+
 export default function ProductCard({ product, priority = false }: ProductCardProps) {
   const router = useRouter();
   if (!product) return null;
@@ -96,6 +104,7 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
   const discountPct = product.originalPrice && product.originalPrice > product.price ? Math.round((1 - product.price / product.originalPrice) * 100) : null;
 
   const isBekas = product.condition?.toLowerCase() === "bekas";
+  const isNew = !isBekas && isNewProduct(product.createdAt);
   const isOutOfStock = liveStock === 0;
 
   const [adding, setAdding] = useState(false);
@@ -136,6 +145,9 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
       setAdding(false);
     }
   };
+
+  // Hitung offset top badge Second/New berdasarkan ada tidaknya badge diskon
+  const badgeTopOffset = discountPct ? "2rem" : "0.5rem";
 
   return (
     <div
@@ -183,10 +195,17 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
           </div>
         )}
 
-        {/* Badge Second — geser kalau ada diskon */}
+        {/* Badge Second */}
         {isBekas && (
-          <div className="absolute z-10" style={{ top: discountPct ? "2rem" : "0.5rem", left: "0.5rem" }}>
+          <div className="absolute z-10" style={{ top: badgeTopOffset, left: "0.5rem" }}>
             <span className="bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-lg shadow">Second</span>
+          </div>
+        )}
+
+        {/* Badge New */}
+        {isNew && (
+          <div className="absolute z-10" style={{ top: badgeTopOffset, left: "0.5rem" }}>
+            <span className="bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-lg shadow">New</span>
           </div>
         )}
 

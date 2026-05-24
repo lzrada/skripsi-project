@@ -1,4 +1,3 @@
-// src/components/ui/WhatsAppButton.tsx
 "use client";
 
 import { useState } from "react";
@@ -31,7 +30,7 @@ export default function WhatsAppButton() {
             </button>
           </div>
           <div className="bg-green-50 rounded-xl p-3 mb-3">
-            <p className="text-xs text-gray-600 leading-relaxed">Halo! 👋 Ada yang bisa kami bantu? Chat kami untuk tanya produk, stok, harga, atau pengiriman.</p>
+            <p className="text-xs text-gray-600 leading-relaxed">Halo! 👋 Ada yang bisa kami bantu? Chat kami untuk terkait kendala atau kesalahan sistem.</p>
           </div>
 
           <a href={WA_URL} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors">

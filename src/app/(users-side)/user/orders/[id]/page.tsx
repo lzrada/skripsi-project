@@ -178,7 +178,7 @@ export default function OrderDetailPage() {
         </div>
 
         {/* Tracking */}
-        <OrderTracking status={order.status} date={order.date} />
+        <OrderTracking status={order.status} />
 
         {/* Produk */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">

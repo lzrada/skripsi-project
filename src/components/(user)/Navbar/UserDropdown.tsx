@@ -3,7 +3,7 @@
 import { useRef, useEffect } from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown, faUser, faBoxOpen, faGear, faHeart, faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faUser, faBoxOpen, faHeart, faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
 
 interface UserDropdownProps {
   userName: string;
@@ -17,7 +17,6 @@ interface UserDropdownProps {
 const MENU_ITEMS = [
   { href: "/user/account", icon: faUser, label: "Profil Saya" },
   { href: "/user/orders", icon: faBoxOpen, label: "Pesanan Saya" },
-  { href: "/user/account", icon: faGear, label: "Pengaturan" },
 ] as const;
 
 export default function UserDropdown({ userName, wishlistCount, open, onToggle, onClose, onLogout }: UserDropdownProps) {

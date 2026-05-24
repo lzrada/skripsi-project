@@ -12,7 +12,6 @@ import PaymentMethodSelector from "@/components/(user)/checkout/PaymentMethodSel
 import OrderSummary from "@/components/(user)/checkout/OrderSummary";
 import ConfirmOrderModal from "@/components/(user)/checkout/ConfirmOrderModal";
 import CheckoutBanners from "@/components/(user)/checkout/CheckoutBanners";
-import TrustBadges from "@/components/(user)/checkout/TrustBadges";
 
 function CheckoutForm() {
   const searchParams = useSearchParams();
@@ -101,7 +100,6 @@ function CheckoutForm() {
               showOrderDetail={showOrderDetail}
               setShowOrderDetail={setShowOrderDetail}
             />
-            <TrustBadges />
           </div>
         </div>
       </div>

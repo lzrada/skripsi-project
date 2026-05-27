@@ -26,7 +26,7 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
 
       <FooterUser />
       <ToastContainer />
-      <WhatsAppButton />
+      {/* <WhatsAppButton /> */}
     </div>
   );
 }

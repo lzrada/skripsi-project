@@ -6,7 +6,7 @@ import FlashSaleSection from "./FlashSaleSection";
 import LatestProductSection from "./LatestProductSection";
 import AllProductsSection from "./AllProductSection";
 
-const LOAD_MORE_STEP = 10;
+const ITEMS_PER_PAGE = 10;
 const FLASH_SALE_LIMIT = 4;
 const TERBARU_LIMIT = 4;
 
@@ -31,7 +31,7 @@ export interface ProductSectionProps {
 
 export default function ProductSection({ products, loading }: ProductSectionProps) {
   const [activeTab, setActiveTab] = useState<Tab>("Semua");
-  const [visibleCount, setVisibleCount] = useState(LOAD_MORE_STEP);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const inStock = products.filter((p) => p.stock > 0);
 
@@ -40,16 +40,27 @@ export default function ProductSection({ products, loading }: ProductSectionProp
 
   const filteredProducts = activeTab === "Promo" ? inStock.filter(isOnSale) : activeTab === "New" ? inStock.filter(isNew) : activeTab === "Second" ? inStock.filter(isSecond) : inStock;
 
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / ITEMS_PER_PAGE));
+
+  const pagedProducts = filteredProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
-    setVisibleCount(LOAD_MORE_STEP);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+
+    const el = document.getElementById("produk");
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   return (
     <div className="space-y-10">
       <FlashSaleSection products={flashSaleProducts} loading={loading} />
       <LatestProductSection products={latestProducts} loading={loading} />
-      <AllProductsSection products={filteredProducts} loading={loading} activeTab={activeTab} visibleCount={visibleCount} onTabChange={handleTabChange} onLoadMore={() => setVisibleCount((v) => v + LOAD_MORE_STEP)} />
+      <AllProductsSection products={pagedProducts} loading={loading} activeTab={activeTab} currentPage={currentPage} totalPages={totalPages} onTabChange={handleTabChange} onPageChange={handlePageChange} />
     </div>
   );
 }

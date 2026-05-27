@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBox, faTableCells } from "@fortawesome/free-solid-svg-icons";
+import { faBox, faTableCells, faChevronLeft, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import ProductCard from "@/components/(user)/ui/ProductCard";
 import { SkeletonGrid } from "@/components/(user)/ui/SkeletonProductCard";
 import { Product } from "@/types/product";
@@ -11,12 +11,30 @@ interface AllProductsSectionProps {
   products: Product[];
   loading: boolean;
   activeTab: Tab;
-  visibleCount: number;
+  currentPage: number;
+  totalPages: number;
   onTabChange: (tab: Tab) => void;
-  onLoadMore: () => void;
+  onPageChange: (page: number) => void;
 }
 
-export default function AllProductsSection({ products, loading, activeTab, visibleCount, onTabChange, onLoadMore }: AllProductsSectionProps) {
+export default function AllProductsSection({ products, loading, activeTab, currentPage, totalPages, onTabChange, onPageChange }: AllProductsSectionProps) {
+  // Buat array nomor halaman yang ditampilkan (maksimal 5 tombol)
+  const getPageNumbers = () => {
+    const pages: (number | "...")[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push("...");
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push("...");
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
   return (
     <section id="produk">
       <div className="flex items-center gap-2 mb-4">
@@ -43,18 +61,58 @@ export default function AllProductsSection({ products, loading, activeTab, visib
       ) : products.length > 0 ? (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {products.slice(0, visibleCount).map((p, i) => (
+            {products.map((p, i) => (
               <ProductCard key={p.id} product={p} priority={i < 4} />
             ))}
           </div>
 
-          {visibleCount < products.length && (
-            <div className="flex justify-center mt-8">
-              <button onClick={onLoadMore} className="px-8 py-2.5 border-2 border-[#1E2753] text-[#1E2753] rounded-xl font-semibold text-sm hover:bg-[#1E2753] hover:text-white transition-all duration-200">
-                Muat Lebih Banyak
-              </button>
-            </div>
-          )}
+          {/* Pagination */}
+
+          <div className="flex items-center justify-center gap-1 mt-8 flex-wrap">
+            {/* Tombol Prev */}
+            <button
+              onClick={() => onPageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200 text-gray-500 hover:border-[#1E2753] hover:text-[#1E2753] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+              aria-label="Halaman sebelumnya"
+            >
+              <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
+            </button>
+
+            {/* Nomor Halaman */}
+            {getPageNumbers().map((page, idx) =>
+              page === "..." ? (
+                <span key={`dots-${idx}`} className="flex items-center justify-center w-9 h-9 text-gray-400 text-sm">
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={page}
+                  onClick={() => onPageChange(page as number)}
+                  className={`flex items-center justify-center w-9 h-9 rounded-xl text-sm font-semibold border transition-all duration-200 ${
+                    currentPage === page ? "bg-[#1E2753] text-white border-[#1E2753] shadow-md" : "bg-white text-gray-600 border-gray-200 hover:border-[#1E2753] hover:text-[#1E2753]"
+                  }`}
+                >
+                  {page}
+                </button>
+              ),
+            )}
+
+            {/* Tombol Next */}
+            <button
+              onClick={() => onPageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200 text-gray-500 hover:border-[#1E2753] hover:text-[#1E2753] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+              aria-label="Halaman berikutnya"
+            >
+              <FontAwesomeIcon icon={faChevronRight} className="w-3 h-3" />
+            </button>
+          </div>
+
+          {/* Info halaman */}
+          <p className="text-center text-xs text-gray-400 mt-2">
+            Halaman {currentPage} dari {totalPages}
+          </p>
         </>
       ) : (
         <div className="text-center py-16 text-gray-400">

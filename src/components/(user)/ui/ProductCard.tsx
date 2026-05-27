@@ -100,7 +100,6 @@ function StockBadge({ stock }: { stock: number }) {
 }
 
 function SoldBadge({ sold }: { sold: number }) {
-  if (sold <= 0) return null;
   if (sold >= 100) {
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-gradient-to-r from-orange-500 to-red-500 px-2 py-0.5 rounded-full shadow-sm">
@@ -117,10 +116,12 @@ function SoldBadge({ sold }: { sold: number }) {
       </span>
     );
   }
-  return <span className="text-[10px] text-gray-400 font-medium">{sold} terjual</span>;
+  if (sold > 0) {
+    return <span className="inline-flex items-center gap-1 text-[10px] font-medium text-gray-500 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full">{sold} terjual</span>;
+  }
+  // sold = 0: tetap tampil tapi abu-abu
+  return <span className="inline-flex items-center gap-1 text-[10px] font-medium text-gray-400 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-full">Belum ada penjualan</span>;
 }
-
-/* ── Main Component ─────────────────────────────── */
 
 export default function ProductCard({ product, priority = false }: ProductCardProps) {
   const router = useRouter();
@@ -276,9 +277,13 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
           <p className="text-sm sm:text-base font-black text-[#1E2753] leading-tight">{formatPrice(product.price)}</p>
         </div>
 
-        {/* Stok + Terjual */}
-        <div className="flex items-center justify-between flex-wrap gap-1">
+        {/* Stok */}
+        <div>
           <StockBadge stock={liveStock} />
+        </div>
+
+        {/* Terjual — selalu tampil di semua device */}
+        <div>
           <SoldBadge sold={product.sold ?? 0} />
         </div>
 

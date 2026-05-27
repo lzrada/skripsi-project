@@ -198,10 +198,10 @@ export default function ProductDetailClient({ product, related }: { product: Pro
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-8">
             <div className="space-y-3">
-              <div className="relative bg-white rounded-2xl border border-gray-100 overflow-hidden aspect-square shadow-sm">
+              <div className="relative bg-white rounded-2xl border border-gray-100 shadow-sm w-full" style={{ paddingBottom: "75%" }}>
                 {images.length > 0 ? (
                   <>
-                    <Image src={images[activeImage]} alt={product.name} fill sizes="(max-width: 560px) 100vw, 50vw" className="object-contain p-4 sm:p-6" priority />
+                    <Image src={images[activeImage]} alt={product.name} fill sizes="(max-width: 560px) 100vw, 50vw" className="object-contain p-6 sm:p-8" priority style={{ top: 0, left: 0, width: "100%", height: "100%" }} />
 
                     {images.length > 1 && (
                       <>
@@ -256,7 +256,7 @@ export default function ProductDetailClient({ product, related }: { product: Pro
             </div>
 
             {/* ── Kolom kanan: info produk ── */}
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               {/* Nama produk */}
               <div>
                 <Link href={`/user/products?category=${encodeURIComponent(product.category)}`} className="text-xs font-bold text-[#1E2753]/50 uppercase tracking-widest hover:text-[#1E2753] transition-colors">
@@ -267,7 +267,7 @@ export default function ProductDetailClient({ product, related }: { product: Pro
 
               {/* Rating */}
               {(product.averageRating ?? 0) > 0 && (
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <StarDisplay rating={product.averageRating ?? 0} size="sm" />
                   <span className="text-sm font-bold text-gray-700">{product.averageRating?.toFixed(1)}</span>
                   {(product.totalReviews ?? 0) > 0 && <span className="text-xs text-gray-400">({product.totalReviews} ulasan)</span>}
@@ -275,14 +275,14 @@ export default function ProductDetailClient({ product, related }: { product: Pro
               )}
 
               {/* Harga */}
-              <div className="bg-gray-50 rounded-2xl p-4">
+              <div className="bg-gray-50 rounded-2xl p-3">
                 {product.originalPrice && product.originalPrice > product.price && <p className="text-sm text-gray-400 line-through mb-0.5">{formatPrice(product.originalPrice)}</p>}
                 <p className="text-3xl sm:text-4xl font-black text-[#1E2753]">{formatPrice(product.price)}</p>
                 {discountPercent && discountPercent > 0 && <p className="text-sm text-emerald-600 font-semibold mt-1">Hemat {formatPrice((product.originalPrice ?? product.price) - product.price)}</p>}
               </div>
 
               {/* Kondisi + stok badge */}
-              <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
                 {product.condition && <span className={`text-xs font-bold px-3 py-1 rounded-full ${product.condition.toLowerCase() === "bekas" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>{product.condition}</span>}
                 <StockBadge stock={product.stock} />
                 {/* Terjual — tampil jika ada data */}

@@ -1,4 +1,4 @@
-// src/components/ui/ProductCard.tsx
+// src/components/(user)/ui/ProductCard.tsx
 "use client";
 
 import Link from "next/link";
@@ -42,7 +42,6 @@ function formatPrice(price: number) {
   }).format(price);
 }
 
-// Format angka sold: 1500 → "1,5rb", 999 → "999"
 function formatSold(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(1).replace(".", ",")}rb`;
   return n.toString();
@@ -57,6 +56,15 @@ function getUid(): string | null {
       ?.split("=")[1] ?? null
   );
 }
+
+function isNewProduct(createdAt?: any): boolean {
+  if (!createdAt) return false;
+  const created = createdAt?.toDate ? createdAt.toDate() : new Date(createdAt);
+  const diffDays = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
+  return diffDays <= 30;
+}
+
+/* ── Sub-components ─────────────────────────────── */
 
 function StockBadge({ stock }: { stock: number }) {
   if (stock === 0) {
@@ -91,11 +99,9 @@ function StockBadge({ stock }: { stock: number }) {
   );
 }
 
-// Badge terjual — hanya muncul jika sold > 0
 function SoldBadge({ sold }: { sold: number }) {
   if (sold <= 0) return null;
   if (sold >= 100) {
-    // Laris keras → gradient api merah-oranye
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-gradient-to-r from-orange-500 to-red-500 px-2 py-0.5 rounded-full shadow-sm">
         <FontAwesomeIcon icon={faFire} className="w-2.5 h-2.5 animate-pulse" />
@@ -104,7 +110,6 @@ function SoldBadge({ sold }: { sold: number }) {
     );
   }
   if (sold >= 10) {
-    // Lumayan laku → oranye muda
     return (
       <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-orange-600 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
         <FontAwesomeIcon icon={faFire} className="w-2.5 h-2.5" />
@@ -112,34 +117,29 @@ function SoldBadge({ sold }: { sold: number }) {
       </span>
     );
   }
-  // Baru sedikit → abu halus
   return <span className="text-[10px] text-gray-400 font-medium">{sold} terjual</span>;
 }
 
-function isNewProduct(createdAt?: any): boolean {
-  if (!createdAt) return false;
-  const created = createdAt?.toDate ? createdAt.toDate() : new Date(createdAt);
-  const diffDays = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
-  return diffDays <= 30;
-}
+/* ── Main Component ─────────────────────────────── */
 
 export default function ProductCard({ product, priority = false }: ProductCardProps) {
   const router = useRouter();
+
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(false);
+
   if (!product) return null;
 
   const liveStock = product.stock;
-
   const gradient = categoryGradient[product.category] ?? defaultGradient;
   const icon = categoryIcon[product.category] ?? defaultCategoryIcon;
-
   const discountPct = product.originalPrice && product.originalPrice > product.price ? Math.round((1 - product.price / product.originalPrice) * 100) : null;
 
   const isBekas = product.condition?.toLowerCase() === "bekas";
   const isNew = !isBekas && isNewProduct(product.createdAt);
   const isOutOfStock = liveStock === 0;
 
-  const [adding, setAdding] = useState(false);
-  const [added, setAdded] = useState(false);
+  const badgeTopOffset = discountPct ? "2rem" : "0.5rem";
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -177,7 +177,8 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
     }
   };
 
-  const badgeTopOffset = discountPct ? "2rem" : "0.5rem";
+  /* Pilih class tombol keranjang — semua didefinisikan di globals.css */
+  const cartClass = added ? "btn-card-base btn-card-cart-added" : isOutOfStock ? "btn-card-base btn-card-cart-disabled" : "btn-card-base btn-card-cart";
 
   return (
     <div
@@ -204,13 +205,9 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
           </div>
         )}
 
-        {/* Overlay hover */}
-        <div className="hidden sm:flex absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 items-center justify-center opacity-0 group-hover:opacity-100">
-          <Link
-            href={`/user/product-detail/${product.id}`}
-            onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1.5 bg-white text-[#1E2753] text-[11px] font-bold px-4 py-2 rounded-full shadow-xl border border-white hover:bg-[#1E2753] hover:text-white transition-all duration-200 translate-y-3 group-hover:translate-y-0"
-          >
+        {/* Hover overlay — pakai CSS class dari globals.css */}
+        <div className="card-img-overlay">
+          <Link href={`/user/product-detail/${product.id}`} onClick={(e) => e.stopPropagation()} className="card-overlay-btn">
             <FiEye className="w-3.5 h-3.5" />
             Lihat Detail
           </Link>
@@ -257,7 +254,7 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
         {/* Kategori */}
         <p className="text-[9px] font-semibold text-[#1E2753]/40 uppercase tracking-widest">{product.category}</p>
 
-        {/* Nama Produk */}
+        {/* Nama */}
         <h3 className="text-xs sm:text-[13px] font-semibold text-gray-800 line-clamp-2 leading-snug flex-1">{product.name}</h3>
 
         {/* Rating */}
@@ -279,7 +276,7 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
           <p className="text-sm sm:text-base font-black text-[#1E2753] leading-tight">{formatPrice(product.price)}</p>
         </div>
 
-        {/* Stok + Terjual — satu baris, stok kiri, terjual kanan */}
+        {/* Stok + Terjual */}
         <div className="flex items-center justify-between flex-wrap gap-1">
           <StockBadge stock={liveStock} />
           <SoldBadge sold={product.sold ?? 0} />
@@ -287,25 +284,13 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
 
         {/* ── Action Buttons ── */}
         <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
-          {/* Tombol Detail — tidak berubah sama sekali */}
-          <Link
-            href={`/user/product-detail/${product.id}`}
-            className="flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-xl border-2 border-[#1E2753] text-[#1E2753] hover:bg-[#1E2753] hover:text-white transition-all duration-200 flex items-center justify-center gap-1.5"
-          >
+          {/* Tombol Detail — class statis, pasti di-generate Tailwind */}
+          <Link href={`/user/product-detail/${product.id}`} className="btn-card-base btn-card-detail">
             Detail
           </Link>
 
-          <button
-            onClick={handleAddToCart}
-            disabled={adding || isOutOfStock}
-            className={`flex-1 py-2 text-[11px] sm:text-xs font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 relative overflow-hidden ${
-              added
-                ? "bg-emerald-500 "
-                : isOutOfStock
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-sm shadow-orange-200 hover:from-orange-400 hover:to-red-400 hover:shadow-md hover:scale-[1.03] active:scale-95 before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent before:-translate-x-full hover:before:translate-x-full before:transition-transform before:duration-500"
-            } disabled:opacity-60`}
-          >
+          {/* Tombol Keranjang — pakai custom CSS class dari globals.css */}
+          <button onClick={handleAddToCart} disabled={adding || isOutOfStock} className={cartClass}>
             {adding ? (
               <FontAwesomeIcon icon={faSpinner} className="w-3 h-3 animate-spin" />
             ) : added ? (

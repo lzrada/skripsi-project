@@ -201,7 +201,7 @@ export default function ProductDetailClient({ product, related }: { product: Pro
               <div className="relative bg-white rounded-2xl border border-gray-100 overflow-hidden aspect-square shadow-sm">
                 {images.length > 0 ? (
                   <>
-                    <Image src={images[activeImage]} alt={product.name} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-contain p-4 sm:p-6" priority />
+                    <Image src={images[activeImage]} alt={product.name} fill sizes="(max-width: 560px) 100vw, 50vw" className="object-contain p-4 sm:p-6" priority />
 
                     {images.length > 1 && (
                       <>
@@ -253,16 +253,6 @@ export default function ProductDetailClient({ product, related }: { product: Pro
                   ))}
                 </div>
               )}
-
-              {/* Trust badges — di bawah gambar, hanya desktop */}
-              <div className="hidden md:grid grid-cols-3 gap-2">
-                {TRUST.map((t) => (
-                  <div key={t.label} className={`flex flex-col items-center gap-1.5 p-3 ${t.bg} rounded-xl`}>
-                    <FontAwesomeIcon icon={t.icon} className={`w-4 h-4 ${t.color}`} />
-                    <span className="text-[11px] font-semibold text-gray-600 text-center">{t.label}</span>
-                  </div>
-                ))}
-              </div>
             </div>
 
             {/* ── Kolom kanan: info produk ── */}
@@ -295,6 +285,13 @@ export default function ProductDetailClient({ product, related }: { product: Pro
               <div className="flex items-center gap-3 flex-wrap">
                 {product.condition && <span className={`text-xs font-bold px-3 py-1 rounded-full ${product.condition.toLowerCase() === "bekas" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>{product.condition}</span>}
                 <StockBadge stock={product.stock} />
+                {/* Terjual — tampil jika ada data */}
+                {(product.sold ?? 0) > 0 && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 px-3 py-1 rounded-full">
+                    <FontAwesomeIcon icon={faFire} className="w-3 h-3" />
+                    {(product.sold ?? 0) >= 1000 ? `${((product.sold ?? 0) / 1000).toFixed(1).replace(".", ",")}rb` : product.sold}+ terjual
+                  </span>
+                )}
               </div>
 
               {/* Info toko */}
@@ -347,9 +344,7 @@ export default function ProductDetailClient({ product, related }: { product: Pro
                   <button
                     onClick={handleBuyNow}
                     disabled={isOutOfStock}
-                    className={`flex-1 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                      isOutOfStock ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-[#1E2753] text-white hover:bg-[#2a3470]"
-                    }`}
+                    className={`flex-1 py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-400 hover:to-red-400 shadow-md shadow-orange-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:scale-100 `}
                   >
                     <FontAwesomeIcon icon={faBagShopping} className="w-4 h-4" />
                     Beli Sekarang

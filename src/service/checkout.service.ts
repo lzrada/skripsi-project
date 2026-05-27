@@ -4,8 +4,6 @@ import { clearCartService } from "./cart.service";
 import { incrementCouponUsageService } from "./coupon.service";
 import { createMidtransTransaction, openMidtransSnap } from "./payment.service";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export interface CheckoutAddress {
   nama: string;
   telepon: string;
@@ -26,33 +24,10 @@ export interface PaymentMethod {
 }
 
 export const PAYMENT_METHODS: PaymentMethod[] = [
-  {
-    id: "transfer",
-    label: "Transfer Bank",
-    desc: "BCA, BRI, BNI, Mandiri",
-    useMidtrans: true,
-    midtransType: "transfer",
-  },
-  {
-    id: "kartu",
-    label: "Kartu Kredit / Debit",
-    desc: "Visa, Mastercard",
-    useMidtrans: true,
-    midtransType: "kartu",
-  },
-  {
-    id: "ewallet",
-    label: "E-Wallet",
-    desc: "GoPay, OVO, Dana, ShopeePay",
-    useMidtrans: true,
-    midtransType: "ewallet",
-  },
-  {
-    id: "cod",
-    label: "Bayar di Tempat (COD)",
-    desc: "Hanya wilayah Blitar & sekitarnya",
-    useMidtrans: false,
-  },
+  { id: "transfer", label: "Transfer Bank", desc: "BCA, BRI, BNI, Mandiri", useMidtrans: true, midtransType: "transfer" },
+  { id: "kartu", label: "Kartu Kredit / Debit", desc: "Visa, Mastercard", useMidtrans: true, midtransType: "kartu" },
+  { id: "ewallet", label: "E-Wallet", desc: "GoPay, OVO, Dana, ShopeePay", useMidtrans: true, midtransType: "ewallet" },
+  { id: "cod", label: "Bayar di Tempat (COD)", desc: "Hanya wilayah Blitar & sekitarnya", useMidtrans: false },
 ];
 
 export interface CheckoutPayload {
@@ -73,6 +48,7 @@ export function calculateTotal(subtotal: number, diskonKupon: number): number {
   return Math.max(subtotal - diskonKupon, 0);
 }
 
+// FIX: tambahkan image agar tersimpan ke Firestore
 export function buildOrderItems(items: CartItem[]) {
   return items.map((i) => ({
     id: i.id,
@@ -80,6 +56,7 @@ export function buildOrderItems(items: CartItem[]) {
     price: i.price,
     qty: i.qty,
     category: i.category,
+    image: i.image ?? "",
   }));
 }
 
@@ -98,6 +75,8 @@ async function processCodCheckout(payload: CheckoutPayload): Promise<CheckoutRes
     note: address.catatan,
     paymentMethod: method.label,
     items: buildOrderItems(orderItems),
+    subtotal, // ← required field
+    shippingFee: 0, // ← required field (COD tidak pakai shipping fee dari sini)
     total,
     paymentStatus: "unpaid",
     ...(couponCode ? { couponCode, diskonKupon, couponId } : {}),
@@ -145,6 +124,8 @@ async function processMidtransCheckout(payload: CheckoutPayload): Promise<Checko
     note: address.catatan,
     paymentMethod: method.label,
     items: buildOrderItems(orderItems),
+    subtotal, // ← required field
+    shippingFee: 0, // ← required field
     total,
     paymentStatus,
     midtransResult: snapResult.result,
@@ -161,8 +142,6 @@ async function processMidtransCheckout(payload: CheckoutPayload): Promise<Checko
 
   return snapResult.status === "success" ? { status: "success", orderId } : { status: "pending" };
 }
-
-// ─── Entry Point Utama ────────────────────────────────────────────────────────
 
 export async function processCheckout(payload: CheckoutPayload): Promise<CheckoutResult> {
   const method = PAYMENT_METHODS.find((m) => m.id === payload.paymentMethodId);

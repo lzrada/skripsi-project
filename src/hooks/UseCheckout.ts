@@ -143,8 +143,8 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
       price: i.price,
       qty: i.qty,
       category: i.category,
+      image: i.image ?? "", // ← FIX: gambar sekarang tersimpan ke order
     }));
-
   const buildOrderBase = (snapshot: CartItem[]) => ({
     uid: uid!,
     recipientName: form.nama,

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash, faSpinner, faEnvelope, faLock, faBolt } from "@fortawesome/free-solid-svg-icons";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
-import { loginWithEmail, loginWithGoogle } from "@/service/auth.service";
+import { loginWithEmail, loginWithGoogle, handleGoogleRedirect } from "@/service/auth.service";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -25,6 +25,35 @@ function LoginForm() {
     }
     window.location.replace(role === "admin" ? "/admin/dashboard-admin" : "/user/dashboard-user");
   };
+
+  // ── Handle hasil redirect Google (production) ──────────────────────
+  useEffect(() => {
+    // Hanya jalankan jika ada flag bahwa kita baru kembali dari Google redirect
+    const pending = sessionStorage.getItem("googleLoginPending");
+    if (!pending) return;
+
+    setLoadingGoogle(true);
+    handleGoogleRedirect()
+      .then((res) => {
+        if (!res) {
+          setLoadingGoogle(false);
+          return;
+        }
+        if (res.role) {
+          redirectByRole(res.role as "user" | "admin");
+        }
+      })
+      .catch((err: any) => {
+        const code = err?.code;
+        if (code === "auth/no-role") {
+          setError("Role akun belum diset. Hubungi admin.");
+        } else {
+          setError("Login Google gagal. Silakan coba lagi.");
+        }
+        setLoadingGoogle(false);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +84,10 @@ function LoginForm() {
     setLoadingGoogle(true);
     try {
       const res = await loginWithGoogle();
+      // Production: loginWithGoogle() memicu redirect, res = null, halaman akan reload
+      // Development: res berisi role
       if (!res) {
+        // Jika popup ditutup user di dev, hentikan loading
         setLoadingGoogle(false);
         return;
       }
@@ -90,7 +122,7 @@ function LoginForm() {
           <div
             className="absolute inset-0 opacity-5"
             style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E")`,
             }}
           />
           <div className="relative z-10">
@@ -126,7 +158,7 @@ function LoginForm() {
 
         {/* ── Right panel: form ── */}
         <div className="flex flex-col justify-center px-6 py-8 sm:px-10 sm:py-10">
-          {/* Mobile: header branding + tagline singkat */}
+          {/* Mobile: header branding */}
           <div className="md:hidden mb-6">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-9 h-9 bg-[#1E2753] rounded-xl flex items-center justify-center">
@@ -137,7 +169,6 @@ function LoginForm() {
                 <span className="text-[#E85D04] text-xs font-bold tracking-widest ml-1">ELEKTRONIK</span>
               </div>
             </div>
-            {/* Keunggulan singkat di mobile — 3 chip horizontal */}
             <div className="flex gap-2 flex-wrap">
               {["🚚 Gratis Ongkir", "🛡️ Bergaransi", "💸 Harga Terbaik"].map((chip) => (
                 <span key={chip} className="text-[11px] font-semibold bg-[#1E2753]/8 text-[#1E2753] px-2.5 py-1 rounded-full">
@@ -172,10 +203,7 @@ function LoginForm() {
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setError("");
-                  }}
+                  onChange={(e) => { setEmail(e.target.value); setError(""); }}
                   placeholder="nama@email.com"
                   required
                   className="w-full h-11 bg-slate-50 border-2 border-slate-200 rounded-2xl pl-10 pr-4 text-sm text-slate-700 focus:outline-none focus:border-[#1E2753] focus:bg-white transition-all"
@@ -196,10 +224,7 @@ function LoginForm() {
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    setError("");
-                  }}
+                  onChange={(e) => { setPassword(e.target.value); setError(""); }}
                   placeholder="Masukkan password"
                   required
                   className="w-full h-11 bg-slate-50 border-2 border-slate-200 rounded-2xl pl-10 pr-12 text-sm text-slate-700 focus:outline-none focus:border-[#1E2753] focus:bg-white transition-all"
@@ -234,8 +259,17 @@ function LoginForm() {
             disabled={loadingGoogle}
             className="flex items-center justify-center w-full h-11 border-2 border-slate-200 rounded-2xl gap-3 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-60 transition-all text-sm text-slate-700 font-semibold active:scale-95"
           >
-            {loadingGoogle ? <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin text-slate-500" /> : <FontAwesomeIcon icon={faGoogle} className="w-4 h-4 text-red-500" />}
-            {loadingGoogle ? "Memproses..." : "Lanjutkan dengan Google"}
+            {loadingGoogle ? (
+              <>
+                <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin text-slate-500" />
+                Memproses...
+              </>
+            ) : (
+              <>
+                <FontAwesomeIcon icon={faGoogle} className="w-4 h-4 text-red-500" />
+                Lanjutkan dengan Google
+              </>
+            )}
           </button>
         </div>
       </div>

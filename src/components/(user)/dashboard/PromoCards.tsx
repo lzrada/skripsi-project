@@ -36,7 +36,7 @@ export default function PromoCards() {
       {PROMO_CARDS.map((p) => (
         <div
           key={p.title}
-          className={`bg-gradient-to-br ${p.color} rounded-2xl p-4 sm:p-5
+          className={`bg-linear-to-br ${p.color} rounded-2xl p-4 sm:p-5
             flex items-center gap-3 sm:gap-4`}
         >
           {/* Icon lebih kecil di mobile agar tidak dominan */}

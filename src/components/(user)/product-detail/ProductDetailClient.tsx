@@ -12,6 +12,8 @@ import ProductCard from "@/components/(user)/ui/ProductCard";
 import { addToCartService } from "@/service/cart.service";
 import { toast } from "@/components/(user)/ui/Toast";
 import ReviewSection from "./ReviewSection";
+import ProductDescription from "@/components/(user)/ui/ProductDescription";
+
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -193,7 +195,7 @@ export default function ProductDetailClient({ product, related }: { product: Pro
               {product.category}
             </Link>
             <span>/</span>
-            <span className="text-gray-600 font-medium line-clamp-1 max-w-[160px] sm:max-w-none">{product.name}</span>
+            <span className="text-gray-600 font-medium line-clamp-1 max-w-40 sm:max-w-none">{product.name}</span>
           </nav>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-8">
@@ -344,7 +346,7 @@ export default function ProductDetailClient({ product, related }: { product: Pro
                   <button
                     onClick={handleBuyNow}
                     disabled={isOutOfStock}
-                    className={`flex-1 py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-400 hover:to-red-400 shadow-md shadow-orange-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:scale-100 `}
+                    className={`flex-1 py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all bg-linear-to-r from-orange-500 to-red-500 text-white hover:from-orange-400 hover:to-red-400 shadow-md shadow-orange-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:scale-100 `}
                   >
                     <FontAwesomeIcon icon={faBagShopping} className="w-4 h-4" />
                     Beli Sekarang
@@ -372,7 +374,7 @@ export default function ProductDetailClient({ product, related }: { product: Pro
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`flex-1 min-w-[90px] py-3.5 text-sm font-bold whitespace-nowrap transition-colors ${activeTab === tab.key ? "text-[#1E2753] border-b-2 border-[#1E2753] bg-[#1E2753]/5" : "text-gray-400 hover:text-gray-600"}`}
+                  className={`flex-1 min-w-22.5 py-3.5 text-sm font-bold whitespace-nowrap transition-colors ${activeTab === tab.key ? "text-[#1E2753] border-b-2 border-[#1E2753] bg-[#1E2753]/5" : "text-gray-400 hover:text-gray-600"}`}
                 >
                   {tab.label}
                 </button>
@@ -381,8 +383,10 @@ export default function ProductDetailClient({ product, related }: { product: Pro
 
             {/* Tab konten */}
             <div className="p-4 sm:p-6">
-              {activeTab === "deskripsi" && <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{product.description || <span className="text-gray-400 italic">Deskripsi belum tersedia.</span>}</p>}
-
+             {activeTab === "deskripsi" && (
+  <ProductDescription text={product.description ?? ""} />
+)}
+ 
               {activeTab === "spesifikasi" && (
                 <div className="space-y-2 text-sm">
                   {[

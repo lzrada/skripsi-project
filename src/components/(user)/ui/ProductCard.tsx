@@ -102,7 +102,7 @@ function StockBadge({ stock }: { stock: number }) {
 function SoldBadge({ sold }: { sold: number }) {
   if (sold >= 100) {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-gradient-to-r from-orange-500 to-red-500 px-2 py-0.5 rounded-full shadow-sm">
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-linear-to-r from-orange-500 to-red-500 px-2 py-0.5 rounded-full shadow-sm">
         <FontAwesomeIcon icon={faFire} className="w-2.5 h-2.5 animate-pulse" />
         {formatSold(sold)}+ terjual
       </span>
@@ -201,7 +201,7 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
             />
           </div>
         ) : (
-          <div className={`w-full aspect-square bg-gradient-to-br ${gradient} flex items-center justify-center`}>
+          <div className={`w-full aspect-square bg-linear-to-br ${gradient} flex items-center justify-center`}>
             <FontAwesomeIcon icon={icon} className="w-10 h-10 sm:w-12 sm:h-12 text-white/50" />
           </div>
         )}

@@ -20,12 +20,21 @@ export const metadata: Metadata = {
   keywords: ["toko elektronik blitar", "beli elektronik online", "TV second blitar", "AC murah blitar", "kulkas second", "mesin cuci blitar", "rizky elektronik", "elektronik tulungagung", "elektronik kediri"],
   authors: [{ name: "Rizky Elektronik" }],
   creator: "Rizky Elektronik",
+  // ── Favicon / App Icons ──────────────────────────────────────────────
+  icons: {
+    icon: [{ url: "/images/logo-toko.jpeg", type: "image/jpeg" }],
+
+    apple: [{ url: "/images/logo-toko.jpeg" }],
+
+    shortcut: "/images/logo-toko.jpeg",
+  },
   openGraph: {
     type: "website",
     locale: "id_ID",
     siteName: "Rizky Elektronik",
     title: "Rizky Elektronik — Toko Elektronik Terpercaya Blitar",
     description: "Belanja elektronik online terpercaya. TV, AC, Kulkas, Mesin Cuci — stok real-time & pembayaran aman.",
+    images: [{ url: "/images/logo-toko.jpeg" }],
   },
   robots: {
     index: true,
@@ -33,7 +42,6 @@ export const metadata: Metadata = {
   },
 };
 
-// ── Viewport ─────────────────────────────────────────────────────────────────
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -59,7 +67,6 @@ export default function RootLayout({
         <div className="flex min-h-screen bg-gray-50">
           <div className="flex-1 overflow-x-hidden">{children}</div>
         </div>
-
         <Script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key={clientKey} strategy="afterInteractive" />
       </body>
     </html>

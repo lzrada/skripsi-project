@@ -1,11 +1,23 @@
 import { auth, db } from "@/config/firebase";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, signOut } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  sendPasswordResetEmail,
+  signOut,
+} from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 // SameSite=Lax (bukan Strict) — wajib untuk OAuth popup/redirect
 const COOKIE_BASE = `path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
-const COOKIE_OPTIONS = process.env.NODE_ENV === "production" ? `${COOKIE_BASE}; Secure` : COOKIE_BASE;
+const COOKIE_OPTIONS =
+  process.env.NODE_ENV === "production"
+    ? `${COOKIE_BASE}; Secure`
+    : COOKIE_BASE;
 
 function setCookies(token: string, role: string, uid: string) {
   if (typeof document === "undefined") return;
@@ -35,6 +47,19 @@ function waitForCookieFlush(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 150));
 }
 
+// ── Helper: apakah ini environment production? ──────────────────────
+// Di Netlify, NODE_ENV = "production". Kita juga cek hostname agar
+// localhost tetap pakai popup (lebih nyaman saat dev).
+function isProduction(): boolean {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname;
+  return (
+    process.env.NODE_ENV === "production" &&
+    host !== "localhost" &&
+    host !== "127.0.0.1"
+  );
+}
+
 export const loginWithEmail = async (email: string, password: string) => {
   if (!validateEmail(email)) {
     throw { code: "auth/invalid-email-format", message: "Format email tidak valid" };
@@ -44,7 +69,11 @@ export const loginWithEmail = async (email: string, password: string) => {
   }
 
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      email.trim(),
+      password
+    );
     const user = userCredential.user;
 
     const userRef = doc(db, "users", user.uid);
@@ -74,6 +103,9 @@ export const loginWithEmail = async (email: string, password: string) => {
   }
 };
 
+// ── Google Login ─────────────────────────────────────────────────────
+// Production  → signInWithRedirect (tidak bisa diblokir popup blocker)
+// Development → signInWithPopup    (lebih cepat, tidak perlu redirect)
 export const loginWithGoogle = async () => {
   try {
     const provider = new GoogleAuthProvider();
@@ -81,43 +113,17 @@ export const loginWithGoogle = async () => {
     provider.addScope("profile");
     provider.setCustomParameters({ prompt: "select_account" });
 
+    if (isProduction()) {
+      // Di production: simpan flag, lalu redirect ke Google.
+      // Hasil akan di-handle oleh handleGoogleRedirect() saat halaman dimuat ulang.
+      sessionStorage.setItem("googleLoginPending", "1");
+      await signInWithRedirect(auth, provider);
+      return null; // halaman akan reload, eksekusi berhenti di sini
+    }
+
+    // Development: tetap pakai popup
     const result = await signInWithPopup(auth, provider);
-    const user = result.user;
-
-    const userRef = doc(db, "users", user.uid);
-    let snap = await getDoc(userRef);
-
-    if (!snap.exists()) {
-      await setDoc(userRef, {
-        uid: user.uid,
-        email: user.email,
-        fullName: user.displayName ?? "",
-        photoURL: user.photoURL ?? "",
-        role: "user",
-        address: {
-          province: "",
-          city: "",
-          district: "",
-          postalCode: "",
-          detailAddress: "",
-        },
-        createdAt: serverTimestamp(),
-      });
-      snap = await getDoc(userRef);
-    }
-
-    const role = snap.data()?.role;
-    if (!role) {
-      await signOut(auth);
-      throw { code: "auth/no-role", message: "Role tidak ditemukan" };
-    }
-
-    // forceRefresh=true pastikan token fresh setelah popup selesai
-    const token = await user.getIdToken(true);
-    setCookies(token, role, user.uid);
-    await waitForCookieFlush(); // ← kunci: cookie harus ter-tulis sebelum redirect
-
-    return { success: true, role };
+    return await _processGoogleUser(result.user);
   } catch (error: any) {
     if (error?.code === "auth/popup-closed-by-user") return null;
     if (process.env.NODE_ENV !== "production") {
@@ -127,9 +133,73 @@ export const loginWithGoogle = async () => {
   }
 };
 
-export const handleGoogleRedirect = async (): Promise<{ success: boolean } | null> => null;
+// ── Handle hasil redirect setelah kembali dari Google ───────────────
+// Panggil fungsi ini di useEffect pada halaman login.
+export const handleGoogleRedirect = async (): Promise<{
+  success: boolean;
+  role?: string;
+} | null> => {
+  try {
+    const result = await getRedirectResult(auth);
+    if (!result) return null;
 
-export const registerWithEmail = async (email: string, password: string, fullName: string, phoneNumber: string) => {
+    // Bersihkan flag pending
+    sessionStorage.removeItem("googleLoginPending");
+
+    return await _processGoogleUser(result.user);
+  } catch (error: any) {
+    sessionStorage.removeItem("googleLoginPending");
+    if (process.env.NODE_ENV !== "production") {
+      console.error("GOOGLE REDIRECT ERROR:", error);
+    }
+    throw error;
+  }
+};
+
+// ── Shared: proses user setelah autentikasi Google berhasil ─────────
+async function _processGoogleUser(user: any) {
+  const userRef = doc(db, "users", user.uid);
+  let snap = await getDoc(userRef);
+
+  if (!snap.exists()) {
+    await setDoc(userRef, {
+      uid: user.uid,
+      email: user.email,
+      fullName: user.displayName ?? "",
+      photoURL: user.photoURL ?? "",
+      role: "user",
+      address: {
+        province: "",
+        city: "",
+        district: "",
+        postalCode: "",
+        detailAddress: "",
+      },
+      createdAt: serverTimestamp(),
+    });
+    snap = await getDoc(userRef);
+  }
+
+  const role = snap.data()?.role;
+  if (!role) {
+    await signOut(auth);
+    throw { code: "auth/no-role", message: "Role tidak ditemukan" };
+  }
+
+  // forceRefresh=true pastikan token fresh
+  const token = await user.getIdToken(true);
+  setCookies(token, role, user.uid);
+  await waitForCookieFlush();
+
+  return { success: true, role };
+}
+
+export const registerWithEmail = async (
+  email: string,
+  password: string,
+  fullName: string,
+  phoneNumber: string
+) => {
   if (!validateEmail(email)) {
     throw { code: "auth/invalid-email-format", message: "Format email tidak valid" };
   }
@@ -141,7 +211,11 @@ export const registerWithEmail = async (email: string, password: string, fullNam
   }
 
   try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      email.trim(),
+      password
+    );
     const user = userCredential.user;
 
     await setDoc(doc(db, "users", user.uid), {

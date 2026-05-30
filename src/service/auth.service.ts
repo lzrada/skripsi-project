@@ -1,9 +1,8 @@
 import { auth, db } from "@/config/firebase";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, signOut } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-// SameSite=Lax (bukan Strict) — wajib untuk OAuth popup/redirect
 const COOKIE_BASE = `path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
 const COOKIE_OPTIONS = process.env.NODE_ENV === "production" ? `${COOKIE_BASE}; Secure` : COOKIE_BASE;
 
@@ -30,16 +29,8 @@ function validatePassword(password: string): boolean {
   return password.length >= 8;
 }
 
-// Tunggu 150ms agar cookie sempat ter-flush ke browser sebelum redirect
 function waitForCookieFlush(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 150));
-}
-
-// ── Helper: apakah ini environment production? ──────────────────────
-function isProduction(): boolean {
-  if (typeof window === "undefined") return false;
-  const host = window.location.hostname;
-  return process.env.NODE_ENV === "production" && host !== "localhost" && host !== "127.0.0.1";
 }
 
 export const loginWithEmail = async (email: string, password: string) => {
@@ -82,8 +73,9 @@ export const loginWithEmail = async (email: string, password: string) => {
 };
 
 // ── Google Login ─────────────────────────────────────────────────────
-// Production  → signInWithRedirect (tidak bisa diblokir popup blocker)
-// Development → signInWithPopup    (lebih cepat, tidak perlu redirect)
+// Selalu pakai popup (redirect tidak reliable di Netlify karena
+// IndexedDB/sessionStorage hilang saat Netlify load halaman baru).
+// Kalau popup diblokir browser, lempar error auth/popup-blocked.
 export const loginWithGoogle = async () => {
   try {
     const provider = new GoogleAuthProvider();
@@ -91,45 +83,15 @@ export const loginWithGoogle = async () => {
     provider.addScope("profile");
     provider.setCustomParameters({ prompt: "select_account" });
 
-    if (isProduction()) {
-      // Di production: langsung redirect ke Google tanpa flag sessionStorage.
-      // Hasil akan di-handle oleh handleGoogleRedirect() saat halaman dimuat ulang.
-      await signInWithRedirect(auth, provider);
-      return null; // halaman akan reload, eksekusi berhenti di sini
-    }
-
-    // Development: tetap pakai popup
     const result = await signInWithPopup(auth, provider);
     return await _processGoogleUser(result.user);
   } catch (error: any) {
-    if (error?.code === "auth/popup-closed-by-user") return null;
+    if (error?.code === "auth/popup-closed-by-user" || error?.code === "auth/cancelled-popup-request") {
+      return null;
+    }
     if (process.env.NODE_ENV !== "production") {
       console.error("GOOGLE LOGIN ERROR:", error);
     }
-    throw error;
-  }
-};
-
-// ── Handle hasil redirect setelah kembali dari Google ───────────────
-// Panggil fungsi ini SELALU di useEffect pada halaman login (tanpa kondisi flag).
-// Kalau tidak ada redirect result, fungsi ini return null tanpa error.
-export const handleGoogleRedirect = async (): Promise<{
-  success: boolean;
-  role?: string;
-} | null> => {
-  try {
-    const result = await getRedirectResult(auth);
-
-    // Tidak ada redirect result — ini normal, user buka halaman biasa
-    if (!result) return null;
-
-    return await _processGoogleUser(result.user);
-  } catch (error: any) {
-    if (process.env.NODE_ENV !== "production") {
-      console.error("GOOGLE REDIRECT ERROR:", error);
-    }
-    // Kalau error tidak punya code (misal network error), jangan lempar ke UI
-    if (!error?.code) return null;
     throw error;
   }
 };
@@ -164,7 +126,6 @@ async function _processGoogleUser(user: any) {
     throw { code: "auth/no-role", message: "Role tidak ditemukan" };
   }
 
-  // forceRefresh=true pastikan token fresh
   const token = await user.getIdToken(true);
   setCookies(token, role, user.uid);
   await waitForCookieFlush();

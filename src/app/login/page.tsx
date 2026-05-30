@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash, faSpinner, faEnvelope, faLock, faBolt } from "@fortawesome/free-solid-svg-icons";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
-import { loginWithEmail, loginWithGoogle, handleGoogleRedirect } from "@/service/auth.service";
+import { loginWithEmail, loginWithGoogle } from "@/service/auth.service";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -25,39 +25,6 @@ function LoginForm() {
     }
     window.location.replace(role === "admin" ? "/admin/dashboard-admin" : "/user/dashboard-user");
   };
-
-  // ── Handle hasil redirect Google (production) ──────────────────────
-  // PERBAIKAN: Selalu panggil handleGoogleRedirect() saat mount — TANPA cek flag
-  // sessionStorage. Hal ini karena sessionStorage bisa hilang di beberapa browser
-  // (Safari, mobile) saat kembali dari redirect OAuth, sehingga kalau ada kondisi
-  // if (!pending) return, getRedirectResult() tidak pernah dipanggil dan user stuck.
-  // Kalau tidak ada redirect result, handleGoogleRedirect() return null tanpa error.
-  useEffect(() => {
-    let cancelled = false;
-
-    handleGoogleRedirect()
-      .then((res) => {
-        if (cancelled || !res) return;
-        if (res.role) {
-          redirectByRole(res.role as "user" | "admin");
-        }
-      })
-      .catch((err: any) => {
-        if (cancelled) return;
-        const code = err?.code;
-        if (code === "auth/no-role") {
-          setError("Role akun belum diset. Hubungi admin.");
-        } else if (code) {
-          setError("Login Google gagal. Silakan coba lagi.");
-        }
-        setLoadingGoogle(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,10 +55,8 @@ function LoginForm() {
     setLoadingGoogle(true);
     try {
       const res = await loginWithGoogle();
-      // Production: loginWithGoogle() memicu redirect, res = null, halaman akan reload
-      // Development: res berisi role
       if (!res) {
-        // Jika popup ditutup user di dev, hentikan loading
+        // Popup ditutup user
         setLoadingGoogle(false);
         return;
       }
@@ -104,9 +69,6 @@ function LoginForm() {
         setError("Popup diblokir browser. Izinkan popup untuk situs ini lalu coba lagi.");
       } else if (code === "auth/no-role") {
         setError("Role akun belum diset. Hubungi admin.");
-      } else if (code === "auth/cancelled-popup-request") {
-        setLoadingGoogle(false);
-        return;
       } else {
         setError("Login Google gagal. Silakan coba lagi.");
       }

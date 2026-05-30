@@ -27,31 +27,35 @@ function LoginForm() {
   };
 
   // ── Handle hasil redirect Google (production) ──────────────────────
+  // PERBAIKAN: Selalu panggil handleGoogleRedirect() saat mount — TANPA cek flag
+  // sessionStorage. Hal ini karena sessionStorage bisa hilang di beberapa browser
+  // (Safari, mobile) saat kembali dari redirect OAuth, sehingga kalau ada kondisi
+  // if (!pending) return, getRedirectResult() tidak pernah dipanggil dan user stuck.
+  // Kalau tidak ada redirect result, handleGoogleRedirect() return null tanpa error.
   useEffect(() => {
-    // Hanya jalankan jika ada flag bahwa kita baru kembali dari Google redirect
-    const pending = sessionStorage.getItem("googleLoginPending");
-    if (!pending) return;
+    let cancelled = false;
 
-    setLoadingGoogle(true);
     handleGoogleRedirect()
       .then((res) => {
-        if (!res) {
-          setLoadingGoogle(false);
-          return;
-        }
+        if (cancelled || !res) return;
         if (res.role) {
           redirectByRole(res.role as "user" | "admin");
         }
       })
       .catch((err: any) => {
+        if (cancelled) return;
         const code = err?.code;
         if (code === "auth/no-role") {
           setError("Role akun belum diset. Hubungi admin.");
-        } else {
+        } else if (code) {
           setError("Login Google gagal. Silakan coba lagi.");
         }
         setLoadingGoogle(false);
       });
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -203,7 +207,10 @@ function LoginForm() {
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => { setEmail(e.target.value); setError(""); }}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError("");
+                  }}
                   placeholder="nama@email.com"
                   required
                   className="w-full h-11 bg-slate-50 border-2 border-slate-200 rounded-2xl pl-10 pr-4 text-sm text-slate-700 focus:outline-none focus:border-[#1E2753] focus:bg-white transition-all"
@@ -224,7 +231,10 @@ function LoginForm() {
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => { setPassword(e.target.value); setError(""); }}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError("");
+                  }}
                   placeholder="Masukkan password"
                   required
                   className="w-full h-11 bg-slate-50 border-2 border-slate-200 rounded-2xl pl-10 pr-12 text-sm text-slate-700 focus:outline-none focus:border-[#1E2753] focus:bg-white transition-all"

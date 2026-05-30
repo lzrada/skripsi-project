@@ -1,23 +1,11 @@
 import { auth, db } from "@/config/firebase";
-import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-  sendPasswordResetEmail,
-  signOut,
-} from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
 // SameSite=Lax (bukan Strict) — wajib untuk OAuth popup/redirect
 const COOKIE_BASE = `path=/; max-age=${COOKIE_MAX_AGE}; SameSite=Lax`;
-const COOKIE_OPTIONS =
-  process.env.NODE_ENV === "production"
-    ? `${COOKIE_BASE}; Secure`
-    : COOKIE_BASE;
+const COOKIE_OPTIONS = process.env.NODE_ENV === "production" ? `${COOKIE_BASE}; Secure` : COOKIE_BASE;
 
 function setCookies(token: string, role: string, uid: string) {
   if (typeof document === "undefined") return;
@@ -48,16 +36,10 @@ function waitForCookieFlush(): Promise<void> {
 }
 
 // ── Helper: apakah ini environment production? ──────────────────────
-// Di Netlify, NODE_ENV = "production". Kita juga cek hostname agar
-// localhost tetap pakai popup (lebih nyaman saat dev).
 function isProduction(): boolean {
   if (typeof window === "undefined") return false;
   const host = window.location.hostname;
-  return (
-    process.env.NODE_ENV === "production" &&
-    host !== "localhost" &&
-    host !== "127.0.0.1"
-  );
+  return process.env.NODE_ENV === "production" && host !== "localhost" && host !== "127.0.0.1";
 }
 
 export const loginWithEmail = async (email: string, password: string) => {
@@ -69,11 +51,7 @@ export const loginWithEmail = async (email: string, password: string) => {
   }
 
   try {
-    const userCredential = await signInWithEmailAndPassword(
-      auth,
-      email.trim(),
-      password
-    );
+    const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
     const user = userCredential.user;
 
     const userRef = doc(db, "users", user.uid);
@@ -114,9 +92,8 @@ export const loginWithGoogle = async () => {
     provider.setCustomParameters({ prompt: "select_account" });
 
     if (isProduction()) {
-      // Di production: simpan flag, lalu redirect ke Google.
+      // Di production: langsung redirect ke Google tanpa flag sessionStorage.
       // Hasil akan di-handle oleh handleGoogleRedirect() saat halaman dimuat ulang.
-      sessionStorage.setItem("googleLoginPending", "1");
       await signInWithRedirect(auth, provider);
       return null; // halaman akan reload, eksekusi berhenti di sini
     }
@@ -134,24 +111,25 @@ export const loginWithGoogle = async () => {
 };
 
 // ── Handle hasil redirect setelah kembali dari Google ───────────────
-// Panggil fungsi ini di useEffect pada halaman login.
+// Panggil fungsi ini SELALU di useEffect pada halaman login (tanpa kondisi flag).
+// Kalau tidak ada redirect result, fungsi ini return null tanpa error.
 export const handleGoogleRedirect = async (): Promise<{
   success: boolean;
   role?: string;
 } | null> => {
   try {
     const result = await getRedirectResult(auth);
-    if (!result) return null;
 
-    // Bersihkan flag pending
-    sessionStorage.removeItem("googleLoginPending");
+    // Tidak ada redirect result — ini normal, user buka halaman biasa
+    if (!result) return null;
 
     return await _processGoogleUser(result.user);
   } catch (error: any) {
-    sessionStorage.removeItem("googleLoginPending");
     if (process.env.NODE_ENV !== "production") {
       console.error("GOOGLE REDIRECT ERROR:", error);
     }
+    // Kalau error tidak punya code (misal network error), jangan lempar ke UI
+    if (!error?.code) return null;
     throw error;
   }
 };
@@ -194,12 +172,7 @@ async function _processGoogleUser(user: any) {
   return { success: true, role };
 }
 
-export const registerWithEmail = async (
-  email: string,
-  password: string,
-  fullName: string,
-  phoneNumber: string
-) => {
+export const registerWithEmail = async (email: string, password: string, fullName: string, phoneNumber: string) => {
   if (!validateEmail(email)) {
     throw { code: "auth/invalid-email-format", message: "Format email tidak valid" };
   }
@@ -211,11 +184,7 @@ export const registerWithEmail = async (
   }
 
   try {
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      email.trim(),
-      password
-    );
+    const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
     const user = userCredential.user;
 
     await setDoc(doc(db, "users", user.uid), {

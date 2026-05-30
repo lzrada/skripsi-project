@@ -10,7 +10,7 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Rizky Elektronik",
+  title: "Rizqi Elektronik",
   description: "Toko Elektronik Terpercaya di Blitar",
 };
 
@@ -19,7 +19,6 @@ export default function UserLayout({ children }: { children: React.ReactNode }) 
     <div className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-gray-50 flex flex-col`}>
       <NavbarUser />
 
-      {/* padding-top otomatis sesuai tinggi navbar yang diukur JS */}
       <main id="main-content" className="flex-1" style={{ paddingTop: "var(--navbar-h, 112px)" }}>
         {children}
       </main>

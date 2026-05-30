@@ -13,14 +13,14 @@ const inter = Inter({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000"),
   title: {
-    default: "Rizky Elektronik — Toko Elektronik Terpercaya Blitar",
-    template: "%s | Rizky Elektronik",
+    default: "Rizqi Elektronik — Toko Elektronik Terpercaya Blitar",
+    template: "%s | Rizqi Elektronik",
   },
   description: "Toko elektronik online terpercaya di Blitar. Jual beli TV, AC, Kulkas, Mesin Cuci, dan elektronik lainnya. Stok real-time, pembayaran aman via Midtrans.",
   keywords: ["toko elektronik blitar", "beli elektronik online", "TV second blitar", "AC murah blitar", "kulkas second", "mesin cuci blitar", "rizky elektronik", "elektronik tulungagung", "elektronik kediri"],
-  authors: [{ name: "Rizky Elektronik" }],
-  creator: "Rizky Elektronik",
-  // ── Favicon / App Icons ──────────────────────────────────────────────
+  authors: [{ name: "Rizqi Elektronik" }],
+  creator: "Rizqi Elektronik",
+
   icons: {
     icon: [{ url: "/images/logo-toko.jpeg", type: "image/jpeg" }],
 
@@ -31,8 +31,8 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "id_ID",
-    siteName: "Rizky Elektronik",
-    title: "Rizky Elektronik — Toko Elektronik Terpercaya Blitar",
+    siteName: "Rizqi Elektronik",
+    title: "Rizqi Elektronik —  Toko Elektronik Terpercaya Blitar",
     description: "Belanja elektronik online terpercaya. TV, AC, Kulkas, Mesin Cuci — stok real-time & pembayaran aman.",
     images: [{ url: "/images/logo-toko.jpeg" }],
   },

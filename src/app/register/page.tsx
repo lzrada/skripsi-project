@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash, faSpinner, faCircleCheck, faEnvelope, faLock, faUser, faPhone, faBolt } from "@fortawesome/free-solid-svg-icons";
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
-import { registerWithEmail, loginWithGoogle, handleGoogleRedirect } from "@/service/auth.service";
+import { registerWithEmail, loginWithGoogle } from "@/service/auth.service";
 
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
@@ -20,15 +20,9 @@ export default function Register() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  useEffect(() => {
-    const checkGoogle = async () => {
-      const res = (await handleGoogleRedirect()) as {
-        success: boolean;
-      } | null;
-      if (res?.success) window.location.replace("/user/dashboard-user");
-    };
-    checkGoogle();
-  }, []);
+  // PERBAIKAN: useEffect untuk handleGoogleRedirect dihapus sepenuhnya.
+  // Sekarang loginWithGoogle() selalu pakai popup, jadi tidak ada redirect
+  // yang perlu di-handle saat halaman mount.
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,9 +68,24 @@ export default function Register() {
     setError("");
     setLoadingGoogle(true);
     try {
-      await loginWithGoogle();
-    } catch {
-      setError("Register dengan Google gagal. Silakan coba lagi.");
+      // PERBAIKAN: tangkap result dari popup dan langsung redirect
+      const res = await loginWithGoogle();
+      if (!res) {
+        // Popup ditutup user
+        setLoadingGoogle(false);
+        return;
+      }
+      // loginWithGoogle via Google otomatis buat dokumen user dengan role "user"
+      window.location.replace("/user/dashboard-user");
+    } catch (err: any) {
+      const code = err?.code;
+      if (code === "auth/popup-blocked") {
+        setError("Popup diblokir browser. Izinkan popup untuk situs ini lalu coba lagi.");
+      } else if (code === "auth/no-role") {
+        setError("Role akun belum diset. Hubungi admin.");
+      } else {
+        setError("Daftar dengan Google gagal. Silakan coba lagi.");
+      }
       setLoadingGoogle(false);
     }
   };
@@ -178,10 +187,6 @@ export default function Register() {
         </div>
 
         {/* ── Right: form ── */}
-        {/*
-          Mobile: scroll dalam layar penuh — overflow-y-auto + max-h-screen
-          supaya form panjang bisa di-scroll tanpa outer page jump
-        */}
         <div className="flex flex-col justify-start md:justify-center px-6 py-7 sm:px-10 sm:py-10 overflow-y-auto max-h-screen md:max-h-none">
           {/* Mobile: branding + chip keunggulan */}
           <div className="md:hidden mb-5">

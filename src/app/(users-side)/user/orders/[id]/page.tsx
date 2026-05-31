@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronLeft, faLocationDot, faPhone, faUser, faNoteSticky, faTruck, faMoneyBill, faRotateLeft, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { faWhatsapp } from "@fortawesome/free-brands-svg-icons";
 import { type Order, statusConfig } from "@/types/order";
 import { subscribeToOrderByIdService, cancelOrderService, cancelAndRefundOrderService } from "@/service/order.service";
 import { categoryIcon, categoryGradient, defaultCategoryIcon, defaultGradient } from "@/constants/category";
@@ -13,6 +14,7 @@ import OrderTracking from "@/components/(user)/orders/OrderTracking";
 import ReviewModal from "@/components/(user)/orders/ReviewModal";
 import CancelModal from "@/components/(user)/orders/CancelModal";
 import { toast } from "@/components/(user)/ui/Toast";
+import { OWNER_WHATSAPP } from "@/constants/Owner_number";
 
 function getUid(): string | null {
   if (typeof document === "undefined") return null;
@@ -40,6 +42,26 @@ function formatDate(dateStr: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function buildWhatsAppUrl(order: Order): string {
+  const orderCode = order.id.slice(0, 8).toUpperCase();
+  const itemLines = order.items.map((item) => `- ${item.name} x${item.qty} = ${formatPrice(item.price * item.qty)}`).join("\n");
+
+  const message =
+    `Halo, saya ingin konfirmasi pesanan:\n\n` +
+    `No. Pesanan: #${orderCode}\n` +
+    `Status: ${order.status}\n` +
+    `Produk:\n${itemLines}\n\n` +
+    `Total Bayar: ${formatPrice(order.total)}\n` +
+    `Metode: ${order.paymentMethod}\n` +
+    `Nama: ${order.recipientName}\n` +
+    `Telepon: ${order.phone}\n` +
+    `Alamat: ${order.address}\n` +
+    `ID Pesanan: ${order.id}\n\n` +
+    `Mohon segera diproses, terima kasih!`;
+
+  return `https://wa.me/${OWNER_WHATSAPP}?text=${encodeURIComponent(message)}`;
 }
 
 function ItemImage({ image, name, category }: { image?: string; name: string; category: string }) {
@@ -131,6 +153,8 @@ export default function OrderDetailPage() {
   const status = statusConfig[order.status];
   const canCancel = order.status === "Menunggu Konfirmasi";
   const canReview = order.status === "Selesai";
+  // Tampilkan tombol WA selama pesanan belum selesai/dibatalkan
+  const canWhatsApp = order.status !== "Selesai" && order.status !== "Dibatalkan";
 
   return (
     <>
@@ -271,18 +295,34 @@ export default function OrderDetailPage() {
         </div>
 
         {/* Aksi */}
-        <div className="flex gap-3">
-          {canCancel && (
-            <button onClick={() => setShowCancel(true)} className="flex-1 py-3 border-2 border-red-400 text-red-500 rounded-2xl text-sm font-semibold hover:bg-red-500 hover:text-white transition-all">
-              Batalkan Pesanan
-            </button>
+        <div className="space-y-3">
+          {/* Tombol WhatsApp — tampil selama pesanan aktif */}
+          {canWhatsApp && (
+            <a
+              href={buildWhatsAppUrl(order)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2.5 w-full py-3.5 rounded-2xl bg-[#25D366] hover:bg-[#1ebe5d] active:scale-[0.98] transition text-white font-bold text-sm shadow-md shadow-green-200"
+            >
+              <FontAwesomeIcon icon={faWhatsapp} className="w-5 h-5" />
+              Konfirmasi Pesanan via WhatsApp
+            </a>
           )}
-          {order.status === "Selesai" && (
-            <Link href="/user/dashboard-user" className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#1E2753] text-white rounded-2xl text-sm font-semibold hover:bg-[#2a3470] transition-all">
-              <FontAwesomeIcon icon={faRotateLeft} className="w-3.5 h-3.5" />
-              Beli Lagi
-            </Link>
-          )}
+
+          {/* Batalkan / Beli Lagi */}
+          <div className="flex gap-3">
+            {canCancel && (
+              <button onClick={() => setShowCancel(true)} className="flex-1 py-3 border-2 border-red-400 text-red-500 rounded-2xl text-sm font-semibold hover:bg-red-500 hover:text-white transition-all">
+                Batalkan Pesanan
+              </button>
+            )}
+            {order.status === "Selesai" && (
+              <Link href="/user/dashboard-user" className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#1E2753] text-white rounded-2xl text-sm font-semibold hover:bg-[#2a3470] transition-all">
+                <FontAwesomeIcon icon={faRotateLeft} className="w-3.5 h-3.5" />
+                Beli Lagi
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     </>

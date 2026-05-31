@@ -6,6 +6,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheckCircle, faBoxOpen, faHandHoldingDollar, faReceipt, faArrowRight, faShoppingBag } from "@fortawesome/free-solid-svg-icons";
+import { faWhatsapp } from "@fortawesome/free-brands-svg-icons";
+import { OWNER_WHATSAPP } from "@/constants/Owner_number";
 
 function formatPrice(price: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -21,6 +23,21 @@ interface OrderItem {
   price: number;
   qty: number;
   image: string;
+}
+
+function buildWhatsAppUrl(orderId: string, orderCode: string, items: OrderItem[], total: number, method: string, isCod: boolean): string {
+  const itemLines = items.map((item) => `- ${item.name} x${item.qty} = ${formatPrice(item.price * item.qty)}`).join("\n");
+
+  const message =
+    `Halo, saya ingin konfirmasi pesanan baru:\n\n` +
+    `No. Pesanan: #${orderCode}\n` +
+    `Produk:\n${itemLines}\n\n` +
+    `Total Bayar: ${formatPrice(total)}\n` +
+    `Metode: ${isCod ? "COD (Bayar di Tempat)" : method}\n` +
+    `ID Pesanan: ${orderId}\n\n` +
+    `Mohon segera diproses, terima kasih!`;
+
+  return `https://wa.me/${OWNER_WHATSAPP}?text=${encodeURIComponent(message)}`;
 }
 
 function SuccessContent() {
@@ -42,8 +59,8 @@ function SuccessContent() {
     orderItems = [];
   }
 
-  // Buat kode pesanan pendek dari orderId
   const orderCode = orderId.slice(0, 8).toUpperCase();
+  const waUrl = buildWhatsAppUrl(orderId, orderCode, orderItems, total, method, isCod);
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -131,16 +148,30 @@ function SuccessContent() {
         )}
 
         {/* Tombol Aksi */}
-        <div className="grid grid-cols-2 gap-3">
-          <Link href="/user/products" className="flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition">
-            <FontAwesomeIcon icon={faShoppingBag} className="w-4 h-4" />
-            Lanjut Belanja
-          </Link>
-          <Link href={`/user/orders/${orderId}`} className="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-[#1E2753] text-white font-bold text-sm hover:bg-[#2a3470] transition">
-            <FontAwesomeIcon icon={faReceipt} className="w-4 h-4" />
-            Lihat Pesanan
-            <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3" />
-          </Link>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Link href="/user/products" className="flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition">
+              <FontAwesomeIcon icon={faShoppingBag} className="w-4 h-4" />
+              Lanjut Belanja
+            </Link>
+            <Link href={`/user/orders/${orderId}`} className="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-[#1E2753] text-white font-bold text-sm hover:bg-[#2a3470] transition">
+              <FontAwesomeIcon icon={faReceipt} className="w-4 h-4" />
+              Lihat Pesanan
+              <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3" />
+            </Link>
+          </div>
+
+          {/* Tombol WhatsApp */}
+          <a
+            href={waUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2.5 w-full py-3.5 rounded-2xl bg-[#25D366] hover:bg-[#1ebe5d] active:scale-[0.98] transition text-white font-bold text-sm shadow-md shadow-green-200"
+          >
+            <FontAwesomeIcon icon={faWhatsapp} className="w-5 h-5" />
+            Konfirmasi Pesanan via WhatsApp
+          </a>
+          <p className="text-center text-[11px] text-gray-400 px-2">Ketuk tombol di atas untuk mengirim detail pesanan ke pemilik toko secara otomatis.</p>
         </div>
       </div>
     </div>

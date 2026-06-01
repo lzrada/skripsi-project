@@ -4,7 +4,7 @@ import PromoCards from "@/components/(user)/dashboard/PromoCards";
 import DashboardProductsClient from "@/components/(user)/dashboard/DashboardProductsClient";
 
 export const metadata: Metadata = {
-  title: "Beranda | Rizky Elektronik",
+  title: "Beranda | Rizqi Elektronik",
   description: "Belanja elektronik terpercaya: TV, AC, Kulkas, Mesin Cuci & lebih. Stok real-time, gratis ongkir Blitar.",
 };
 

@@ -23,13 +23,13 @@ export default function FooterUser() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12">
         <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
           <div className="col-span-2 sm:col-span-2 lg:col-span-1">
-            <h3 className="text-base sm:text-lg font-bold mb-1">Rizky Elektronik</h3>
+            <h3 className="text-base sm:text-lg font-bold mb-1">Rizqi Elektronik</h3>
             <p className="text-white/60 text-xs mb-4">Toko elektronik terpercaya Blitar & sekitarnya</p>
             <ul className="space-y-2.5 text-sm text-white/70">
               {[
                 { icon: faLocationDot, text: "Blitar, Jawa Timur" },
                 { icon: faPhone, text: "0812-XXXX-XXXX" },
-                { icon: faEnvelope, text: "rizky.elektronik@email.com" },
+                { icon: faEnvelope, text: "Rizqi.elektronik@email.com" },
                 { icon: faClock, text: "Senin–Sabtu, 08.00–17.00 WIB" },
               ].map(({ icon, text }) => (
                 <li key={text} className="flex items-start gap-2">
@@ -106,7 +106,7 @@ export default function FooterUser() {
           className="border-t border-white/10 mt-8 sm:mt-10 pt-5 sm:pt-6
           flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-white/40"
         >
-          <p>© {year} Rizky Elektronik. Dikembangkan menggunakan Next.js & Firebase.</p>
+          <p>© {year} Rizqi Elektronik. Dikembangkan menggunakan Next.js & Firebase.</p>
           <p className="text-center sm:text-right">Sistem E-Commerce — Universitas Islam Balitar, Teknik Informatika {year}</p>
         </div>
       </div>

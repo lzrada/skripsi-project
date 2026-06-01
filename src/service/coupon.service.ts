@@ -3,7 +3,7 @@ import { collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, order
 
 export interface Coupon {
   id: string;
-  code: string; // e.g. "RIZKY50"
+  code: string; // e.g. "Rizqi50"
   discount: number; // nilai diskon dalam rupiah
   minOrder: number; // minimal belanja agar kupon berlaku
   maxUsage: number; // 0 = unlimited

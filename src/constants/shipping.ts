@@ -1,5 +1,5 @@
 export const STORE_CONFIG = {
-  name: "Rizky Elektronik",
+  name: "Rizqi Elektronik",
   lat: -8.04765,
   lng: 112.21233,
   freeShippingRadiusKm: 10,

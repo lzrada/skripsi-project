@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Navbar from "@/components/(admin)/Navbar-admin";
 
 export const metadata: Metadata = {
-  title: "Panel Admin — Rizky Elektronik",
-  description: "Halaman manajemen toko Rizky Elektronik Blitar.",
+  title: "Panel Admin — Rizqi Elektronik",
+  description: "Halaman manajemen toko Rizqi Elektronik Blitar.",
 };
 
 export default function AdminLayout({

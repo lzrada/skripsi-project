@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     template: "%s | Rizqi Elektronik",
   },
   description: "Toko elektronik online terpercaya di Blitar. Jual beli TV, AC, Kulkas, Mesin Cuci, dan elektronik lainnya. Stok real-time, pembayaran aman via Midtrans.",
-  keywords: ["toko elektronik blitar", "beli elektronik online", "TV second blitar", "AC murah blitar", "kulkas second", "mesin cuci blitar", "rizky elektronik", "elektronik tulungagung", "elektronik kediri"],
+  keywords: ["toko elektronik blitar", "beli elektronik online", "TV second blitar", "AC murah blitar", "kulkas second", "mesin cuci blitar", "Rizqi elektronik", "elektronik tulungagung", "elektronik kediri"],
   authors: [{ name: "Rizqi Elektronik" }],
   creator: "Rizqi Elektronik",
 

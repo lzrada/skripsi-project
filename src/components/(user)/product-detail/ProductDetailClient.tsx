@@ -14,7 +14,6 @@ import { toast } from "@/components/(user)/ui/Toast";
 import ReviewSection from "./ReviewSection";
 import ProductDescription from "@/components/(user)/ui/ProductDescription";
 
-
 function formatPrice(price: number) {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -302,7 +301,7 @@ export default function ProductDetailClient({ product, related }: { product: Pro
                   <FontAwesomeIcon icon={faStore} className="w-5 h-5 text-yellow-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-gray-800">Rizky Elektronik</p>
+                  <p className="text-sm font-bold text-gray-800">Rizqi Elektronik</p>
                   <p className="text-xs text-gray-400">Toko resmi · Blitar, Jawa Timur</p>
                 </div>
               </div>
@@ -383,10 +382,8 @@ export default function ProductDetailClient({ product, related }: { product: Pro
 
             {/* Tab konten */}
             <div className="p-4 sm:p-6">
-             {activeTab === "deskripsi" && (
-  <ProductDescription text={product.description ?? ""} />
-)}
- 
+              {activeTab === "deskripsi" && <ProductDescription text={product.description ?? ""} />}
+
               {activeTab === "spesifikasi" && (
                 <div className="space-y-2 text-sm">
                   {[

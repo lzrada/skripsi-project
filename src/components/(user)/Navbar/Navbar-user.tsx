@@ -157,7 +157,7 @@ export default function NavbarUser() {
                 </div>
 
                 <div className="hidden sm:block leading-none">
-                  <p className="text-[#1E2753] font-black text-base">Rizky</p>
+                  <p className="text-[#1E2753] font-black text-base">Rizqi</p>
                   <p className="text-[#E85D04] text-[10px] font-bold tracking-widest uppercase">Elektronik</p>
                 </div>
               </Link>

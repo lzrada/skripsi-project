@@ -17,7 +17,7 @@ export interface Slide {
 export const slides: Slide[] = [
   {
     id: 1,
-    title: "Selamat Datang di Rizky Elektronik",
+    title: "Selamat Datang di Rizqi Elektronik",
     subtitle: "Toko elektronik terpercaya Blitar & sekitarnya — kini hadir online",
     cta: "Belanja Sekarang",
     href: "/user/products",

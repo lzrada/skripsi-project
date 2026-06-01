@@ -161,7 +161,7 @@ export default function Register() {
                 <FontAwesomeIcon icon={faBolt} className="w-5 h-5 text-[#1E2753]" />
               </div>
               <div>
-                <p className="font-black text-lg leading-none">Rizky</p>
+                <p className="font-black text-lg leading-none">Rizqi</p>
                 <p className="text-yellow-400 text-xs font-bold tracking-widest">ELEKTRONIK</p>
               </div>
             </div>
@@ -170,7 +170,7 @@ export default function Register() {
               <br />
               <span className="text-yellow-400">Belanja Lebih Hemat</span>
             </h2>
-            <p className="text-white/60 text-sm leading-relaxed">Buat akun gratis dan nikmati semua keuntungan berbelanja di Rizky Elektronik.</p>
+            <p className="text-white/60 text-sm leading-relaxed">Buat akun gratis dan nikmati semua keuntungan berbelanja di Rizqi Elektronik.</p>
           </div>
           <div className="relative z-10 space-y-3">
             {[
@@ -195,7 +195,7 @@ export default function Register() {
                 <FontAwesomeIcon icon={faBolt} className="w-4 h-4 text-yellow-400" />
               </div>
               <div>
-                <span className="font-black text-[#1E2753] text-base">Rizky</span>
+                <span className="font-black text-[#1E2753] text-base">Rizqi</span>
                 <span className="text-[#E85D04] text-xs font-bold tracking-widest ml-1">ELEKTRONIK</span>
               </div>
             </div>
@@ -339,7 +339,7 @@ export default function Register() {
             {loadingGoogle ? "Memproses..." : "Daftar dengan Google"}
           </button>
 
-          <p className="text-[11px] text-slate-400 text-center mt-4 leading-relaxed">Dengan mendaftar, kamu menyetujui syarat & ketentuan Rizky Elektronik.</p>
+          <p className="text-[11px] text-slate-400 text-center mt-4 leading-relaxed">Dengan mendaftar, kamu menyetujui syarat & ketentuan Rizqi Elektronik.</p>
         </div>
       </div>
     </div>

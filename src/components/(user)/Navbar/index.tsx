@@ -137,9 +137,9 @@ export default function NavbarUser() {
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 sm:gap-3 h-14 sm:h-16">
               <Link href="/user/dashboard-user" className="shrink-0 flex items-center gap-2 group">
-                <Image src="/images/logo-toko.jpeg" alt="Rizky Elektronik" width={40} height={40} className="rounded-lg object-cover w-9 h-9 sm:w-10 sm:h-10 ring-1 ring-gray-200 group-hover:ring-[#1E2753]/30 transition-all" priority />
+                <Image src="/images/logo-toko.jpeg" alt="Rizqi Elektronik" width={40} height={40} className="rounded-lg object-cover w-9 h-9 sm:w-10 sm:h-10 ring-1 ring-gray-200 group-hover:ring-[#1E2753]/30 transition-all" priority />
                 <div className="hidden sm:block leading-none">
-                  <p className="text-[#1E2753] font-black text-sm tracking-tight">Rizky</p>
+                  <p className="text-[#1E2753] font-black text-sm tracking-tight">Rizqi</p>
                   <p className="text-[#E85D04] text-[9px] font-bold tracking-widest uppercase">Elektronik</p>
                 </div>
               </Link>

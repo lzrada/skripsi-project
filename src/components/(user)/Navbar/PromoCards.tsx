@@ -26,7 +26,7 @@ const PROMO_CARDS: PromoCard[] = [
     color: "from-emerald-500 to-teal-600",
   },
   {
-    title: "Garansi Toko Rizky",
+    title: "Garansi Toko Rizqi",
     desc: "Setiap produk dilengkapi garansi resmi dari toko",
     icon: faShield,
     color: "from-[#1E2753] to-[#2d3a8c]",

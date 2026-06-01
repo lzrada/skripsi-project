@@ -97,7 +97,7 @@ function LoginForm() {
                 <FontAwesomeIcon icon={faBolt} className="w-5 h-5 text-[#1E2753]" />
               </div>
               <div>
-                <p className="font-black text-lg leading-none">Rizky</p>
+                <p className="font-black text-lg leading-none">Rizqi</p>
                 <p className="text-yellow-400 text-xs font-bold tracking-widest">ELEKTRONIK</p>
               </div>
             </div>
@@ -131,7 +131,7 @@ function LoginForm() {
                 <FontAwesomeIcon icon={faBolt} className="w-4 h-4 text-yellow-400" />
               </div>
               <div>
-                <span className="font-black text-[#1E2753] text-base">Rizky</span>
+                <span className="font-black text-[#1E2753] text-base">Rizqi</span>
                 <span className="text-[#E85D04] text-xs font-bold tracking-widest ml-1">ELEKTRONIK</span>
               </div>
             </div>

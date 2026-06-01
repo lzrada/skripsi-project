@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
     const res = await fetch(url, {
       headers: {
-        "User-Agent": "RizkyElektronik-Skripsi/1.0 (contact: admin@rizky-elektronik.com)",
+        "User-Agent": "RizqiElektronik-Skripsi/1.0 (contact: admin@Rizqi-elektronik.com)",
         Accept: "application/json",
       },
       next: { revalidate: 600 },

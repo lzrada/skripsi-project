@@ -16,10 +16,10 @@ function serializeProduct(product: Product): Product {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { product: productId } = await params;
   const product = await getProductByIdService(productId);
-  if (!product) return { title: "Produk tidak ditemukan — Rizky Elektronik" };
+  if (!product) return { title: "Produk tidak ditemukan — Rizqi Elektronik" };
   return {
-    title: `${product.name} — Rizky Elektronik`,
-    description: product.description?.slice(0, 150) || `Beli ${product.name} di Rizky Elektronik Blitar. Harga terbaik, garansi toko.`,
+    title: `${product.name} — Rizqi Elektronik`,
+    description: product.description?.slice(0, 150) || `Beli ${product.name} di Rizqi Elektronik Blitar. Harga terbaik, garansi toko.`,
   };
 }
 

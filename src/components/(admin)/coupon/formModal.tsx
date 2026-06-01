@@ -74,7 +74,7 @@ export function FormModal({ initial, onSave, onClose }: FormModalProps) {
         <div className="space-y-3.5">
           <div>
             <label className="text-xs font-bold text-gray-600 mb-1.5 block uppercase tracking-wide">Kode Kupon *</label>
-            <input value={form.code} onChange={(e) => set("code", e.target.value.toUpperCase())} placeholder="Contoh: RIZKY50" className={`${inputCls} uppercase font-mono tracking-widest font-bold`} />
+            <input value={form.code} onChange={(e) => set("code", e.target.value.toUpperCase())} placeholder="Contoh: Rizqi50" className={`${inputCls} uppercase font-mono tracking-widest font-bold`} />
           </div>
 
           <div className="grid grid-cols-2 gap-3">

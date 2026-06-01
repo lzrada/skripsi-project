@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -43,21 +43,36 @@ function buildWhatsAppUrl(orderId: string, orderCode: string, items: OrderItem[]
 function SuccessContent() {
   const searchParams = useSearchParams();
 
-  const orderId = searchParams.get("orderId") ?? "-";
-  const total = Number(searchParams.get("total") ?? 0);
-  const subtotal = Number(searchParams.get("subtotal") ?? 0);
-  const diskon = Number(searchParams.get("diskon") ?? 0);
-  const coupon = searchParams.get("coupon") ?? "";
-  const method = searchParams.get("method") ?? "Online";
-  const isCod = searchParams.get("isCod") === "true";
+  // Baca dari sessionStorage (data disimpan saat redirect dari checkout)
+  const [data, setData] = useState<{
+    orderId: string;
+    total: number;
+    subtotal: number;
+    diskonKupon: number;
+    couponCode: string;
+    paymentMethod: string;
+    isCod: boolean;
+    items: OrderItem[];
+  } | null>(null);
 
-  let orderItems: OrderItem[] = [];
-  try {
-    const raw = searchParams.get("items");
-    if (raw) orderItems = JSON.parse(decodeURIComponent(raw));
-  } catch {
-    orderItems = [];
-  }
+  useEffect(() => {
+    const raw = sessionStorage.getItem("checkout_success");
+    if (raw) {
+      try {
+        setData(JSON.parse(raw));
+        sessionStorage.removeItem("checkout_success");
+      } catch {}
+    }
+  }, []);
+
+  const orderId = data?.orderId ?? searchParams.get("orderId") ?? "-";
+  const total = data?.total ?? Number(searchParams.get("total") ?? 0);
+  const subtotal = data?.subtotal ?? Number(searchParams.get("subtotal") ?? 0);
+  const diskon = data?.diskonKupon ?? Number(searchParams.get("diskon") ?? 0);
+  const coupon = data?.couponCode ?? searchParams.get("coupon") ?? "";
+  const method = data?.paymentMethod ?? searchParams.get("method") ?? "Online";
+  const isCod = data?.isCod ?? searchParams.get("isCod") === "true";
+  const orderItems: OrderItem[] = data?.items ?? [];
 
   const orderCode = orderId.slice(0, 8).toUpperCase();
   const waUrl = buildWhatsAppUrl(orderId, orderCode, orderItems, total, method, isCod);

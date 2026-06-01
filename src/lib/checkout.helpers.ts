@@ -17,28 +17,24 @@ export interface RedirectSuccessParams {
 }
 
 export function redirectToSuccess({ router, orderId, orderItems, subtotal, total, diskonKupon, couponCode, paymentMethod, isCod }: RedirectSuccessParams) {
-  const itemsParam = encodeURIComponent(
-    JSON.stringify(
-      orderItems.map((i) => ({
-        id: i.id,
-        name: i.name,
-        price: i.price,
-        qty: i.qty,
-        image: i.image ?? "",
-      })),
-    ),
-  );
-
-  const q = new URLSearchParams({
+  // Simpan data order ke sessionStorage agar URL tidak terlalu panjang (mencegah 404)
+  const successData = {
     orderId,
-    total: String(total),
-    subtotal: String(subtotal),
-    diskon: String(diskonKupon),
-    coupon: couponCode,
-    method: paymentMethod,
-    isCod: String(isCod),
-    items: itemsParam,
-  });
+    total,
+    subtotal,
+    diskonKupon,
+    couponCode,
+    paymentMethod,
+    isCod,
+    items: orderItems.map((i) => ({
+      id: i.id,
+      name: i.name,
+      price: i.price,
+      qty: i.qty,
+      image: i.image ?? "",
+    })),
+  };
 
-  router.replace(`/user/checkout/success?${q.toString()}`);
+  sessionStorage.setItem("checkout_success", JSON.stringify(successData));
+  router.replace(`/user/checkout/success?orderId=${orderId}`);
 }

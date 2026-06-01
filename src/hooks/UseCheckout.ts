@@ -117,14 +117,16 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     if (!form.telepon.trim()) return setFormError("Nomor telepon wajib diisi.");
     if (!form.alamat.trim()) return setFormError("Alamat lengkap wajib diisi.");
 
-    if (shippingStatus === "calculating") {
-      return setFormError("Sedang menghitung ongkos kirim, tunggu sebentar...");
-    }
-    if (shippingStatus === "not_found") {
-      return setFormError("Kota tujuan tidak dikenali. Hubungi toko untuk konfirmasi ongkos kirim.");
-    }
-    if (shippingStatus === "idle" || !shipping) {
-      return setFormError("Isi kolom Kota / Kabupaten terlebih dahulu agar ongkos kirim bisa dihitung.");
+    if (!isCod) {
+      if (shippingStatus === "calculating") {
+        return setFormError("Sedang menghitung ongkos kirim, tunggu sebentar...");
+      }
+      if (shippingStatus === "not_found") {
+        return setFormError("Kota tujuan tidak dikenali. Hubungi toko untuk konfirmasi ongkos kirim.");
+      }
+      if (shippingStatus === "idle" || !shipping) {
+        return setFormError("Isi kolom Kota / Kabupaten terlebih dahulu agar ongkos kirim bisa dihitung.");
+      }
     }
 
     if (!uid) {
@@ -209,7 +211,7 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
         items: buildItems(snapshot),
         user: {
           name: form.nama,
-          email: userEmail || "pelanggan@rizky-elektronik.com",
+          email: userEmail || "pelanggan@Rizqi-elektronik.com",
         },
         totalPrice: total,
         paymentType: selectedMethod.paymentType,

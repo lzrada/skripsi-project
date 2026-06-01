@@ -18,7 +18,7 @@ export default function WhatsAppButton() {
                 <FaWhatsapp className="text-white text-lg" />
               </div>
               <div>
-                <p className="text-sm font-bold text-gray-800">Rizky Elektronik</p>
+                <p className="text-sm font-bold text-gray-800">Rizqi Elektronik</p>
                 <p className="text-[10px] text-green-500 font-semibold flex items-center gap-1">
                   <span className="w-1.5 h-1.5 bg-green-500 rounded-full inline-block animate-pulse" />
                   Online sekarang

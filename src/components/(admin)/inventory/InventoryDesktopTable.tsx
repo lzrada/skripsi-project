@@ -32,7 +32,7 @@ export function InventoryDesktopTable({ filtered, onEditROP, onRestock, restocki
             <th className="text-left px-5 py-3.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">Produk</th>
             <th className="text-center px-4 py-3.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">Stok</th>
             <th className="text-center px-4 py-3.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">ROP</th>
-            <th className="text-center px-4 py-3.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">Avg/Hari</th>
+            {/* <th className="text-center px-4 py-3.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">Avg/Hari</th> */}
             <th className="text-center px-4 py-3.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">Lead Time</th>
             <th className="text-center px-4 py-3.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">Status</th>
             <th className="text-center px-4 py-3.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">Aksi</th>
@@ -61,7 +61,7 @@ export function InventoryDesktopTable({ filtered, onEditROP, onRestock, restocki
                 <td className="px-4 py-4 text-center">
                   <span className="font-bold text-slate-700">{p.reorderPoint}</span>
                 </td>
-                <td className="px-4 py-4 text-center text-slate-500">{p.averageDailySales > 0 ? p.averageDailySales : "-"}</td>
+                {/* <td className="px-4 py-4 text-center text-slate-500">{p.averageDailySales > 0 ? p.averageDailySales : "-"}</td> */}
                 <td className="px-4 py-4 text-center text-slate-500">{p.leadTimeDays} hari</td>
                 <td className="px-4 py-4 text-center">
                   <StockBadge stock={p.stock} rop={p.reorderPoint} />

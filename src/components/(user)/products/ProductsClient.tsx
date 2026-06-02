@@ -3,13 +3,22 @@
 import { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faArrowDownWideShort, faSliders, faXmark } from "@fortawesome/free-solid-svg-icons";
+import {
+  faMagnifyingGlass,
+  faArrowDownWideShort,
+  faSliders,
+  faXmark,
+  faChevronLeft,
+  faChevronRight,
+} from "@fortawesome/free-solid-svg-icons";
 import { subscribeToProductsService } from "@/service/product.service";
 import { Product } from "@/types/product";
 import ProductCard from "@/components/(user)/ui/ProductCard";
 import ProductFilterPanel, { PRICE_RANGES } from "@/components/(user)/products/ProductFilterPanel";
 
 type SortOption = "default" | "price-asc" | "price-desc" | "name-asc";
+
+const PRODUCTS_PER_PAGE = 8;
 
 function ProductSkeleton() {
   return (
@@ -37,6 +46,7 @@ function ProductsContent() {
   const [activeCategory, setActiveCategory] = useState(selectedCategory);
   const [priceRange, setPriceRange] = useState(0);
   const [conditionFilter, setConditionFilter] = useState<"semua" | "baru" | "bekas">("semua");
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const unsub = subscribeToProductsService((data) => {
@@ -48,7 +58,13 @@ function ProductsContent() {
 
   useEffect(() => {
     setActiveCategory(selectedCategory);
+    setCurrentPage(1); // Reset ke halaman 1 saat kategori berubah
   }, [selectedCategory]);
+
+  // Reset ke halaman 1 saat filter/sort berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sort, priceRange, conditionFilter, searchQuery]);
 
   // Kunci scroll body saat filter sheet terbuka di mobile
   useEffect(() => {
@@ -67,6 +83,7 @@ function ProductsContent() {
   const resetFilters = () => {
     setPriceRange(0);
     setConditionFilter("semua");
+    setCurrentPage(1);
     const params = new URLSearchParams(searchParams.toString());
     params.delete("category");
     router.push(`/user/products?${params.toString()}`);
@@ -77,26 +94,69 @@ function ProductsContent() {
     if (activeCategory) result = result.filter((p) => p.category === activeCategory);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter((p) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q));
+      result = result.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q) ||
+          p.description?.toLowerCase().includes(q)
+      );
     }
     if (priceRange > 0) {
       const { min, max } = PRICE_RANGES[priceRange];
       result = result.filter((p) => p.price >= min && p.price < max);
     }
-    if (conditionFilter !== "semua") result = result.filter((p) => (p.condition?.toLowerCase() ?? "baru") === conditionFilter);
+    if (conditionFilter !== "semua")
+      result = result.filter((p) => (p.condition?.toLowerCase() ?? "baru") === conditionFilter);
     if (sort === "price-asc") result.sort((a, b) => a.price - b.price);
     else if (sort === "price-desc") result.sort((a, b) => b.price - a.price);
     else if (sort === "name-asc") result.sort((a, b) => a.name.localeCompare(b.name));
     return result;
   }, [products, activeCategory, searchQuery, sort, priceRange, conditionFilter]);
 
+  // ── Pagination logic ──
+  // totalPages minimal 1 agar pagination selalu muncul
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
+
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * PRODUCTS_PER_PAGE;
+    return filteredProducts.slice(start, start + PRODUCTS_PER_PAGE);
+  }, [filteredProducts, currentPage]);
+
+  const getPageNumbers = (): (number | "...")[] => {
+    const pages: (number | "...")[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push("...");
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push("...");
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const hasFilter = !!(activeCategory || priceRange > 0 || conditionFilter !== "semua");
-  const pageTitle = searchQuery ? `Hasil: "${searchQuery}"` : activeCategory ? `Kategori: ${activeCategory}` : "Semua Produk";
+  const pageTitle = searchQuery
+    ? `Hasil: "${searchQuery}"`
+    : activeCategory
+    ? `Kategori: ${activeCategory}`
+    : "Semua Produk";
 
   return (
     <div className="min-h-screen bg-[#F9FAFB]">
       {/* ── Mobile filter bottom-sheet overlay ── */}
-      {filterOpen && <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setFilterOpen(false)} />}
+      {filterOpen && (
+        <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setFilterOpen(false)} />
+      )}
 
       {/* ── Mobile filter bottom-sheet panel ── */}
       <div
@@ -112,7 +172,10 @@ function ProductsContent() {
 
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
           <p className="text-base font-bold text-gray-800">Filter Produk</p>
-          <button onClick={() => setFilterOpen(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500">
+          <button
+            onClick={() => setFilterOpen(false)}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500"
+          >
             <FontAwesomeIcon icon={faXmark} className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -142,8 +205,12 @@ function ProductsContent() {
         <div className="flex items-center justify-between gap-3 mb-4">
           {/* Judul */}
           <div className="min-w-0">
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800 truncate">{pageTitle}</h1>
-            <p className="text-xs text-gray-400 mt-0.5">{loading ? "Memuat..." : `${filteredProducts.length} produk`}</p>
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800 truncate">
+              {pageTitle}
+            </h1>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {loading ? "Memuat..." : `${filteredProducts.length} produk`}
+            </p>
           </div>
 
           {/* Kontrol kanan */}
@@ -151,18 +218,28 @@ function ProductsContent() {
             {/* Tombol filter */}
             <button
               onClick={() => setFilterOpen((o) => !o)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${hasFilter ? "bg-[#1E2753] text-white border-[#1E2753]" : "bg-white border-gray-200 text-gray-600 hover:border-[#1E2753]"}`}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-all ${
+                hasFilter
+                  ? "bg-[#1E2753] text-white border-[#1E2753]"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-[#1E2753]"
+              }`}
             >
               <FontAwesomeIcon icon={faSliders} className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Filter</span>
               {hasFilter && <span className="w-2 h-2 rounded-full bg-orange-400 sm:hidden" />}
-              {hasFilter && <span className="hidden sm:inline bg-white/30 text-xs px-1.5 rounded-full">aktif</span>}
+              {hasFilter && (
+                <span className="hidden sm:inline bg-white/30 text-xs px-1.5 rounded-full">aktif</span>
+              )}
             </button>
 
             {/* Sort dropdown */}
             <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-2.5 sm:px-3 py-2">
               <FontAwesomeIcon icon={faArrowDownWideShort} className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-              <select value={sort} onChange={(e) => setSort(e.target.value as SortOption)} className="text-xs sm:text-sm text-gray-700 focus:outline-none bg-transparent cursor-pointer max-w-[90px] sm:max-w-none">
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortOption)}
+                className="text-xs sm:text-sm text-gray-700 focus:outline-none bg-transparent cursor-pointer max-w-[90px] sm:max-w-none"
+              >
                 <option value="default">Urutkan</option>
                 <option value="price-asc">Termurah</option>
                 <option value="price-desc">Termahal</option>
@@ -172,7 +249,11 @@ function ProductsContent() {
 
             {/* Reset filter — hanya muncul kalau ada filter aktif */}
             {hasFilter && (
-              <button onClick={resetFilters} className="flex items-center gap-1 p-2 sm:px-3 sm:py-2 bg-red-50 border border-red-100 rounded-xl text-xs font-medium text-red-500 hover:bg-red-100 transition-all" aria-label="Reset filter">
+              <button
+                onClick={resetFilters}
+                className="flex items-center gap-1 p-2 sm:px-3 sm:py-2 bg-red-50 border border-red-100 rounded-xl text-xs font-medium text-red-500 hover:bg-red-100 transition-all"
+                aria-label="Reset filter"
+              >
                 <FontAwesomeIcon icon={faXmark} className="w-3 h-3" />
                 <span className="hidden sm:inline">Reset</span>
               </button>
@@ -201,7 +282,8 @@ function ProductsContent() {
           <div className="mb-4 flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
             <FontAwesomeIcon icon={faMagnifyingGlass} className="w-4 h-4 text-blue-400 flex-shrink-0" />
             <p className="text-xs sm:text-sm text-blue-700">
-              <span className="font-bold">{filteredProducts.length} produk</span> untuk <span className="font-bold">"{searchQuery}"</span>
+              <span className="font-bold">{filteredProducts.length} produk</span> untuk{" "}
+              <span className="font-bold">"{searchQuery}"</span>
             </p>
           </div>
         )}
@@ -209,25 +291,112 @@ function ProductsContent() {
         {/* ── Grid produk ── */}
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            {[...Array(8)].map((_, i) => (
+            {[...Array(PRODUCTS_PER_PAGE)].map((_, i) => (
               <ProductSkeleton key={i} />
             ))}
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div className="bg-white border border-gray-100 rounded-2xl p-10 text-center">
-            <p className="text-4xl mb-3">🔍</p>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-700">{searchQuery ? "Produk tidak ditemukan" : "Belum ada produk"}</h2>
-            <p className="text-xs sm:text-sm text-gray-500 mt-1">{searchQuery ? `Tidak ada hasil untuk "${searchQuery}".` : "Coba ubah filter pencarian."}</p>
-            <button onClick={resetFilters} className="mt-4 inline-block px-5 py-2.5 bg-[#1E2753] text-white rounded-xl text-sm font-semibold">
-              Reset Filter
-            </button>
-          </div>
+          <>
+            <div className="bg-white border border-gray-100 rounded-2xl p-10 text-center">
+              <p className="text-4xl mb-3">🔍</p>
+              <h2 className="text-base sm:text-lg font-semibold text-gray-700">
+                {searchQuery ? "Produk tidak ditemukan" : "Belum ada produk"}
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                {searchQuery
+                  ? `Tidak ada hasil untuk "${searchQuery}".`
+                  : "Coba ubah filter pencarian."}
+              </p>
+              <button
+                onClick={resetFilters}
+                className="mt-4 inline-block px-5 py-2.5 bg-[#1E2753] text-white rounded-xl text-sm font-semibold"
+              >
+                Reset Filter
+              </button>
+            </div>
+
+            {/* ── Pagination tetap muncul meski produk kosong ── */}
+            <div className="flex items-center justify-center gap-1 mt-8 flex-wrap">
+              <button
+                disabled
+                className="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200 text-gray-300 cursor-not-allowed"
+                aria-label="Halaman sebelumnya"
+              >
+                <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
+              </button>
+              <button className="flex items-center justify-center w-9 h-9 rounded-xl text-sm font-semibold border bg-[#1E2753] text-white border-[#1E2753] shadow-md">
+                1
+              </button>
+              <button
+                disabled
+                className="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200 text-gray-300 cursor-not-allowed"
+                aria-label="Halaman berikutnya"
+              >
+                <FontAwesomeIcon icon={faChevronRight} className="w-3 h-3" />
+              </button>
+            </div>
+            <p className="text-center text-xs text-gray-400 mt-2">Halaman 1 dari 1</p>
+          </>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            {filteredProducts.map((item) => (
-              <ProductCard key={item.id} product={item} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+              {paginatedProducts.map((item) => (
+                <ProductCard key={item.id} product={item} />
+              ))}
+            </div>
+
+            {/* ── Pagination selalu muncul ── */}
+            <div className="flex items-center justify-center gap-1 mt-8 flex-wrap">
+              {/* Tombol Prev */}
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200 text-gray-500 hover:border-[#1E2753] hover:text-[#1E2753] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+                aria-label="Halaman sebelumnya"
+              >
+                <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
+              </button>
+
+              {/* Nomor Halaman */}
+              {getPageNumbers().map((page, idx) =>
+                page === "..." ? (
+                  <span
+                    key={`dots-${idx}`}
+                    className="flex items-center justify-center w-9 h-9 text-gray-400 text-sm"
+                  >
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page as number)}
+                    className={`flex items-center justify-center w-9 h-9 rounded-xl text-sm font-semibold border transition-all duration-200 ${
+                      currentPage === page
+                        ? "bg-[#1E2753] text-white border-[#1E2753] shadow-md"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-[#1E2753] hover:text-[#1E2753]"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+
+              {/* Tombol Next */}
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200 text-gray-500 hover:border-[#1E2753] hover:text-[#1E2753] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
+                aria-label="Halaman berikutnya"
+              >
+                <FontAwesomeIcon icon={faChevronRight} className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Info halaman */}
+            <p className="text-center text-xs text-gray-400 mt-2">
+              Halaman {currentPage} dari {totalPages}
+            </p>
+          </>
         )}
       </div>
     </div>

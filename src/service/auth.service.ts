@@ -72,10 +72,6 @@ export const loginWithEmail = async (email: string, password: string) => {
   }
 };
 
-// ── Google Login ─────────────────────────────────────────────────────
-// Selalu pakai popup (redirect tidak reliable di Netlify karena
-// IndexedDB/sessionStorage hilang saat Netlify load halaman baru).
-// Kalau popup diblokir browser, lempar error auth/popup-blocked.
 export const loginWithGoogle = async () => {
   try {
     const provider = new GoogleAuthProvider();
@@ -96,7 +92,7 @@ export const loginWithGoogle = async () => {
   }
 };
 
-// ── Shared: proses user setelah autentikasi Google berhasil ─────────
+
 async function _processGoogleUser(user: any) {
   const userRef = doc(db, "users", user.uid);
   let snap = await getDoc(userRef);

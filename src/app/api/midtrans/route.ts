@@ -7,6 +7,10 @@ const ENABLED_PAYMENTS: Record<string, string[]> = {
   ewallet: ["gopay", "shopeepay", "dana", "ovo"],
 };
 
+const AUTO_REFUNDABLE_TYPES = ["credit_card", "gopay", "shopeepay", "qris"];
+
+const CANCELLABLE_STATUSES = ["pending", "authorize"];
+
 function createSnapClient() {
   return new midtransClient.Snap({
     isProduction: false,
@@ -28,7 +32,6 @@ export async function POST(req: Request) {
 
     const snap = createSnapClient();
 
-    // Hitung total dari item_details agar cocok dengan gross_amount Midtrans
     const itemDetails: any[] = items.map((item: any) => ({
       id: item.id,
       price: item.price,
@@ -36,7 +39,6 @@ export async function POST(req: Request) {
       name: item.name.substring(0, 50),
     }));
 
-    // Tambahkan ongkir sebagai item jika ada
     if (shippingFee && shippingFee > 0) {
       itemDetails.push({
         id: "SHIPPING",
@@ -46,7 +48,6 @@ export async function POST(req: Request) {
       });
     }
 
-    // Tambahkan diskon kupon sebagai item negatif agar gross_amount cocok
     if (diskonKupon && diskonKupon > 0) {
       itemDetails.push({
         id: "COUPON",
@@ -92,19 +93,56 @@ export async function DELETE(req: Request) {
 
     const core = createCoreClient();
 
-    let result;
+    let statusResult: any;
     try {
-      result = await (core as any).refund(orderId, {
-        refund_key: `REFUND-${orderId}-${Date.now()}`,
-        amount: amount,
-        reason: reason ?? "Pesanan dibatalkan oleh pelanggan",
+      statusResult = await (core as any).transaction.status(orderId);
+    } catch (err: any) {
+      return NextResponse.json({
+        success: true,
+        manualRefund: false,
+        note: "Transaksi tidak ditemukan di Midtrans, tidak ada aksi yang dilakukan.",
       });
-    } catch {
-      // Fallback: cancel transaksi yang belum settlement
-      result = await (core as any).transaction.cancel(orderId);
     }
 
-    return NextResponse.json({ success: true, result });
+    const transactionStatus: string = statusResult.transaction_status;
+    const paymentType: string = statusResult.payment_type;
+
+    if (CANCELLABLE_STATUSES.includes(transactionStatus)) {
+      const result = await (core as any).transaction.cancel(orderId);
+      return NextResponse.json({ success: true, manualRefund: false, result });
+    }
+
+    if (transactionStatus === "settlement" || transactionStatus === "capture") {
+      if (AUTO_REFUNDABLE_TYPES.includes(paymentType)) {
+        try {
+          const result = await (core as any).refund(orderId, {
+            refund_key: `REFUND-${orderId}-${Date.now()}`,
+            amount,
+            reason: reason ?? "Pesanan dibatalkan oleh pelanggan",
+          });
+          return NextResponse.json({ success: true, manualRefund: false, result });
+        } catch (err: any) {
+          console.error("Midtrans refund gagal, fallback ke refund manual:", err?.message ?? err);
+          return NextResponse.json({
+            success: true,
+            manualRefund: true,
+            note: "Refund otomatis gagal, akan diproses manual oleh admin.",
+          });
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        manualRefund: true,
+        note: `Refund untuk metode "${paymentType}" tidak didukung otomatis, akan diproses manual oleh admin.`,
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      manualRefund: false,
+      note: `Status transaksi sudah "${transactionStatus}", tidak ada aksi tambahan.`,
+    });
   } catch (error: any) {
     console.error("Midtrans DELETE Error:", error);
     return NextResponse.json({ error: error?.message ?? "Gagal memproses refund" }, { status: 500 });

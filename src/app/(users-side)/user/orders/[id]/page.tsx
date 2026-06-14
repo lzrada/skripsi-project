@@ -116,9 +116,15 @@ export default function OrderDetailPage() {
     try {
       const isPaid = order.paymentStatus === "paid";
       const midtransOrderId = (order.midtransResult as any)?.order_id;
+
       if (isPaid && midtransOrderId) {
-        await cancelAndRefundOrderService(order.id, midtransOrderId, order.total);
-        toast.success("Pesanan dibatalkan. Dana dikembalikan dalam 3–14 hari kerja.");
+        const { manualRefund } = await cancelAndRefundOrderService(order.id, midtransOrderId, order.total);
+
+        if (manualRefund) {
+          toast.success("Pesanan dibatalkan. Karena metode pembayaranmu, refund akan diproses manual oleh tim kami dalam 3–14 hari kerja.");
+        } else {
+          toast.success("Pesanan dibatalkan. Dana dikembalikan otomatis dalam 3–14 hari kerja.");
+        }
       } else {
         await cancelOrderService(order.id);
         toast.success("Pesanan berhasil dibatalkan.");

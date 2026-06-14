@@ -1,4 +1,3 @@
-// src/components/(user)/checkout/ShippingInfo.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -36,7 +35,7 @@ export default function ShippingInfo({ shipping, isCalculating, onShippingResult
 
       const coords = await geocodeAddress(autoCity);
       if (!coords) {
-        setGeocodeError('Kota tidak ditemukan otomatis. Coba isi manual di bawah.');
+        setGeocodeError("Kota tidak ditemukan otomatis. Coba isi manual di bawah.");
         onShippingResult(null, false);
         return;
       }

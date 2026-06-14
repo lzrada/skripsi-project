@@ -31,7 +31,6 @@ export default function AddressForm({ form, formError, onChange, onFillFromProfi
   const [profileFilled, setProfileFilled] = useState(false);
   const [hasProfileAddress, setHasProfileAddress] = useState<boolean | null>(null);
 
-  // Cek apakah profil punya alamat — hanya tampilkan tombol kalau ada
   useEffect(() => {
     const uid = getUidFromCookie();
     if (!uid) {

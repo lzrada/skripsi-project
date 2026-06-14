@@ -30,6 +30,7 @@ export interface Order {
   midtransResult?: Record<string, unknown>;
   couponCode?: string;
   diskonKupon?: number;
+  refundStatus?: "auto" | "manual" | "none";
 }
 
 export const statusConfig: Record<OrderStatus, { label: string; color: string; bg: string; icon: IconDefinition }> = {

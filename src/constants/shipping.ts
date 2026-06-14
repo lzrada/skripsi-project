@@ -3,9 +3,9 @@ export const STORE_CONFIG = {
   lat: -8.04765,
   lng: 112.21233,
   freeShippingRadiusKm: 10,
-  ratePerKm: 3_000,
+  ratePerKm: 10_000,
   minimumShippingFee: 15_000,
-  maximumShippingFee: 100_000 as number | null,
+  maximumShippingFee: 300_000 as number | null,
   estimasiDalamRadius: "Hari ini – 1 hari",
   estimasiLuarRadius: "1–2 hari",
 } as const;

@@ -70,7 +70,7 @@ export const createOrderService = async (payload: CreateOrderPayload): Promise<s
       date: new Date().toISOString(),
       createdAt: serverTimestamp(),
       stockDeducted: false,
-      soldIncremented: false, // ← TAMBAHKAN: flag agar sold hanya di-increment sekali
+      soldIncremented: false,
       ...(payload.couponCode ? { couponCode: payload.couponCode, diskonKupon: payload.diskonKupon ?? 0 } : {}),
       ...(payload.paymentStatus ? { paymentStatus: payload.paymentStatus } : {}),
       ...(payload.midtransResult ? { midtransResult: payload.midtransResult } : {}),
@@ -137,8 +137,7 @@ export const incrementSoldOnCompleteService = async (orderId: string): Promise<v
   });
 };
 
-// ── Batalkan order + kembalikan stok ─────────────────────────────────────────
-export const cancelOrderService = async (orderId: string): Promise<void> => {
+export const cancelOrderService = async (orderId: string, refundStatus?: "auto" | "manual" | "none"): Promise<void> => {
   await runTransaction(db, async (transaction) => {
     const orderRef = doc(db, "orders", orderId);
     const orderSnap = await transaction.get(orderRef);
@@ -152,23 +151,31 @@ export const cancelOrderService = async (orderId: string): Promise<void> => {
     const items: { id: string; qty: number }[] = orderData.items ?? [];
     const wasDeducted: boolean = orderData.stockDeducted === true;
 
+    // 1) SEMUA READ dilakukan dulu, sebelum WRITE apapun
+    const productRefs = items.map((item) => doc(db, "products", item.id));
+    const productSnaps = wasDeducted ? await Promise.all(productRefs.map((ref) => transaction.get(ref))) : [];
+
+    // 2) Baru sekarang semua WRITE
     if (wasDeducted) {
-      for (const item of items) {
-        const productRef = doc(db, "products", item.id);
-        const productSnap = await transaction.get(productRef);
-        if (productSnap.exists()) {
-          const currentStock: number = productSnap.data().stock ?? 0;
-          transaction.update(productRef, { stock: currentStock + item.qty });
+      for (let i = 0; i < items.length; i++) {
+        const snap = productSnaps[i];
+        if (snap.exists()) {
+          const currentStock: number = snap.data().stock ?? 0;
+          transaction.update(productRefs[i], { stock: currentStock + items[i].qty });
         }
       }
     }
 
-    transaction.update(orderRef, { status: "Dibatalkan" as OrderStatus, stockDeducted: false });
+    transaction.update(orderRef, {
+      status: "Dibatalkan" as OrderStatus,
+      stockDeducted: false,
+      ...(refundStatus ? { refundStatus } : {}),
+    });
   });
 };
 
 // ── Batalkan order + refund Midtrans ─────────────────────────────────────────
-export const cancelAndRefundOrderService = async (orderId: string, midtransOrderId: string, total: number): Promise<void> => {
+export const cancelAndRefundOrderService = async (orderId: string, midtransOrderId: string, total: number): Promise<{ manualRefund: boolean }> => {
   const res = await fetch("/api/midtrans", {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
@@ -184,9 +191,14 @@ export const cancelAndRefundOrderService = async (orderId: string, midtransOrder
     throw new Error(err?.error ?? "Gagal memproses refund ke Midtrans.");
   }
 
-  await cancelOrderService(orderId);
-};
+  const data = await res.json();
+  const manualRefund: boolean = data?.manualRefund === true;
 
+  // Tetap batalkan order di Firestore meski refund harus diproses manual.
+  await cancelOrderService(orderId, manualRefund ? "manual" : "auto");
+
+  return { manualRefund };
+};
 // ── Subscribe pesanan milik user ──────────────────────────────────────────────
 export const subscribeToUserOrdersService = (uid: string, callback: (orders: Order[]) => void) => {
   const q = query(collection(db, "orders"), where("uid", "==", uid), orderBy("createdAt", "desc"));
@@ -211,6 +223,7 @@ export const subscribeToUserOrdersService = (uid: string, callback: (orders: Ord
         midtransResult: data.midtransResult,
         couponCode: data.couponCode,
         diskonKupon: data.diskonKupon,
+        refundStatus: data.refundStatus,
       } as Order;
     });
     callback(orders);
@@ -241,6 +254,7 @@ export const subscribeToAllOrdersService = (callback: (orders: Order[]) => void)
         midtransResult: data.midtransResult,
         couponCode: data.couponCode,
         diskonKupon: data.diskonKupon,
+        refundStatus: data.refundStatus,
       } as Order;
     });
     callback(orders);
@@ -293,6 +307,7 @@ export const subscribeToOrderByIdService = (orderId: string, callback: (order: O
       midtransResult: data.midtransResult,
       couponCode: data.couponCode,
       diskonKupon: data.diskonKupon,
+      refundStatus: data.refundStatus,
     } as Order);
   });
 };

@@ -6,10 +6,77 @@ import { db } from "@/config/firebase";
 import { markAsRestockedService } from "@/service/inventory.service";
 import { calculateReorderPoint, calculateInventoryLevel, isCriticalStock, isLowStock } from "@/constants/inventory";
 import { IoBarChartSharp } from "react-icons/io5";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faChevronLeft, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { EditROPModal } from "@/components/(admin)/inventory/EditROPModal";
 import { StockBadge } from "@/components/(admin)/inventory/StockBadge";
 import { StockBar } from "@/components/(admin)/inventory/StockBar";
 import { formatPrice } from "@/components/(admin)/inventory/inventoryHelpers";
+
+const ITEMS_PER_PAGE = 8;
+
+function PaginationControls({ currentPage, totalPages, onPageChange }: { currentPage: number; totalPages: number; onPageChange: (page: number) => void }) {
+  const getPageNumbers = (): (number | "...")[] => {
+    const pages: (number | "...")[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push("...");
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push("...");
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
+  return (
+    <>
+      <div className="flex items-center justify-center gap-1 mt-6 flex-wrap">
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-500 hover:border-[#1E2753] hover:text-[#1E2753] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          aria-label="Halaman sebelumnya"
+        >
+          <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
+        </button>
+
+        {getPageNumbers().map((page, idx) =>
+          page === "..." ? (
+            <span key={`dots-${idx}`} className="flex items-center justify-center w-9 h-9 text-slate-400 text-sm">
+              ...
+            </span>
+          ) : (
+            <button
+              key={page}
+              onClick={() => onPageChange(page as number)}
+              className={`flex items-center justify-center w-9 h-9 rounded-xl text-sm font-semibold border transition-all ${
+                currentPage === page ? "bg-[#1E2753] text-white border-[#1E2753] shadow-md" : "bg-white text-slate-600 border-slate-200 hover:border-[#1E2753] hover:text-[#1E2753]"
+              }`}
+            >
+              {page}
+            </button>
+          ),
+        )}
+
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200 text-slate-500 hover:border-[#1E2753] hover:text-[#1E2753] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          aria-label="Halaman berikutnya"
+        >
+          <FontAwesomeIcon icon={faChevronRight} className="w-3 h-3" />
+        </button>
+      </div>
+      <p className="text-center text-xs text-slate-400 mt-2">
+        Halaman {currentPage} dari {totalPages}
+      </p>
+    </>
+  );
+}
 
 interface ProductStock {
   id: string;
@@ -63,6 +130,7 @@ export default function InventoryManagementPage() {
     product: null,
   });
   const [restockingId, setRestockingId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const q = query(collection(db, "products"), orderBy("name"));
@@ -105,6 +173,24 @@ export default function InventoryManagementPage() {
       return matchSearch && matchFilter;
     });
   }, [products, search, filter]);
+
+  // Reset ke halaman 1 saat search/filter berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+
+  const paginated = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, currentPage]);
+
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   async function handleRestock(product: ProductStock) {
     setRestockingId(product.id);
@@ -168,6 +254,13 @@ export default function InventoryManagementPage() {
         />
       </div>
 
+      {/* Info jumlah hasil */}
+      {!loading && filtered.length > 0 && (
+        <p className="text-xs text-slate-400 mb-3">
+          Menampilkan {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} dari {filtered.length} produk
+        </p>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {/* Desktop Table */}
@@ -185,14 +278,14 @@ export default function InventoryManagementPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {filtered.length === 0 ? (
+              {paginated.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-12 text-slate-400 text-sm">
                     Tidak ada produk ditemukan
                   </td>
                 </tr>
               ) : (
-                filtered.map((p) => (
+                paginated.map((p) => (
                   <tr key={p.id} className={`hover:bg-slate-50 transition ${isCriticalStock(p.stock) ? "bg-red-50/50" : ""}`}>
                     <td className="px-5 py-4">
                       <p className="font-semibold text-slate-800 truncate max-w-50">{p.name}</p>
@@ -237,10 +330,10 @@ export default function InventoryManagementPage() {
 
         {/* Mobile Cards */}
         <div className="md:hidden divide-y divide-slate-100">
-          {filtered.length === 0 ? (
+          {paginated.length === 0 ? (
             <div className="text-center py-12 text-slate-400 text-sm">Tidak ada produk ditemukan</div>
           ) : (
-            filtered.map((p) => (
+            paginated.map((p) => (
               <div key={p.id} className={`p-4 ${isCriticalStock(p.stock) ? "bg-red-50/50" : ""}`}>
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <div className="flex-1 min-w-0">
@@ -283,6 +376,9 @@ export default function InventoryManagementPage() {
           )}
         </div>
       </div>
+
+      {/* Pagination */}
+      <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
 
       {/* Edit ROP Modal */}
       {editModal.open && editModal.product && <EditROPModal product={editModal.product} onClose={() => setEditModal({ open: false, product: null })} onSaved={() => {}} />}

@@ -28,8 +28,8 @@ export default function FooterUser() {
             <ul className="space-y-2.5 text-sm text-white/70">
               {[
                 { icon: faLocationDot, text: "Blitar, Jawa Timur" },
-                { icon: faPhone, text: "0812-XXXX-XXXX" },
-                { icon: faEnvelope, text: "Rizqi.elektronik@email.com" },
+                { icon: faPhone, text: "0857-3532-8348" },
+                { icon: faEnvelope, text: "rizqielektronik@email.com" },
                 { icon: faClock, text: "Senin–Sabtu, 08.00–17.00 WIB" },
               ].map(({ icon, text }) => (
                 <li key={text} className="flex items-start gap-2">
@@ -70,7 +70,7 @@ export default function FooterUser() {
             <h4 className="font-semibold text-sm mb-3 sm:mb-4 text-white/90">Hubungi Kami</h4>
             <div className="flex gap-3 mb-5">
               <a
-                href="https://wa.me/628123456789"
+                href="https://wa.me/6285735328348"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="WhatsApp"
@@ -106,8 +106,8 @@ export default function FooterUser() {
           className="border-t border-white/10 mt-8 sm:mt-10 pt-5 sm:pt-6
           flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-white/40"
         >
-          <p>© {year} Rizqi Elektronik. Dikembangkan menggunakan Next.js & Firebase.</p>
-          <p className="text-center sm:text-right">Sistem E-Commerce — Universitas Islam Balitar, Teknik Informatika {year}</p>
+          <p>© {year} Rizqi Elektronik.</p>
+          {/* <p className="text-center sm:text-right">Sistem E-Commerce — Universitas Islam Balitar, Teknik Informatika {year}</p> */}
         </div>
       </div>
     </footer>

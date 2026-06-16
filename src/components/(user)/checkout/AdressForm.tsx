@@ -52,12 +52,13 @@ export default function AddressForm({ form, formError, onChange, onFillFromProfi
       const user = await getCurrentUser(uid);
       if (!user) return;
       const addr = user.address ?? {};
-      const alamatLengkap = [addr.detailAddress, addr.district].filter(Boolean).join(", ");
+      // detailAddress saja yang jadi alamat lengkap, district = kecamatan
+      const alamatLengkap = addr.detailAddress || form.alamat;
       onFillFromProfile({
         nama: user.fullName || form.nama,
         telepon: user.phoneNumber || form.telepon,
-        alamat: alamatLengkap || form.alamat,
-        kecamatan: addr.subdistrict || form.kecamatan,
+        alamat: alamatLengkap,
+        kecamatan: addr.district || form.kecamatan, // district = kecamatan di profil
         kota: addr.city || form.kota,
         kodePos: addr.postalCode || form.kodePos,
       });
@@ -129,19 +130,20 @@ export default function AddressForm({ form, formError, onChange, onFillFromProfi
           <input type="text" name="alamat" value={form.alamat} onChange={onChange} placeholder="Nama jalan, No. rumah, RT/RW, Kelurahan" className={INPUT_CLS(!!(formError && !form.alamat.trim()))} />
         </div>
 
-        {/* Kecamatan — BARU, span 2 kolom di mobile, 1 kolom di desktop */}
+        {/* Kecamatan — trigger utama perhitungan ongkir */}
         <div>
           <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
-            Kecamatan
-            <span className="ml-1 text-[10px] font-normal text-blue-500">(untuk ongkir lebih akurat)</span>
+            Kecamatan <span className="text-red-400">*</span>
+            <span className="ml-1 text-[10px] font-normal text-blue-500">(wajib untuk hitung ongkir)</span>
           </label>
-          <input type="text" name="kecamatan" value={form.kecamatan} onChange={onChange} placeholder="Contoh: Kepanjen Kidul" className={INPUT_CLS(false)} />
+          <input type="text" name="kecamatan" value={form.kecamatan} onChange={onChange} placeholder="Contoh: Kepanjen Kidul" className={INPUT_CLS(!!(formError && !form.kecamatan.trim()))} />
         </div>
 
         {/* Kota / Kabupaten */}
         <div>
           <label className="text-xs font-semibold text-gray-500 mb-1.5 block">
-            Kota / Kabupaten <span className="text-red-400">*</span>
+            Kota / Kabupaten
+            <span className="ml-1 text-[10px] font-normal text-gray-400">(opsional, untuk akurasi tambahan)</span>
           </label>
           <input type="text" name="kota" value={form.kota} onChange={onChange} placeholder="Contoh: Blitar" className={INPUT_CLS(false)} />
         </div>

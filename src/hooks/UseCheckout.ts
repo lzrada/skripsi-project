@@ -49,12 +49,13 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
   const [shipping, setShipping] = useState<ShippingResult | null>(null);
   const [shippingStatus, setShippingStatus] = useState<ShippingStatus>("idle");
 
-  // Hitung ongkir dari kombinasi kecamatan + kota agar lebih akurat
+  // Hitung ongkir — prioritaskan kecamatan sebagai input utama, kota sebagai konteks tambahan
   useEffect(() => {
-    const kota = form.kota.trim();
     const kecamatan = form.kecamatan.trim();
+    const kota = form.kota.trim();
 
-    if (!kota) {
+    // Butuh minimal kecamatan untuk mulai geocoding
+    if (!kecamatan) {
       setShipping(null);
       setShippingStatus("idle");
       return;
@@ -62,8 +63,8 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
 
     setShippingStatus("calculating");
 
-    // Gabung kecamatan + kota jika kecamatan diisi, untuk geocode yang lebih presisi
-    const query = kecamatan ? `${kecamatan}, ${kota}` : kota;
+    // Kalau ada kota, gabung supaya geocode makin akurat; kalau tidak ada, pakai kecamatan saja
+    const query = kota ? `${kecamatan}, ${kota}` : kecamatan;
 
     const timer = setTimeout(async () => {
       try {
@@ -72,9 +73,9 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
           setShipping(result);
           setShippingStatus("found");
         } else {
-          // Fallback: coba dengan kota saja jika kecamatan+kota tidak ditemukan
-          if (kecamatan) {
-            const fallback = await hitungOngkirDariNamaWilayah(kota);
+          // Fallback: coba dengan kecamatan saja jika gabungan tidak ditemukan
+          if (kota) {
+            const fallback = await hitungOngkirDariNamaWilayah(kecamatan);
             if (fallback) {
               setShipping(fallback);
               setShippingStatus("found");
@@ -91,7 +92,7 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     }, 700);
 
     return () => clearTimeout(timer);
-  }, [form.kota, form.kecamatan]);
+  }, [form.kecamatan, form.kota]);
 
   useEffect(() => {
     const u = getUidFromCookie();
@@ -132,16 +133,17 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     if (!form.nama.trim()) return setFormError("Nama lengkap wajib diisi.");
     if (!form.telepon.trim()) return setFormError("Nomor telepon wajib diisi.");
     if (!form.alamat.trim()) return setFormError("Alamat lengkap wajib diisi.");
+    if (!form.kecamatan.trim()) return setFormError("Kecamatan wajib diisi agar ongkos kirim bisa dihitung.");
 
     if (!isCod) {
       if (shippingStatus === "calculating") {
         return setFormError("Sedang menghitung ongkos kirim, tunggu sebentar...");
       }
       if (shippingStatus === "not_found") {
-        return setFormError("Wilayah tujuan tidak dikenali. Coba isi nama kecamatan/kota dengan lebih spesifik.");
+        return setFormError("Wilayah tujuan tidak dikenali. Coba isi nama kecamatan dengan lebih spesifik.");
       }
       if (shippingStatus === "idle" || !shipping) {
-        return setFormError("Isi kolom Kota / Kabupaten terlebih dahulu agar ongkos kirim bisa dihitung.");
+        return setFormError("Isi kolom Kecamatan terlebih dahulu agar ongkos kirim bisa dihitung.");
       }
     }
 

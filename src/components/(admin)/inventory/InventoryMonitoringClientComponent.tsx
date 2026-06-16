@@ -202,7 +202,7 @@ export function InventoryMonitoringClientComponent() {
         </p>
       )}
 
-      <InventoryTableContainer filtered={paginated} onEditROP={(p) => setEditModal({ open: true, product: p })} onRestock={handleRestock} restockingId={restockingId} />
+      <InventoryTableContainer filtered={paginated} onEditROP={(p) => setEditModal({ open: true, product: p })} />
 
       {/* Pagination */}
       <PaginationControls currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />

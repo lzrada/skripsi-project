@@ -32,9 +32,8 @@ export default function NavbarUser() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [wishlistCount, setWishlistCount] = useState(0);
   const [scrolled, setScrolled] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState("");
+  // HAPUS: useState selectedCategory & useEffect sync-nya
 
-  // ── Ukur tinggi navbar → CSS variable --navbar-h ─────────────────────────
   useEffect(() => {
     const update = () => {
       if (headerRef.current) {
@@ -46,11 +45,6 @@ export default function NavbarUser() {
     if (headerRef.current) ro.observe(headerRef.current);
     return () => ro.disconnect();
   }, [isLoggedIn]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setSelectedCategory(params.get("category") ?? "");
-  }, [pathname]);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -178,9 +172,10 @@ export default function NavbarUser() {
             </div>
           </div>
 
-          <CategoryBar selectedCategory={selectedCategory} />
+          {/* CategoryBar baca searchParams sendiri — tidak perlu prop selectedCategory */}
+          <CategoryBar />
 
-          {menuOpen && <MobileMenu isLoggedIn={isLoggedIn} userName={userName} wishlistCount={wishlistCount} selectedCategory={selectedCategory} onClose={() => setMenuOpen(false)} onLogout={handleLogout} />}
+          {menuOpen && <MobileMenu isLoggedIn={isLoggedIn} userName={userName} wishlistCount={wishlistCount} selectedCategory="" onClose={() => setMenuOpen(false)} onLogout={handleLogout} />}
         </nav>
       </header>
     </>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { StockBadge } from "@/components/(admin)/inventory/StockBadge";
 import { StockBar } from "@/components/(admin)/inventory/StockBar";
 import { isCriticalStock, isLowStock } from "@/constants/inventory";
@@ -17,11 +18,9 @@ interface ProductStock {
 interface InventoryMobileCardsProps {
   filtered: ProductStock[];
   onEditROP: (product: ProductStock) => void;
-  onRestock: (product: ProductStock) => void;
-  restockingId: string | null;
 }
 
-export function InventoryMobileCards({ filtered, onEditROP, onRestock, restockingId }: InventoryMobileCardsProps) {
+export function InventoryMobileCards({ filtered, onEditROP }: InventoryMobileCardsProps) {
   return (
     <div className="md:hidden divide-y divide-slate-100">
       {filtered.length === 0 ? (
@@ -56,13 +55,9 @@ export function InventoryMobileCards({ filtered, onEditROP, onRestock, restockin
                 Atur ROP
               </button>
               {isLowStock(p.stock, p.reorderPoint) && (
-                <button
-                  onClick={() => onRestock(p)}
-                  disabled={restockingId === p.id}
-                  className="flex-1 text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 py-2 rounded-lg transition disabled:opacity-50"
-                >
-                  {restockingId === p.id ? "..." : "Tandai Restock"}
-                </button>
+                <Link href={`/admin/product-management?highlight=${p.id}`} className="flex-1 text-center text-xs font-semibold bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 py-2 rounded-lg transition">
+                  ✏️ Edit Stok
+                </Link>
               )}
             </div>
           </div>

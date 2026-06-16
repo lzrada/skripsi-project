@@ -37,7 +37,7 @@ export const uploadMultipleImagesService = async (files: File[]): Promise<string
       const fileName = `product-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
 
       const { data, error } = await supabase.storage.from("products").upload(fileName, file, {
-        cacheControl: "3600",
+        cacheControl: "2592000",
         upsert: false,
       });
       if (error) throw new Error(error.message);

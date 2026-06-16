@@ -15,6 +15,21 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Pilih hasil Nominatim yang paling spesifik (kecamatan/suburb > kota > provinsi)
+function pickBestResult(results: any[]): any {
+  if (!results || results.length === 0) return null;
+
+  // Urutan prioritas tipe Nominatim dari paling spesifik ke paling umum
+  const priority = ["suburb", "quarter", "neighbourhood", "village", "town", "municipality", "city", "county", "state"];
+
+  for (const type of priority) {
+    const match = results.find((r: any) => r.type === type || (r.class === "place" && r.type === type));
+    if (match) return match;
+  }
+
+  return results[0]; // fallback ke hasil pertama
+}
+
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q");
   if (!q || !q.trim()) {
@@ -22,8 +37,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const query = encodeURIComponent(`${q.trim()}, Indonesia`);
-    const url = `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=3&countrycodes=id&accept-language=id`;
+    // Tambah "Jawa Timur" sebagai konteks agar hasil lebih relevan untuk area toko
+    const query = encodeURIComponent(`${q.trim()}, Jawa Timur, Indonesia`);
+    const url = `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=5&countrycodes=id&accept-language=id&addressdetails=1`;
 
     const res = await fetch(url, {
       headers: {
@@ -43,7 +59,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ found: false });
     }
 
-    const best = data[0];
+    const best = pickBestResult(data);
+    if (!best) return NextResponse.json({ found: false });
+
     const destLat = parseFloat(best.lat);
     const destLng = parseFloat(best.lon);
     const displayName = best.display_name as string;

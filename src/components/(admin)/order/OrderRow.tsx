@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronDown, faChevronUp, faLocationDot, faGear, faBoxOpen, faCircleXmark } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faChevronUp, faLocationDot, faGear, faBoxOpen } from "@fortawesome/free-solid-svg-icons";
 import { type Order, type OrderStatus, statusConfig } from "@/types/order";
 import { categoryIcon, categoryGradient, defaultCategoryIcon, defaultGradient } from "@/constants/category";
 import { formatOrderDate, formatPrice, getPaymentIcon } from "@/components/(admin)/order/orderHelpers";
@@ -45,6 +46,7 @@ export function OrderRow({ order, onStatusChange, onCancel }: OrderRowProps) {
   return (
     <>
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+        {/* Header row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3.5 cursor-pointer hover:bg-slate-50/80 transition" onClick={() => setExpanded((v) => !v)}>
           <div className="flex items-center gap-3 min-w-0">
             <button
@@ -87,6 +89,7 @@ export function OrderRow({ order, onStatusChange, onCancel }: OrderRowProps) {
           </div>
         </div>
 
+        {/* Status progress bar */}
         {!isCancelled && (
           <div className="px-5 pb-3 pt-0">
             <div className="flex items-center gap-0">
@@ -103,9 +106,7 @@ export function OrderRow({ order, onStatusChange, onCancel }: OrderRowProps) {
                       {done && !active ? "✓" : i + 1}
                     </div>
                     <div className="hidden sm:block ml-1 mr-1">
-                      <p className={`text-[9px] font-semibold whitespace-nowrap ${done ? (active ? "text-[#1E2753]" : "text-emerald-600") : "text-slate-400"}`}>
-                        {step === "Menunggu Konfirmasi" ? "Menunggu" : step}
-                      </p>
+                      <p className={`text-[9px] font-semibold whitespace-nowrap ${done ? (active ? "text-[#1E2753]" : "text-emerald-600") : "text-slate-400"}`}>{step === "Menunggu Konfirmasi" ? "Menunggu" : step}</p>
                     </div>
                     {i < STATUS_FLOW.length - 1 && <div className={`flex-1 h-0.5 mx-1 rounded-full ${stepIndex > i ? "bg-emerald-400" : "bg-slate-100"}`} />}
                   </div>
@@ -115,8 +116,10 @@ export function OrderRow({ order, onStatusChange, onCancel }: OrderRowProps) {
           </div>
         )}
 
+        {/* Detail expanded */}
         {expanded && (
           <div className="border-t border-slate-100 bg-slate-50/60 p-4 space-y-4">
+            {/* Alamat & Pembayaran */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-white rounded-xl p-3 border border-slate-100">
                 <div className="flex items-center gap-2 mb-2">
@@ -140,6 +143,7 @@ export function OrderRow({ order, onStatusChange, onCancel }: OrderRowProps) {
               </div>
             </div>
 
+            {/* Daftar produk */}
             <div>
               <p className="text-xs font-bold text-slate-600 mb-2 flex items-center gap-1.5">
                 <FontAwesomeIcon icon={faBoxOpen} className="w-3 h-3" />
@@ -148,9 +152,17 @@ export function OrderRow({ order, onStatusChange, onCancel }: OrderRowProps) {
               <div className="space-y-2">
                 {order.items.map((item) => (
                   <div key={item.id} className="flex items-center gap-3 bg-white rounded-xl p-3 border border-slate-100">
-                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${categoryGradient[item.category] ?? defaultGradient} flex items-center justify-center shrink-0 shadow-sm`}>
-                      <FontAwesomeIcon icon={categoryIcon[item.category] ?? defaultCategoryIcon} className="w-4 h-4 text-white/80" />
+                    {/* Thumbnail: gambar asli kalau ada, fallback ke icon kategori */}
+                    <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 shadow-sm bg-slate-100 flex items-center justify-center">
+                      {item.image ? (
+                        <Image src={item.image} alt={item.name} width={40} height={40} className="object-cover w-full h-full" />
+                      ) : (
+                        <div className={`w-full h-full bg-gradient-to-br ${categoryGradient[item.category] ?? defaultGradient} flex items-center justify-center`}>
+                          <FontAwesomeIcon icon={categoryIcon[item.category] ?? defaultCategoryIcon} className="w-4 h-4 text-white/80" />
+                        </div>
+                      )}
                     </div>
+
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-slate-800 line-clamp-1">{item.name}</p>
                       <p className="text-xs text-slate-400">
@@ -163,6 +175,7 @@ export function OrderRow({ order, onStatusChange, onCancel }: OrderRowProps) {
               </div>
             </div>
 
+            {/* Total */}
             <div className="flex justify-between items-center bg-[#1E2753]/5 rounded-xl px-4 py-3 border border-[#1E2753]/10">
               <span className="text-sm font-bold text-slate-700">Total Pembayaran</span>
               <span className="text-base font-black text-[#1E2753]">{formatPrice(order.total)}</span>
@@ -171,9 +184,7 @@ export function OrderRow({ order, onStatusChange, onCancel }: OrderRowProps) {
         )}
       </div>
 
-      {confirmCancel && (
-        <CancelOrderModal orderId={order.id} updating={updating} onConfirm={handleCancel} onClose={() => setConfirmCancel(false)} />
-      )}
+      {confirmCancel && <CancelOrderModal orderId={order.id} updating={updating} onConfirm={handleCancel} onClose={() => setConfirmCancel(false)} />}
     </>
   );
 }

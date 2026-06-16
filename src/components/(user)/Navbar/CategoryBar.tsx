@@ -1,19 +1,18 @@
+"use client";
+
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { NAV_CATEGORIES } from "./Constants";
 
-interface CategoryBarProps {
-  selectedCategory: string;
-  onCategoryClick?: (slug: string) => void;
-}
+function CategoryBarInner() {
+  const searchParams = useSearchParams();
+  const selectedCategory = searchParams.get("category") ?? "";
 
-export default function CategoryBar({ selectedCategory }: CategoryBarProps) {
   return (
     <div className="hidden md:block border-t border-gray-100 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div
-          className="flex items-center overflow-x-auto [scrollbar-width:none]
-          [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-        >
+        <div className="flex items-center overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {NAV_CATEGORIES.map((cat) => {
             const active = selectedCategory === cat.slug;
             return (
@@ -39,5 +38,13 @@ export default function CategoryBar({ selectedCategory }: CategoryBarProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CategoryBar() {
+  return (
+    <Suspense fallback={<div className="hidden md:block border-t border-gray-100 bg-white h-[44px]" />}>
+      <CategoryBarInner />
+    </Suspense>
   );
 }

@@ -16,15 +16,13 @@ interface ProductStock {
 interface InventoryTableContainerProps {
   filtered: ProductStock[];
   onEditROP: (product: ProductStock) => void;
-  onRestock: (product: ProductStock) => void;
-  restockingId: string | null;
 }
 
-export function InventoryTableContainer({ filtered, onEditROP, onRestock, restockingId }: InventoryTableContainerProps) {
+export function InventoryTableContainer({ filtered, onEditROP }: InventoryTableContainerProps) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <InventoryDesktopTable filtered={filtered} onEditROP={onEditROP} onRestock={onRestock} restockingId={restockingId} />
-      <InventoryMobileCards filtered={filtered} onEditROP={onEditROP} onRestock={onRestock} restockingId={restockingId} />
+      <InventoryDesktopTable filtered={filtered} onEditROP={onEditROP} />
+      <InventoryMobileCards filtered={filtered} onEditROP={onEditROP} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ export interface UserAddress {
   district: string;
   postalCode: string;
   detailAddress: string;
+  subdistrict: string;
 }
 
 export interface UserData {

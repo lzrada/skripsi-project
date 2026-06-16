@@ -180,7 +180,7 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
 
   /* Pilih class tombol keranjang — semua didefinisikan di globals.css */
   const cartClass = added ? "btn-card-base btn-card-cart-added" : isOutOfStock ? "btn-card-base btn-card-cart-disabled" : "btn-card-base btn-card-cart";
-
+  const [imgError, setImgError] = useState(false);
   return (
     <div
       onClick={() => router.push(`/user/product-detail/${product.id}`)}
@@ -188,7 +188,7 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
     >
       {/* ── Area Gambar ── */}
       <div className="relative overflow-hidden bg-gray-50">
-        {product.images?.[0] ? (
+        {product.images?.[0] && !imgError ? (
           <div className="relative w-full aspect-square">
             <Image
               src={product.images[0]}
@@ -196,7 +196,7 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
               fill
               sizes="(max-width: 480px) 50vw, (max-width: 1024px) 33vw, 25vw"
               className="object-contain p-3 group-hover:scale-105 transition-transform duration-500"
-              loading={priority ? "eager" : "lazy"}
+              onError={() => setImgError(true)}
               priority={priority}
             />
           </div>

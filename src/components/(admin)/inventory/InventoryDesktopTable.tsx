@@ -19,11 +19,9 @@ interface ProductStock {
 interface InventoryDesktopTableProps {
   filtered: ProductStock[];
   onEditROP: (product: ProductStock) => void;
-  onRestock: (product: ProductStock) => void;
-  restockingId: string | null;
 }
 
-export function InventoryDesktopTable({ filtered, onEditROP, onRestock, restockingId }: InventoryDesktopTableProps) {
+export function InventoryDesktopTable({ filtered, onEditROP }: InventoryDesktopTableProps) {
   return (
     <div className="hidden md:block overflow-x-auto">
       <table className="w-full text-sm">
@@ -32,7 +30,6 @@ export function InventoryDesktopTable({ filtered, onEditROP, onRestock, restocki
             <th className="text-left px-5 py-3.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">Produk</th>
             <th className="text-center px-4 py-3.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">Stok</th>
             <th className="text-center px-4 py-3.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">ROP</th>
-            {/* <th className="text-center px-4 py-3.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">Avg/Hari</th> */}
             <th className="text-center px-4 py-3.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">Lead Time</th>
             <th className="text-center px-4 py-3.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">Status</th>
             <th className="text-center px-4 py-3.5 font-semibold text-slate-600 text-xs uppercase tracking-wide">Aksi</th>
@@ -41,7 +38,7 @@ export function InventoryDesktopTable({ filtered, onEditROP, onRestock, restocki
         <tbody className="divide-y divide-slate-50">
           {filtered.length === 0 ? (
             <tr>
-              <td colSpan={7} className="text-center py-12 text-slate-400 text-sm">
+              <td colSpan={6} className="text-center py-12 text-slate-400 text-sm">
                 Tidak ada produk ditemukan
               </td>
             </tr>
@@ -61,7 +58,6 @@ export function InventoryDesktopTable({ filtered, onEditROP, onRestock, restocki
                 <td className="px-4 py-4 text-center">
                   <span className="font-bold text-slate-700">{p.reorderPoint}</span>
                 </td>
-                {/* <td className="px-4 py-4 text-center text-slate-500">{p.averageDailySales > 0 ? p.averageDailySales : "-"}</td> */}
                 <td className="px-4 py-4 text-center text-slate-500">{p.leadTimeDays} hari</td>
                 <td className="px-4 py-4 text-center">
                   <StockBadge stock={p.stock} rop={p.reorderPoint} />
@@ -72,13 +68,9 @@ export function InventoryDesktopTable({ filtered, onEditROP, onRestock, restocki
                       Atur ROP
                     </button>
                     {isLowStock(p.stock, p.reorderPoint) && (
-                      <button
-                        onClick={() => onRestock(p)}
-                        disabled={restockingId === p.id}
-                        className="text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 px-3 py-1.5 rounded-lg transition disabled:opacity-50"
-                      >
-                        {restockingId === p.id ? "..." : "Tandai Restock"}
-                      </button>
+                      <Link href={`/admin/product-management?highlight=${p.id}`} className="text-xs font-semibold bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-lg transition">
+                        ✏️ Edit Stok
+                      </Link>
                     )}
                   </div>
                 </td>

@@ -17,6 +17,7 @@ export interface CheckoutForm {
   nama: string;
   telepon: string;
   alamat: string;
+  kecamatan: string; // BARU
   kota: string;
   kodePos: string;
   catatan: string;
@@ -39,6 +40,7 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     nama: "",
     telepon: "",
     alamat: "",
+    kecamatan: "",
     kota: "",
     kodePos: "",
     catatan: "",
@@ -47,8 +49,10 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
   const [shipping, setShipping] = useState<ShippingResult | null>(null);
   const [shippingStatus, setShippingStatus] = useState<ShippingStatus>("idle");
 
+  // Hitung ongkir dari kombinasi kecamatan + kota agar lebih akurat
   useEffect(() => {
     const kota = form.kota.trim();
+    const kecamatan = form.kecamatan.trim();
 
     if (!kota) {
       setShipping(null);
@@ -58,13 +62,25 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
 
     setShippingStatus("calculating");
 
+    // Gabung kecamatan + kota jika kecamatan diisi, untuk geocode yang lebih presisi
+    const query = kecamatan ? `${kecamatan}, ${kota}` : kota;
+
     const timer = setTimeout(async () => {
       try {
-        const result = await hitungOngkirDariNamaWilayah(kota);
+        const result = await hitungOngkirDariNamaWilayah(query);
         if (result) {
           setShipping(result);
           setShippingStatus("found");
         } else {
+          // Fallback: coba dengan kota saja jika kecamatan+kota tidak ditemukan
+          if (kecamatan) {
+            const fallback = await hitungOngkirDariNamaWilayah(kota);
+            if (fallback) {
+              setShipping(fallback);
+              setShippingStatus("found");
+              return;
+            }
+          }
           setShipping(null);
           setShippingStatus("not_found");
         }
@@ -75,7 +91,7 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     }, 700);
 
     return () => clearTimeout(timer);
-  }, [form.kota]);
+  }, [form.kota, form.kecamatan]);
 
   useEffect(() => {
     const u = getUidFromCookie();
@@ -122,7 +138,7 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
         return setFormError("Sedang menghitung ongkos kirim, tunggu sebentar...");
       }
       if (shippingStatus === "not_found") {
-        return setFormError("Kota tujuan tidak dikenali. Hubungi toko untuk konfirmasi ongkos kirim.");
+        return setFormError("Wilayah tujuan tidak dikenali. Coba isi nama kecamatan/kota dengan lebih spesifik.");
       }
       if (shippingStatus === "idle" || !shipping) {
         return setFormError("Isi kolom Kota / Kabupaten terlebih dahulu agar ongkos kirim bisa dihitung.");
@@ -145,14 +161,16 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
       price: i.price,
       qty: i.qty,
       category: i.category,
-      image: i.image ?? "", // ← FIX: gambar sekarang tersimpan ke order
+      image: i.image ?? "",
     }));
+
   const buildOrderBase = (snapshot: CartItem[]) => ({
     uid: uid!,
     recipientName: form.nama,
     phone: form.telepon,
+    // Sertakan kecamatan dalam alamat yang tersimpan di order
     address: form.alamat,
-    kota: form.kota,
+    kota: form.kecamatan ? `${form.kecamatan}, ${form.kota}` : form.kota,
     kodePos: form.kodePos,
     note: form.catatan,
     paymentMethod: selectedMethod.label,
@@ -205,8 +223,6 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     setLoading(true);
     const snapshot = [...orderItems];
     try {
-      // FIX: kirim diskonKupon, couponCode, dan shippingFee agar gross_amount
-      // di Midtrans cocok dengan item_details (mencegah error 400 dari Midtrans)
       const { token } = await createMidtransTransaction({
         items: buildItems(snapshot),
         user: {

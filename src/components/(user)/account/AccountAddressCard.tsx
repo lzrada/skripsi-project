@@ -4,11 +4,22 @@ import { useState } from "react";
 import { updateUserAddressService } from "@/service/user.service";
 import { UserData } from "@/types/user";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faXmark, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import { faXmark, faSpinner, faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import { KOTA_JATIM, KECAMATAN_BY_KOTA } from "@/constants/wilayah-jatim";
 
 interface AccountAddressCardProps {
   user: UserData | null;
 }
+
+function findKotaId(namaKota: string): string {
+  if (!namaKota) return "";
+  const normalized = namaKota.trim().toLowerCase();
+  return KOTA_JATIM.find((k) => k.name.toLowerCase() === normalized)?.id ?? "";
+}
+
+const SELECT_CLS = "w-full border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1E2753] transition appearance-none pr-9 bg-white cursor-pointer";
+
+const SELECT_DISABLED_CLS = "w-full border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none transition appearance-none pr-9 bg-gray-100 text-gray-400 cursor-not-allowed";
 
 export default function AccountAddressCard({ user }: AccountAddressCardProps) {
   const [open, setOpen] = useState(false);
@@ -19,27 +30,43 @@ export default function AccountAddressCard({ user }: AccountAddressCardProps) {
     postalCode: user?.address?.postalCode || "",
     detailAddress: user?.address?.detailAddress || "",
   });
+  const [selectedKotaId, setSelectedKotaId] = useState(() => findKotaId(user?.address?.city || ""));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  const kecamatanList = selectedKotaId ? (KECAMATAN_BY_KOTA[selectedKotaId] ?? []) : [];
+
   const handleOpen = () => {
+    const city = user?.address?.city || "";
     setForm({
       province: user?.address?.province || "",
-      city: user?.address?.city || "",
+      city,
       district: user?.address?.district || "",
       postalCode: user?.address?.postalCode || "",
       detailAddress: user?.address?.detailAddress || "",
     });
+    setSelectedKotaId(findKotaId(city));
     setError("");
     setSuccess(false);
     setOpen(true);
   };
 
+  const handleKotaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = e.target.value;
+    const nama = KOTA_JATIM.find((k) => k.id === id)?.name ?? "";
+    setSelectedKotaId(id);
+    setForm((prev) => ({ ...prev, city: nama, district: "" }));
+  };
+
+  const handleKecamatanChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setForm((prev) => ({ ...prev, district: e.target.value }));
+  };
+
   const handleSave = async () => {
     if (!user?.uid) return;
-    if (!form.province.trim() || !form.city.trim() || !form.detailAddress.trim()) {
-      setError("Provinsi, kota, dan detail alamat wajib diisi.");
+    if (!form.city.trim() || !form.detailAddress.trim()) {
+      setError("Kota dan detail alamat wajib diisi.");
       return;
     }
     setLoading(true);
@@ -64,14 +91,6 @@ export default function AccountAddressCard({ user }: AccountAddressCardProps) {
       setLoading(false);
     }
   };
-
-  const fields = [
-    { key: "province", label: "Provinsi", placeholder: "Contoh: Jawa Timur", type: "text" },
-    { key: "city", label: "Kota / Kabupaten", placeholder: "Contoh: Blitar", type: "text" },
-    { key: "district", label: "Kecamatan", placeholder: "Contoh: Kepanjenkidul", type: "text" },
-    { key: "postalCode", label: "Kode Pos", placeholder: "Contoh: 66181", type: "text" },
-    { key: "detailAddress", label: "Alamat Detail", placeholder: "Nama jalan, No. rumah, RT/RW", type: "text" },
-  ] as const;
 
   return (
     <>
@@ -98,7 +117,7 @@ export default function AccountAddressCard({ user }: AccountAddressCardProps) {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal Edit */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
@@ -110,18 +129,77 @@ export default function AccountAddressCard({ user }: AccountAddressCardProps) {
             </div>
 
             <div className="space-y-4">
-              {fields.map((f) => (
-                <div key={f.key}>
-                  <label className="text-xs font-semibold text-gray-500 mb-1 block">{f.label}</label>
-                  <input
-                    type={f.type}
-                    value={form[f.key]}
-                    onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
-                    placeholder={f.placeholder}
-                    className="w-full border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1E2753] transition"
-                  />
+              {/* Provinsi — tetap text, tidak terikat Jatim saja */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">Provinsi</label>
+                <input
+                  type="text"
+                  value={form.province}
+                  onChange={(e) => setForm({ ...form, province: e.target.value })}
+                  placeholder="Contoh: Jawa Timur"
+                  className="w-full border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1E2753] transition"
+                />
+              </div>
+
+              {/* Kota — dropdown */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">
+                  Kota / Kabupaten <span className="text-red-400">*</span>
+                </label>
+                <div className="relative">
+                  <select value={selectedKotaId} onChange={handleKotaChange} className={SELECT_CLS}>
+                    <option value="">— Pilih Kota / Kabupaten —</option>
+                    {KOTA_JATIM.map((k) => (
+                      <option key={k.id} value={k.id}>
+                        {k.name}
+                      </option>
+                    ))}
+                  </select>
+                  <FontAwesomeIcon icon={faChevronDown} className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
                 </div>
-              ))}
+              </div>
+
+              {/* Kecamatan — dropdown, disabled sampai kota dipilih */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">Kecamatan</label>
+                <div className="relative">
+                  <select value={form.district} onChange={handleKecamatanChange} disabled={!selectedKotaId} className={!selectedKotaId ? SELECT_DISABLED_CLS : SELECT_CLS}>
+                    <option value="">{!selectedKotaId ? "Pilih kota terlebih dahulu" : "— Pilih Kecamatan —"}</option>
+                    {kecamatanList.map((k) => (
+                      <option key={k.id} value={k.name}>
+                        {k.name}
+                      </option>
+                    ))}
+                  </select>
+                  <FontAwesomeIcon icon={faChevronDown} className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Kode Pos */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">Kode Pos</label>
+                <input
+                  type="text"
+                  value={form.postalCode}
+                  onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
+                  placeholder="Contoh: 66181"
+                  className="w-full border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1E2753] transition"
+                />
+              </div>
+
+              {/* Alamat Detail */}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 mb-1 block">
+                  Alamat Detail <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.detailAddress}
+                  onChange={(e) => setForm({ ...form, detailAddress: e.target.value })}
+                  placeholder="Nama jalan, No. rumah, RT/RW"
+                  className="w-full border-2 border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#1E2753] transition"
+                />
+              </div>
             </div>
 
             {error && <p className="mt-3 text-xs text-red-500">{error}</p>}

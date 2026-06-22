@@ -17,8 +17,8 @@ const PROMO_CARDS: PromoCard[] = [
     color: "from-amber-500 to-orange-600",
   },
   {
-    title: "Gratis Ongkir Blitar & Sekitarnya",
-    desc: "Pengiriman gratis untuk area Blitar, Tulungagung & Kediri",
+    title: "Gratis Ongkir wilayah Blitar ",
+    desc: "Pengiriman gratis untuk area Blitar",
     icon: faTruckFast,
     color: "from-emerald-500 to-teal-600",
   },

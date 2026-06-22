@@ -1,4 +1,3 @@
-// src/components/(user)/ui/ProductCard.tsx
 "use client";
 
 import Link from "next/link";
@@ -64,8 +63,6 @@ function isNewProduct(createdAt?: any): boolean {
   return diffDays <= 30;
 }
 
-/* ── Sub-components ─────────────────────────────── */
-
 function StockBadge({ stock }: { stock: number }) {
   if (stock === 0) {
     return (
@@ -94,7 +91,7 @@ function StockBadge({ stock }: { stock: number }) {
   return (
     <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
-      Tersedia
+      Tersedia ({stock})
     </span>
   );
 }

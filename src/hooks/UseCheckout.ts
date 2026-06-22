@@ -170,7 +170,6 @@ export function useCheckout(selectedIds: string[], couponCode: string, couponId:
     uid: uid!,
     recipientName: form.nama,
     phone: form.telepon,
-    // Sertakan kecamatan dalam alamat yang tersimpan di order
     address: form.alamat,
     kota: form.kecamatan ? `${form.kecamatan}, ${form.kota}` : form.kota,
     kodePos: form.kodePos,
